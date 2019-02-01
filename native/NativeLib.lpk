@@ -92,7 +92,7 @@
     </Files>
     <RequiredPkgs Count="3">
       <Item1>
-        <PackageName Value="MiniLib"/>
+        <PackageName Value="MiniCtrls"/>
       </Item1>
       <Item2>
         <PackageName Value="MiniCommons"/>
