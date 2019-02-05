@@ -225,7 +225,6 @@ var
   char: widechar;
   aTextStyle: TTextStyle;
   IntfImg: TLazIntfImage;
-  trans: TFPColor;
   pngWriter : TLazWriterPNG;
 begin
   with Image do
@@ -285,8 +284,8 @@ begin
   IntfImg.LoadFromBitmap(Image.BitmapHandle, Image.MaskHandle);
   //IntfImg.UsePalette := True;
   //IntfImg := Image.CreateIntfImage;
-  trans := colWhite;
-  trans.alpha := 0;
+  //trans := colWhite;
+  //trans.alpha := 0;
   for dy := 0 to Image.Height - 1 do
   begin
     for dx:=0 to Image.Width - 1 do
