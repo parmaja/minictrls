@@ -1,4 +1,4 @@
-lazbuild .\lib\MiniLib.lpk
+lazbuild .\lib\MiniCtrls.lpk
 lazbuild --add-package .\native\NativeLib.lpk
-lazbuild --build-ide= 
+lazbuild -d --build-ide= 
 pause
