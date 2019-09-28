@@ -138,10 +138,10 @@ begin
       BiDiMode := Application.MainForm.BiDiMode
     else
       BidiMode := Application.BidiMode;
-    BorderStyle := bsDialog;
     Canvas.Font := Font;
     if FMsgKind <> msgkStatus then
     begin
+      BorderStyle := bsDialog;
       if vTitle = '' then
         Caption := Application.Title
       else
@@ -161,7 +161,8 @@ begin
       Caption := '';
       BiDiMode := vForm.BiDiMode;
       BevelInner := bvNone;
-      BevelOuter := bvNone;
+      if FMsgKind <> msgkStatus then
+        BevelOuter := bvNone;
       BorderWidth := cMargin;
       ChildSizing.HorizontalSpacing := cSpacing;
       ChildSizing.VerticalSpacing := cSpacing;
@@ -414,13 +415,13 @@ begin
     else
     begin
       aMsgForm := CreateForm(msgkStatus);
+      aMsgForm.IsStatus := True;
       aMsgForm.FSenderObject := Sender;
       aMsgForm.Caption := '';
       aMsgForm.BorderIcons := [];
       aMsgForm.BorderStyle := bsNone;
       aMsgForm.Position := poMainFormCenter;
       aMsgForm.FormStyle := fsStayOnTop;
-      aMsgForm.IsStatus := True;
       FStatusForms.Add(aMsgForm);
     end;
     CreateFormObjects(aMsgForm, vText, Application.Title, [], 0, 0);
@@ -446,14 +447,10 @@ begin
   inherited;
   with Params do
   begin
-    if FMsgKind = msgkStatus then
-      Style := WS_POPUP or WS_BORDER;
-    ExStyle := ExStyle or WS_EX_DLGMODALFRAME;
-
-    if Screen.ActiveForm <> nil then
+{    if Screen.ActiveForm <> nil then
       WndParent := Screen.ActiveForm.Handle
     else if Application.MainForm <> nil then
-      WndParent := Application.MainForm.Handle;
+      WndParent := Application.MainForm.Handle;}
   end;
 end;
 
