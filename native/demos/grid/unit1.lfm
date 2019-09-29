@@ -19,4 +19,11 @@ object Form1: TForm1
     OnClick = CloseBtnClick
     TabOrder = 0
   end
+  object StringGrid1: TStringGrid
+    Left = 167
+    Height = 100
+    Top = 55
+    Width = 200
+    TabOrder = 1
+  end
 end
