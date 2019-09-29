@@ -94,6 +94,7 @@ type
     function CreateItem: _Object_; virtual; abstract;
     function Require(Index: Integer): _Object_; override;
     procedure Changed; virtual;
+    procedure CountChanged; virtual;
     procedure Update;
   public
     procedure BeginUpdate;
@@ -118,8 +119,6 @@ type
     constructor Create(ARow: TntvRow); virtual;
     destructor Destroy; override;
     property Text: String read FText write SetText;
-  published
-    property InternalText: String read FText write FText;
     property Data: Integer read FData write FData default 0;
   end;
 
@@ -137,6 +136,7 @@ type
     function CreateItem: TntvCell; override;
   public
     constructor Create(ARows: TntvRows); virtual;
+    procedure Changed; override;
     destructor Destroy; override;
     function SafeGet(Index: Integer): TntvCell;
     property Data: Integer read FData write FData;
@@ -153,6 +153,7 @@ type
     FGrid: TntvCustomGrid;
   protected
     procedure Changed; override;
+    procedure CountChanged; override;
     function CreateItem: TntvRow; override;
   public
     constructor Create(Grid: TntvCustomGrid);
@@ -392,7 +393,7 @@ type
     property Columns: TntvColumns read FColumns;
   public
     function GetReadOnly: Boolean;
-    constructor Create(vColumns: TntvColumns; vName: String = ''; vID: Integer = 0; vEnabled: Boolean = True); virtual;
+    constructor Create(vColumns: TntvColumns; vTitle: String = ''; vName: String = ''; vID: Integer = 0; vEnabled: Boolean = True); virtual;
     procedure Invalidate;
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
@@ -439,11 +440,13 @@ type
   published
     property BiDiMode: TBiDiMode read FBiDiMode write SetBiDiMode stored IsBiDiModeStored;
     property ParentBiDiMode: Boolean read FParentBiDiMode write SetParentBiDiMode default True;
-    property Caption: String read Info.Caption write Info.Caption;
     property Hint: String read Info.Hint write Info.Hint;
     property IsTotal: Boolean read Info.IsTotal write Info.IsTotal default False;
     property ReadOnly: Boolean read Info.ReadOnly write Info.ReadOnly default False;
+    //Title a column header text
     property Title: String read Info.Title write Info.Title;
+    //Caption keep it empty until you want override the title that will draw in header
+    property Caption: String read Info.Caption write Info.Caption;
     property Visible: Boolean read Info.Visible write SetVisible default True;
     property Width: Integer read Info.Width write SetWidth default sColWidth;
     property Id: Integer read Info.Id write Info.Id default 0;
@@ -605,6 +608,8 @@ type
     FLinesColor: TColor;
     FFixedColor: TColor;
     procedure ChangeCursor(x, y: Integer);
+    function GetValues(Row, Col: Integer): string;
+    procedure SetValues(Row, Col: Integer; AValue: string);
     procedure SetImageList(Value: TImageList);
     procedure ImageListChange(Sender: TObject);
     procedure CalcNewWidth(X: Smallint);
@@ -855,7 +860,6 @@ type
     property CurCell: TntvCell read GetCurCell;
     property TopRow: Integer read FTopRow write SetTopRow;
     property Rows: TntvRows read FRows;
-    property Items[Index: Integer]: TntvRow read GetItems; default;
     property ActiveRow: Integer read FActiveRow write SetActiveRow;
     //for published
     property BorderStyle: TBorderStyle read FBorderStyle write SetBorderStyle default bsSingle;
@@ -913,6 +917,9 @@ type
     property WantTab: Boolean read FWantTab write FWantTab default False;
     property WantReturn: Boolean read FWantReturn write FWantReturn default False;
     property Font;
+
+    property Items[Index: Integer]: TntvRow read GetItems;
+    property Values[Row, Col: Integer]: string read GetValues write SetValues; default;
   end;
 
   TntvGrid = class(TntvCustomGrid)
@@ -1279,6 +1286,11 @@ procedure TntvList<_Object_>.Changed;
 begin
 end;
 
+procedure TntvList<_Object_>.CountChanged;
+begin
+
+end;
+
 function TntvList<_Object_>.SortByRange(vFrom, vTo: Integer; OnCompareLine: TOnCompareLine): Boolean;
 begin
   if Count > 0 then
@@ -1365,6 +1377,11 @@ begin
   FRows := ARows;
 end;
 
+procedure TntvRow.Changed;
+begin
+  inherited Changed;
+end;
+
 destructor TntvRow.Destroy;
 begin
   inherited;
@@ -1389,6 +1406,11 @@ end;
 procedure TntvRows.Changed;
 begin
   inherited Changed;
+end;
+
+procedure TntvRows.CountChanged;
+begin
+  inherited;
   FGrid.CountChanged;
 end;
 
@@ -1443,7 +1465,11 @@ end;
 
 procedure TntvCell.SetText(const S: String);
 begin
-  FText := S;
+  if FText <> S then
+  begin
+    FText := S;
+//    FRow.Changed; //now work
+  end;
 end;
 
 function TntvList<_Object_>.Require(Index: Integer): _Object_;
@@ -1506,7 +1532,7 @@ procedure TntvList<_Object_>.Notify(Ptr: Pointer; Action: TListNotification);
 begin
   inherited;
   if (FUpdateCount = 0) then
-    Changed;
+    CountChanged;
 end;
 
 function TntvList<_Object_>.GetUpdating: Boolean;
@@ -4484,6 +4510,27 @@ begin
     SetCursor(crDefault);
 end;
 
+function TntvCustomGrid.GetValues(Row, Col: Integer): string;
+var
+  aRow: TntvRow;
+  aCell: TntvCell;
+begin
+  aRow := Rows[Row];
+  aCell := aRow[Col];
+  Result := aCell.Text;
+end;
+
+procedure TntvCustomGrid.SetValues(Row, Col: Integer; AValue: string);
+var
+  aRow: TntvRow;
+  aCell: TntvCell;
+begin
+  aRow := Rows[Row];
+  aCell := aRow[Col];
+  aCell.Text := AValue;
+  RefreshCell(Row, Col);
+end;
+
 procedure TntvCustomGrid.WMSetFocus(var Message: TWMSetFocus);
 begin
   inherited;
@@ -5290,10 +5337,14 @@ procedure TntvCustomGrid.AfterPasteRow(vRow: Integer);
 begin
 end;
 
-constructor TntvColumn.Create(vColumns: TntvColumns; vName: String; vID: Integer; vEnabled: Boolean);
+constructor TntvColumn.Create(vColumns: TntvColumns; vTitle: String; vName: String; vID: Integer; vEnabled: Boolean);
 begin
   inherited Create;
-  FName := vName;
+  if vName = '' then
+    FName := Copy(ClassName, 2, MaxInt)
+  else
+    FName := vName;
+  Info.Title := vTitle;
   FColumns := vColumns;
   FImageIndex := -1;
   FParentBiDiMode := True;

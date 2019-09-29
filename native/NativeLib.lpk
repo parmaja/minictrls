@@ -32,7 +32,7 @@
       </Other>
     </CompilerOptions>
     <Version Major="1" Release="1" Build="1"/>
-    <Files Count="13">
+    <Files Count="14">
       <Item1>
         <Filename Value="ntvRegCtrls.pas"/>
         <HasRegisterProc Value="True"/>
@@ -89,6 +89,10 @@
         <Filename Value="ntvPanels.pas"/>
         <UnitName Value="ntvPanels"/>
       </Item13>
+      <Item14>
+        <Filename Value="ntvGrids.pas"/>
+        <UnitName Value="ntvGrids"/>
+      </Item14>
     </Files>
     <RequiredPkgs Count="3">
       <Item1>
