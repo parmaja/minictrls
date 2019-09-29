@@ -24,10 +24,12 @@ uses
 const
   sGridVersion = 'NativeGrid=v1.0';
 
-  sntvColWidth = 80;
+  sColWidth = 80;
+  sCellMargin = 3;
+  sIndicatorWidth = 40;
+  sFringeWidth = 40;
 
-  sntvIndicatorWidth = 40;
-  sntvFringeWidth = 40;
+
 
   cntv_EOC = #9;
   cntv_EOL = #13;
@@ -445,7 +447,7 @@ type
     property ReadOnly: Boolean read Info.ReadOnly write Info.ReadOnly default False;
     property Title: String read Info.Title write Info.Title;
     property Visible: Boolean read Info.Visible write SetVisible default True;
-    property Width: Integer read Info.Width write SetWidth default sntvColWidth;
+    property Width: Integer read Info.Width write SetWidth default sColWidth;
     property Id: Integer read Info.Id write Info.Id default 0;
     property Store: Boolean read Info.Store write Info.Store default True;
     property AutoSize: Boolean read Info.AutoSize write Info.AutoSize default False;
@@ -876,8 +878,8 @@ type
     property Header: Boolean read FHeader write SetHeader default True;
     property Indicator: Boolean read FIndicator write SetIndicator default True;
     property Fringe: Boolean read FFringe write SetFringe default False;
-    property IndicatorWidth: Integer read FIndicatorWidth write SetIndicatorWidth default sntvIndicatorWidth;
-    property FringeWidth: Integer read FFringeWidth write SetFringeWidth default sntvFringeWidth;
+    property IndicatorWidth: Integer read FIndicatorWidth write SetIndicatorWidth default sIndicatorWidth;
+    property FringeWidth: Integer read FFringeWidth write SetFringeWidth default sFringeWidth;
     property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default True;
     property Color default clBtnFace;
     property OddColor: TColor read FOddColor write SetOddColor default $00F8F8F8;
@@ -1556,7 +1558,6 @@ var
 begin
   if vArea = garNormal then
   begin
-    //    GetCurrentColor(vRow - (Ord(Grid.Header)), aColor);//zaher the Row
     GetCurrentColor(vRow, aColor); //zaher the Row
   end;
   aSelected := Grid.IsSelected(vRow, VisibleIndex);
@@ -1597,6 +1598,7 @@ begin
       aColor := clBtnFace;
     aTextColor := clBtnText;
   end;
+
   if not aSelected and (VisibleIndex < Grid.SettledCols) and (Grid.SettledColor <> clNone) then
   begin
     aColor := MixColors(aColor, Grid.SettledColor, 200);
@@ -1698,7 +1700,7 @@ begin
         ImageList.Draw(Canvas, aImageRect.Left, aImageRect.Top + y, aImage);
       end;
     end;
-    InflateRect(vRect, -1, -1);
+    InflateRect(vRect, - sCellMargin, - sCellMargin);
     Canvas.Font.Color :=clBlack;
     Grid.DrawString(Canvas, aCell.Text, vRect, GetTextStyle, True);
   end;
@@ -2168,7 +2170,7 @@ begin
   FDragAfter := 0;
   FGridLines := glBoth;
   FLinesColor := $00DDDDDD;
-  FColWidth := sntvColWidth;
+  FColWidth := sColWidth;
   FStateBtn := False;
   FModified := False;
   FRow := 0;
@@ -2176,8 +2178,8 @@ begin
   FDualColor := True;
   FOddColor := $00F8F8F8;
   FHeader := True;
-  FIndicatorWidth := sntvIndicatorWidth;
-  FFringeWidth := sntvFringeWidth;
+  FIndicatorWidth := sIndicatorWidth;
+  FFringeWidth := sFringeWidth;
   ShouldCurChange := False;
   FDownCol := -1;
   FUnderMouseCol := -1;
@@ -4753,7 +4755,6 @@ var
   aEdit: TntvEdit;
   aRect: TRect;
   aColor: TColor;
-  c: Integer;
 begin
   GetCurrentColor(ActiveRow, aColor);
   GetTextArea(ActiveRow, aRect);
@@ -4762,11 +4763,7 @@ begin
   aEdit.Font.Color := Grid.Font.Color;
   aEdit.BoundsRect := aRect;
   aEdit.AdjustSize;
-  c := aEdit.Top;
-  c := aEdit.Height;
-  c := (aRect.Height - aEdit.Height) div 2;
   aEdit.Top := aEdit.Top + (aRect.Height - aEdit.Height) div 2; //centering it
-  c := aEdit.Top;
   FEditControl.Show;
   aEdit.SetFocus;
 end;
@@ -5310,7 +5307,7 @@ begin
   Info.Store := True;
   Info.StoreCol := -1;
   Info.ID := vID;
-  Info.Width := sntvColWidth;
+  Info.Width := sColWidth;
 
   FVisibleIndex := -1;
 
@@ -6358,7 +6355,7 @@ begin
     else
       vRect.Left := vRect.Left + ImageList.Width;
   end;
-  InflateRect(vRect, 0, -1);
+  InflateRect(vRect, - sCellMargin, - sCellMargin);
 end;
 
 procedure TntvCustomGrid.SetFullHeader(const Value: Boolean);
