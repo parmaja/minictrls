@@ -19,4 +19,10 @@ object Form1: TForm1
     OnClick = CloseBtnClick
     TabOrder = 0
   end
+  object ntvPanel1: TntvPanel
+    Left = 114
+    Height = 144
+    Top = 147
+    Width = 156
+  end
 end

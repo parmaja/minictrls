@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Grids,
-  ntvGrids, ntvImgBtns;
+  ntvGrids, ntvImgBtns, ntvPanels;
 
 type
 
@@ -14,6 +14,7 @@ type
 
   TForm1 = class(TForm)
     CloseBtn: TButton;
+    ntvPanel1: TntvPanel;
     procedure CloseBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private

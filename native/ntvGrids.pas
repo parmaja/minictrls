@@ -19,7 +19,7 @@ uses
   LCLType, LCLIntf, fgl,
   StdCtrls, Dialogs, Math, Menus, Forms, ImgList, Contnrs,
   ColorUtils, mnClasses, UniDates,
-  ntvCtrls;
+  ntvCtrls, ntvThemes;
 
 const
   sGridVersion = 'NativeGrid=v1.0';
@@ -65,8 +65,7 @@ type
     mactEdit,
     mactExit,
     mactCancel,
-    mactAccept,
-    mactPulled
+    mactAccept
   );
 
   { IMaster }
@@ -280,7 +279,7 @@ type
 
     FMasterActionLock: Boolean;
 
-    FDisabled: Boolean;
+    FEnabled: Boolean;
     FOldData: Integer;
     FBtnRect: TRect;
     FDown: Boolean;
@@ -321,7 +320,7 @@ type
     function GetActiveRow: Integer;
     procedure SetImageIndex(const Value: Integer);
     function GetImageList: TImageList;
-    procedure SetDisabled(const Value: Boolean);
+    procedure SetEnabled(const Value: Boolean);
     procedure SetShowButton(const Value: Boolean);
     procedure SetDown(const Value: Boolean);
     procedure SetMouseInHeader(const Value: Boolean);
@@ -363,7 +362,6 @@ type
     procedure KeyDown(var KEY: Word; Shift: TShiftState); virtual;
 
     procedure MasterAction(vMove: TntvMasterAction);
-    procedure Pulled; virtual;
 
     function CanEdit: Boolean; virtual;
     function CreateEdit: TControl; virtual;
@@ -394,7 +392,7 @@ type
     property Columns: TntvColumns read FColumns;
   public
     function GetReadOnly: Boolean;
-    constructor Create(vColumns: TntvColumns; vName: String = ''; vID: Integer = 0; vDisabled: Boolean = False); virtual;
+    constructor Create(vColumns: TntvColumns; vName: String = ''; vID: Integer = 0; vEnabled: Boolean = True); virtual;
     procedure Invalidate;
     destructor Destroy; override;
     procedure Assign(Source: TPersistent); override;
@@ -452,7 +450,7 @@ type
     property Store: Boolean read Info.Store write Info.Store default True;
     property AutoSize: Boolean read Info.AutoSize write Info.AutoSize default False;
     property ShowImage: Boolean read Info.ShowImage write Info.ShowImage default False;
-    property Disabled: Boolean read FDisabled write SetDisabled default False;
+    property Enabled: Boolean read FEnabled write SetEnabled default True;
     property CurrencyCustomFormat: String read FCurrencyFormat write FCurrencyFormat;
   end;
 
@@ -606,6 +604,7 @@ type
     FUnderMouseCol: Integer;
     FLinesColor: TColor;
     FFixedColor: TColor;
+    procedure ChangeCursor(x, y: Integer);
     procedure SetImageList(Value: TImageList);
     procedure ImageListChange(Sender: TObject);
     procedure CalcNewWidth(X: Smallint);
@@ -802,7 +801,7 @@ type
     function CheckEmpty(vRow: Integer): Boolean;
     procedure DragOver(Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean); override;
     procedure DragDrop(Source: TObject; X, Y: Integer); override;
-    function PosToCoord(x, y: Integer; var vRow: Integer; var vCol: Integer; out vArea: TntvGridArea; vCorrect: Boolean = True): Boolean;
+    function PosToCoord(x, y: Integer; out vRow: Integer; out vCol: Integer; out vArea: TntvGridArea; vCorrect: Boolean = True): Boolean;
     function FindRowNext(vStartRow: Integer; vInCol: Integer; vText: String; vPartial: Boolean = True): Integer;
     procedure ClipboardCopy(Selected: Boolean);
     procedure ClipboardPaste;
@@ -1765,14 +1764,16 @@ end;
 
 function TntvColumn.CloseEdit(Accept: Boolean): Boolean;
 begin
+  if FEditControl = nil then
+    raise Exception.Create('Column.EditControl is null');
+
   HideEdit;
   try
-    if (Grid.ColumnEdit <> nil) and Accept then
+    if Accept then
     begin
       SetInfo(ActiveRow, EditText, EditData, sSetCellFull);
     end;
   finally
-    Grid.ColumnEdit := nil;
     Grid.AfterEdit(Self, ActiveRow);
     FreeEdit; //moved after Grid.AfterEdit for Bug and WMKeyDown not completed
     Result := True;
@@ -2524,7 +2525,7 @@ begin
   FVisibleColumns.Clear;
   for i := 0 to Columns.Count - 1 do
   begin
-    if Columns[i].Visible and not Columns[i].Disabled then
+    if Columns[i].Visible and Columns[i].Enabled then
     begin
       Columns[i].VisibleIndex := FVisibleColumns.Add(Columns[i]);
     end
@@ -2930,11 +2931,14 @@ begin
 end;
 
 function TntvCustomGrid.CancelEdit: Boolean;
+var
+  aColumnEdit: TntvColumn;
 begin
   if Editing then
   begin
-    ColumnEdit.CloseEdit(False);
+    aColumnEdit := ColumnEdit;
     ColumnEdit := nil;
+    ColumnEdit.CloseEdit(False);
     RefreshCurrent;
     Result := True;
   end
@@ -2984,10 +2988,14 @@ begin
 end;
 
 procedure TntvCustomGrid.CloseEdit;
+var
+  aColumnEdit: TntvColumn;
 begin
   if Editing and not Locked then
   begin
-    ColumnEdit.CloseEdit(True);
+    aColumnEdit := ColumnEdit;
+    ColumnEdit := nil;
+    aColumnEdit.CloseEdit(True);
   end;
 end;
 
@@ -3647,7 +3655,7 @@ begin
     Result.Alignment := taLeftJustify;
 end;
 
-function TntvCustomGrid.PosToCoord(x, y: Integer; var vRow: Integer; var vCol: Integer; out vArea: TntvGridArea; vCorrect: Boolean): Boolean;
+function TntvCustomGrid.PosToCoord(x, y: Integer; out vRow: Integer; out vCol: Integer; out vArea: TntvGridArea; vCorrect: Boolean): Boolean;
 var
   vrtRect: TRect;
 begin
@@ -4401,6 +4409,7 @@ begin
   inherited;
   if PosToCoord(X, Y, aRow, aCol, aArea) then
   begin
+    ChangeCursor(X, Y);
     if (aCol > -1) then
     begin
       if (aArea = garHeader) then
@@ -4414,6 +4423,7 @@ begin
         VisibleColumns[aCol].MouseInHeader := False;
     end;
   end;
+
   if FDownCol > -1 then
   begin
     if (PtInRect(VisibleColumns[FDownCol].FBtnRect, Point(X, Y))) then
@@ -4421,6 +4431,7 @@ begin
     else
       VisibleColumns[FDownCol].Down := False;
   end;
+
   case FState of
     dgsDrag:
     begin
@@ -4458,31 +4469,21 @@ begin
     end;
   end;
 end;
-{
-procedure TntvCustomGrid.WMSetCursor(var Message: TWMSetCursor);
+
+procedure TntvCustomGrid.ChangeCursor(x, y: Integer);
 var
   aCol: Integer;
   aRow: Integer;
   aArea: TntvGridArea;
   PT: TPoint;
 begin
-  if Message.HitTest = HTCLIENT then
-  begin
-    Windows.GetCursorPos(PT);
-    PT := ScreenToClient(PT);
-    if PosToCoord(Pt.X, Pt.Y, aRow, aCol, aArea) and ((aArea in [garHeader, garNormal]) and (InColsWidth(PT.X, aCol)) or (FState = dgsResizeCol)) then
-    begin
-      SetCursor(Screen.Cursors[crHSplit]);
-    end
-    else
-    begin
-      inherited;
-    end;
-  end
+  PT := Point(x, y);
+  if PosToCoord(Pt.X, Pt.Y, aRow, aCol, aArea) and ((aArea in [garHeader, garNormal]) and (InColsWidth(PT.X, aCol)) or (FState = dgsResizeCol)) then
+    SetCursor(crHSplit)
   else
-    inherited;
+    SetCursor(crDefault);
 end;
-}
+
 procedure TntvCustomGrid.WMSetFocus(var Message: TWMSetFocus);
 begin
   inherited;
@@ -5208,43 +5209,40 @@ begin
       case vMove of
         mactLeft:
         begin
-          CloseEdit(True);
+          Grid.CloseEdit;
           Grid.SetFocus;
           Grid.IncCurCol;
         end;
         mactRight:
         begin
-          CloseEdit(True);
+          Grid.CloseEdit;
           Grid.SetFocus;
           Grid.DecCurRow;
         end;
         mactUp:
         begin
-          CloseEdit(True);
+          Grid.CloseEdit;
           Grid.SetFocus;
           Grid.DecCurRow;
         end;
         mactDown:
         begin
-          CloseEdit(True);
+          Grid.CloseEdit;
           Grid.SetFocus;
           Grid.IncCurRow;
         end;
-        mactExit: CloseEdit(True);
+        mactExit:
+          Grid.CloseEdit;
         mactCancel:
         begin
-          CloseEdit(False);
+          Grid.CancelEdit;
           Grid.SetFocus;
         end;
         mactAccept:
         begin
-          CloseEdit(True);
+          Grid.CloseEdit;
           Grid.SetFocus;
           Grid.MoveCurrent;
-        end;
-        mactPulled:
-        begin
-          Pulled;
         end;
       end;
     finally
@@ -5292,7 +5290,7 @@ procedure TntvCustomGrid.AfterPasteRow(vRow: Integer);
 begin
 end;
 
-constructor TntvColumn.Create(vColumns: TntvColumns; vName: String; vID: Integer; vDisabled: Boolean);
+constructor TntvColumn.Create(vColumns: TntvColumns; vName: String; vID: Integer; vEnabled: Boolean);
 begin
   inherited Create;
   FName := vName;
@@ -5301,7 +5299,7 @@ begin
   FParentBiDiMode := True;
   FShowButton := False;
   FMouseInHeader := False;
-  FDisabled := vDisabled;
+  FEnabled := vEnabled;
 
   Info.Visible := True;
   Info.Store := True;
@@ -5857,17 +5855,10 @@ begin
   end;
 end;
 
-procedure TntvColumn.Pulled;
-begin
-end;
-
 procedure TntvCustomGrid.DoContextPopup(MousePos: TPoint; var Handled: Boolean);
-var
-  aCell: TntvCell;
 begin
   inherited;
   InitPopupMenu;
-  //SendCancelMode(nil);
   Handled := True;
 end;
 
@@ -6161,7 +6152,7 @@ begin
   Result.CurCol := CurCol;
 
   for i := 0 to Columns.Count - 1 do
-    if not Columns[i].Disabled then //Ayman save load column when Disabled changed in the form, not worked
+    if Columns[i].Enabled then
     begin
       Columns[i].CreateColumnProperty(Result);
     end;
@@ -6531,12 +6522,12 @@ begin
   end;
 end;
 
-procedure TntvColumn.SetDisabled(const Value: Boolean);
+procedure TntvColumn.SetEnabled(const Value: Boolean);
 begin
-  if FDisabled <> Value then
+  if FEnabled <> Value then
   begin
-    FDisabled := Value;
-    if FDisabled then
+    FEnabled := Value;
+    if FEnabled then
       Visible := False;
   end;
 end;
@@ -6649,7 +6640,7 @@ var
     Result := 0;
     for i := 0 to FVisibleColumns.Count - 1 do
     begin
-      if not FVisibleColumns[i].ReadOnly and not FVisibleColumns[i].Disabled then
+      if not FVisibleColumns[i].ReadOnly and FVisibleColumns[i].Enabled then
       begin
         Result := i;
         break;
