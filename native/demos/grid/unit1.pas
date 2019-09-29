@@ -14,7 +14,6 @@ type
 
   TForm1 = class(TForm)
     CloseBtn: TButton;
-    StringGrid1: TStringGrid;
     procedure CloseBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private

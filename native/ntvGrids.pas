@@ -51,13 +51,27 @@ type
     keyaExecute, keyaViewer, keyaFit, keyaFunction, keyaRepeat, keyaGoTo
   );
 
-  TInplaceMove = (imovLeft, imovRight, imovUp, imovDown, imovPageUp, imovPageDown, imovHome, imovEnd, imovEdit, imovExit, imovCancel, imovAccept, imovPulled);
+  TntvMasterAction = (
+    mactLeft,
+    mactRight,
+    mactUp,
+    mactDown,
+    mactPageUp,
+    mactPageDown,
+    mactHome,
+    mactEnd,
+    mactEdit,
+    mactExit,
+    mactCancel,
+    mactAccept,
+    mactPulled
+  );
 
-  { IInplacer }
+  { IMaster }
 
-  IInplacer = interface(IInterface)
+  IMaster = interface(IInterface)
     ['{37D0D904-0354-4988-A50E-3E306F2F1883}']
-    procedure InplaceMove(vMove: TInplaceMove);
+    procedure MasterAction(vMove: TntvMasterAction);
   end;
 
   TntvRows = class;
@@ -156,9 +170,8 @@ type
   TntvGridLines = (glNone, glVertical, glHorizontal, glBoth);
   TntvGridOpenEdit = (goeNone, goeReturn, goeChar, goeMouse);
 
-  TntvSetCell = (swcText, swcData, swcRefresh, swcComplete, swcCheckInfo); //TODO change poke name
+  TntvSetCell = (swcText, swcData, swcRefresh, swcComplete, swcCheckInfo);
   TntvSetCells = set of TntvSetCell;
-
 
   TntvColumn = class;
   TntvColumns = class;
@@ -250,7 +263,7 @@ type
 
   { TntvColumn }
 
-  TntvColumn = class(TInterfacedPersistent, IInplacer)
+  TntvColumn = class(TInterfacedPersistent, IMaster)
   private
     FName: String;
     FColumns: TntvColumns;
@@ -263,7 +276,7 @@ type
 
     FVisibleIndex: Integer;
 
-    FInplaceMoveLock: Boolean;
+    FMasterActionLock: Boolean;
 
     FDisabled: Boolean;
     FOldData: Integer;
@@ -315,17 +328,17 @@ type
     FEditControl: TControl;
     function GetTextStyle(vCentered: Boolean = False): TTextStyle; overload;
     function GetButtonRect(vRect: TRect): TRect; virtual;
-    procedure DoGetColor(vRow: Integer; var vColor: TColor); virtual;
+    procedure GetCurrentColor(vRow: Integer; var vColor: TColor); virtual;
     procedure InternalLookup(vData: Integer; var vText: String); virtual;
     function GetRect(vRow: Integer; var vRect: TRect): Boolean;
-    function GetCellAttribute(vRow: Integer; var vRect: TRect): Boolean;
-    function GetEditAttribute(vRow: Integer; var vRect: TRect): Boolean;
+    function GetCellArea(vRow: Integer; var vRect: TRect): Boolean;
+    function GetTextArea(vRow: Integer; var vRect: TRect): Boolean;
+    procedure CorrectCellRect(var Rect: TRect);
     procedure Draw(Canvas: TCanvas; vDrawState: TntvCellDrawState; vRow: Integer; vRect: TRect; vArea: TntvGridArea); virtual;
     procedure DrawHeader(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState); virtual;
     procedure DrawCell(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState; const vColor: TColor); virtual;
     procedure DrawHint(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState; const vColor: TColor); virtual;
     procedure DrawFooter(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState); virtual;
-    procedure AdjustCellRect(var Rect: TRect);
     function GetCaption: String;
     function GetDisplayName: String;
     function UseRightToLeftAlignment: Boolean; dynamic;
@@ -338,8 +351,8 @@ type
     procedure ValueChanged; virtual;
     procedure CompleteCell(vComplete, vForce: Boolean);
 
-    procedure InternalSetInfo(vRow: Integer; vText: String; vData: Integer; PokeKind: TntvSetCells; vForce: Boolean = False);
-    function SetInfo(vRow: Integer; vText: String; vData: Integer; PokeKind: TntvSetCells = [swcText, swcData, swcRefresh, swcComplete]): Boolean;
+    procedure InternalSetInfo(vRow: Integer; vText: String; vData: Integer; vSetCell: TntvSetCells; vForce: Boolean = False);
+    function SetInfo(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells = [swcText, swcData, swcRefresh, swcComplete]): Boolean;
 
     procedure RefreshCell(vRow: Integer); overload;
     procedure RefreshRow(vRow: Integer); overload;
@@ -347,7 +360,7 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); virtual;
     procedure KeyDown(var KEY: Word; Shift: TShiftState); virtual;
 
-    procedure InplaceMove(vMove: TInplaceMove);
+    procedure MasterAction(vMove: TntvMasterAction);
     procedure Pulled; virtual;
 
     function CanEdit: Boolean; virtual;
@@ -356,7 +369,7 @@ type
     function CloseEdit(Accept: Boolean): Boolean;
     function OpenEdit(OpenBy: TntvGridOpenEdit; Key: Char): Boolean;
     procedure HideEdit; virtual;
-    procedure ShowEdit(vChar: Char); virtual;
+    procedure ShowEdit(vChar: Char = #0); virtual;
     procedure FreeEdit; virtual;
     procedure SendChar(vChar: Char); virtual;
 
@@ -509,7 +522,9 @@ type
 
   TntvCustomGrid = class(TntvCustomControl)
   private
-    FAutoUpdateRow: Boolean;
+    FRows: TntvRows;
+    FSelected: TGridSelected;
+
     FStartSizing: Integer;
     FLockAutoSumCount: Integer;
     FChaseCell: Boolean;
@@ -534,10 +549,12 @@ type
     FHeader: Boolean;
     FLockCount: Integer;
     FModified: Boolean;
-    FMultiSelect: Boolean;
     FOddColor: TColor;
     FOldX: Integer;
     FOldY: Integer;
+    FState: TntvState;
+    FStateBtn: Boolean;
+
     FOnAfterEdit: TNotifyEvent;
     FOnChanged: TNotifyEvent;
     FOnCellClick: TOnNotifyCell;
@@ -548,17 +565,20 @@ type
     FOnCountChanged: TNotifyEvent;
     FOnModified: TNotifyEvent;
     FOnPopupMenu: TNotifyEvent;
+    FOnGetColor: TOnGetColor;
+    FOnIsReadOnly: TOnIsReadOnly;
+
+    FMultiSelect: Boolean;
+    FRowRefresh: Boolean;
     FReadOnly: Boolean;
     FRow: Integer;
     FRowHeight: Integer;
     FRowNumbers: Boolean;
     FCapacity: Integer;
     FScrollBars: TScrollStyle;
-    FSelected: TGridSelected;
+
     FRowSelect: Boolean;
     FSideCol: Integer;
-    FState: TntvState;
-    FStateBtn: Boolean;
     FTopRow: Integer;
     FSettledCols: Integer;
     FIndicator: Boolean;
@@ -566,21 +586,17 @@ type
     FFringeWidth: Integer;
     FIndicatorWidth: Integer;
     FVisibleColumns: TColumnList;
-    FRows: TntvRows;
     FBorderStyle: TBorderStyle;
     FScrollTimer: Cardinal;
     FSettledColor: TColor;
     FSolid: Boolean;
-    FOnGetColor: TOnGetColor;
     FActiveRow: Integer;
-    FOnIsReadOnly: TOnIsReadOnly;
     FImageList: TImageList;
     FImageChangeLink: TChangeLink;
     FFullHeader: Boolean;
     FAttemptCapture: Boolean;
     FVerticalJump: Boolean;
     FReturnColumns: Integer;
-    FAccessKey: Char;
     FWantTab: Boolean;
     FWantReturn: Boolean;
     FDownCol: Integer;
@@ -699,7 +715,7 @@ type
     procedure ColsChanged; virtual;
     procedure DoModified; virtual;
     procedure GetColor(Column: TntvColumn; vRow: Integer; var vColor: TColor);
-    procedure DoGetColor(Column: TntvColumn; vRow: Integer; var vColor: TColor); virtual;
+    procedure GetCurrentColor(Column: TntvColumn; vRow: Integer; var vColor: TColor); virtual;
     procedure Validated(AColumn: TntvColumn); virtual;
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
@@ -842,7 +858,7 @@ type
     property ActiveRow: Integer read FActiveRow write SetActiveRow;
     //for published
     property BorderStyle: TBorderStyle read FBorderStyle write SetBorderStyle default bsSingle;
-    property RowRefresh: Boolean read FAutoUpdateRow write FAutoUpdateRow default False;
+    property RowRefresh: Boolean read FRowRefresh write FRowRefresh default False;
     property ChaseCell: Boolean read FChaseCell write SetChaseCell default False;
     property CurCol: Integer read FCurCol write SetCurCol stored False;
     property CurRow: Integer read FCurRow write SetCurRow stored False;
@@ -893,7 +909,6 @@ type
     property ImageList: TImageList read FImageList write SetImageList;
     property OnGetColor: TOnGetColor read FOnGetColor write FOnGetColor;
     property FullHeader: Boolean read FFullHeader write SetFullHeader default False;
-    property AccessKey: Char read FAccessKey write FAccessKey default '\';
     property WantTab: Boolean read FWantTab write FWantTab default False;
     property WantReturn: Boolean read FWantReturn write FWantReturn default False;
     property Font;
@@ -943,6 +958,7 @@ type
     property SettledColor;
     property ReturnColumns;
     property VerticalJump;
+    property OnIsReadOnly;
     property OnGetColor;
     property OnAfterEdit;
     property OnChanged;
@@ -977,7 +993,6 @@ type
     property ShowHint;
     property SideCol;
     property TabOrder;
-    property OnIsReadOnly;
     property TabStop default True;
     property Tag;
     property Top;
@@ -985,13 +1000,14 @@ type
     property Width;
     property ImageList;
     property FullHeader;
-    property AccessKey;
     property WantTab;
   end;
 
+  { TntvEdit }
+
   TntvEdit = class(TEdit)
   private
-    Inplacer: IInplacer;
+    Master: IMaster;
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); Message WM_GetDlgCode;
     procedure WMKillFocus(var Message: TWMKillFocus); Message WM_KILLFOCUS;
   protected
@@ -1000,6 +1016,7 @@ type
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
   end;
 
   TntvStandardColumn = class(TntvColumn)
@@ -1039,7 +1056,7 @@ type
   end;
 
 const
-  PokeFull: TntvSetCells = [low(TntvSetCell)..high(TntvSetCell)] - [swcCheckInfo];
+  sSetCellFull: TntvSetCells = [low(TntvSetCell)..high(TntvSetCell)] - [swcCheckInfo];
 
 var
   CF_NativeGRID: Word;
@@ -1539,8 +1556,8 @@ var
 begin
   if vArea = garNormal then
   begin
-    //    DoGetColor(vRow - (Ord(Grid.Header)), aColor);//zaher the Row
-    DoGetColor(vRow, aColor); //zaher the Row
+    //    GetCurrentColor(vRow - (Ord(Grid.Header)), aColor);//zaher the Row
+    GetCurrentColor(vRow, aColor); //zaher the Row
   end;
   aSelected := Grid.IsSelected(vRow, VisibleIndex);
   aNewRow := (vRow = Grid.Count);
@@ -1591,7 +1608,7 @@ begin
   Canvas.Font.Color := aTextColor;
   txtRect := vRect;
   Canvas.Brush.Color := aColor;
-  AdjustCellRect(txtRect);
+  CorrectCellRect(txtRect);
   case vArea of
     garNormal:
     begin
@@ -1750,7 +1767,7 @@ begin
   try
     if (Grid.ColumnEdit <> nil) and Accept then
     begin
-      SetInfo(ActiveRow, EditText, EditData, PokeFull);
+      SetInfo(ActiveRow, EditText, EditData, sSetCellFull);
     end;
   finally
     Grid.ColumnEdit := nil;
@@ -1788,9 +1805,9 @@ begin
           end;
           goeMouse:
           begin
-{            EditText := AsString;
-            ShowEdit(#0);
-            SelectPos(Param);}
+            EditText := AsString;
+            ShowEdit;
+            //SelectPos(Param);
           end;
           else
           begin
@@ -1930,14 +1947,14 @@ begin
   end;
 end;
 
-procedure TntvColumn.InternalSetInfo(vRow: Integer; vText: String; vData: Integer; PokeKind: TntvSetCells; vForce: Boolean);
+procedure TntvColumn.InternalSetInfo(vRow: Integer; vText: String; vData: Integer; vSetCell: TntvSetCells; vForce: Boolean);
 var
   aCell: TntvCell;
 begin
   if not Grid.Locked then
     Grid.Modified := True;
   Grid.ActiveRow := vRow;
-  if (swcCheckInfo in PokeKind) then
+  if (swcCheckInfo in vSetCell) then
     CheckInfo(vText, vData);
   ValidateInfo(vText, vData);
   if not Grid.LockAutoSum and IsTotal then
@@ -1953,22 +1970,22 @@ begin
       begin
         aCell := FRows[vRow][StoreCol];
         FOldData := aCell.Data;
-        if swcText in PokeKind then
+        if swcText in vSetCell then
           aCell.Text := vText;
-        if swcData in PokeKind then
+        if swcData in vSetCell then
           aCell.Data := vData;
       end;
     end;
     if not Grid.LockAutoSum and IsTotal then
       Info.Total := Info.Total + StrToCurr(vText);
-    if not (swcCheckInfo in PokeKind) then
+    if not (swcCheckInfo in vSetCell) then
       Validate;
 
-    CompleteCell((swcComplete in PokeKind), vForce);
+    CompleteCell((swcComplete in vSetCell), vForce);
   finally
     FOldData := 0;
   end;
-  if (swcRefresh in PokeKind) then
+  if (swcRefresh in vSetCell) then
   begin
     if (not Grid.Rows.Updating) then
     begin
@@ -2054,7 +2071,7 @@ var
   aText: String;
 begin
   InternalLookup(vData, aText);
-  InternalSetInfo(ActiveRow, aText, vData, PokeFull, vForce);
+  InternalSetInfo(ActiveRow, aText, vData, sSetCellFull, vForce);
 end;
 
 procedure TntvColumn.Zero(vRow: Integer);
@@ -2123,7 +2140,6 @@ begin
   ControlStyle := [csDoubleClicks, csCaptureMouse, csClickEvents, csSetCaption, csReflector];
   FImageChangeLink := TChangeLink.Create;
   FImageChangeLink.OnChange := ImageListChange;
-  FAccessKey := '\';
   FBorderStyle := bsSingle;
   FRows := CreateRows;
   FVisibleColumns := TColumnList.Create;
@@ -4101,10 +4117,10 @@ begin
       begin
         aText := GetPartStr(vText, cntv_X_DATA, 0, #0);
         aData := StrToIntDef(GetPartStr(vText, cntv_X_DATA, 1, #0), 0);
-        aColumn.SetInfo(ActiveRow, aText, aData, PokeFull + sCheckOrValidate[aCheckData or (aData = 0)]);
+        aColumn.SetInfo(ActiveRow, aText, aData, sSetCellFull + sCheckOrValidate[aCheckData or (aData = 0)]);
       end
       else
-        aColumn.SetInfo(ActiveRow, vText, 0, PokeFull + sCheckOrValidate[aCheckData]);
+        aColumn.SetInfo(ActiveRow, vText, 0, sSetCellFull + sCheckOrValidate[aCheckData]);
       AfterPaste(aColumn, ActiveRow);
       AfterEdit(aColumn, ActiveRow);
     end;
@@ -4561,7 +4577,8 @@ end;
 
 procedure TntvColumn.FreeEdit;
 begin
-  //  FreeAndNil(FEditControl);
+  Application.ReleaseComponent(FEditControl);
+  FEditControl := nil;
 end;
 
 function TntvColumn.GetEditData: Integer;
@@ -4710,14 +4727,19 @@ begin
   BorderStyle := bsNone;
 end;
 
+destructor TntvEdit.Destroy;
+begin
+  inherited Destroy;
+end;
+
 function TntvStandardColumn.CreateEdit: TControl;
 var
   aEdit: TntvEdit;
 begin
   aEdit := TntvEdit.Create(nil);
-  aEdit.Inplacer := Self;
+  aEdit.Master := Self;
   aEdit.Parent := Grid;
-  //  aEdit.BiDiMode := BidiMode;
+  aEdit.BiDiMode := BidiMode;
   Result := aEdit;
 end;
 
@@ -4731,14 +4753,20 @@ var
   aEdit: TntvEdit;
   aRect: TRect;
   aColor: TColor;
+  c: Integer;
 begin
+  GetCurrentColor(ActiveRow, aColor);
+  GetTextArea(ActiveRow, aRect);
   aEdit := (FEditControl as TntvEdit);
-  GetEditAttribute(ActiveRow, aRect);
-  DoGetColor(ActiveRow, aColor);
   aEdit.Color := aColor;
   aEdit.Font.Color := Grid.Font.Color;
-  InflateRect(aRect, -1, -1);
   aEdit.BoundsRect := aRect;
+  aEdit.AdjustSize;
+  c := aEdit.Top;
+  c := aEdit.Height;
+  c := (aRect.Height - aEdit.Height) div 2;
+  aEdit.Top := aEdit.Top + (aRect.Height - aEdit.Height) div 2; //centering it
+  c := aEdit.Top;
   FEditControl.Show;
   aEdit.SetFocus;
 end;
@@ -4761,7 +4789,7 @@ end;
 procedure TntvEdit.WMGetDlgCode(var Message: TWMGetDlgCode);
 begin
   inherited;
-  if Inplacer <> nil then
+  if Master <> nil then
     Message.Result := DLGC_WANTCHARS or DLGC_WANTARROWS;
 end;
 
@@ -4776,12 +4804,12 @@ begin
   if Shift = [] then
   begin
     case Key of
-      VK_RETURN: Inplacer.InplaceMove(imovAccept);
-      VK_ESCAPE: Inplacer.InplaceMove(imovCancel);
-      VK_DOWN: Inplacer.InplaceMove(imovDown);
-      VK_UP: Inplacer.InplaceMove(imovUp);
-      //      VK_LEFT:Inplacer.InplaceMove(imovLeft);
-      //      VK_RIGHT:Inplacer.InplaceMove(imovRight);
+      VK_RETURN: Master.MasterAction(mactAccept);
+      VK_ESCAPE: Master.MasterAction(mactCancel);
+      VK_DOWN: Master.MasterAction(mactDown);
+      VK_UP: Master.MasterAction(mactUp);
+      //      VK_LEFT:Master.MasterAction(mactLeft);
+      //      VK_RIGHT:Master.MasterAction(mactRight);
     end;
   end;
 end;
@@ -4797,7 +4825,7 @@ end;
 procedure TntvEdit.WMKillFocus(var Message: TWMKillFocus);
 begin
   inherited;
-  Inplacer.InplaceMove(imovExit);
+  Master.MasterAction(mactExit);
 end;
 
 { TntvStandardColumn }
@@ -5175,55 +5203,55 @@ begin
   Result := FRows[CurRow][CurCol];
 end;
 
-procedure TntvColumn.InplaceMove(vMove: TInplaceMove);
+procedure TntvColumn.MasterAction(vMove: TntvMasterAction);
 begin
-  if not FInplaceMoveLock then
+  if not FMasterActionLock then
     try
-      FInplaceMoveLock := True;
+      FMasterActionLock := True;
       case vMove of
-        imovLeft:
+        mactLeft:
         begin
           CloseEdit(True);
           Grid.SetFocus;
           Grid.IncCurCol;
         end;
-        imovRight:
+        mactRight:
         begin
           CloseEdit(True);
           Grid.SetFocus;
           Grid.DecCurRow;
         end;
-        imovUp:
+        mactUp:
         begin
           CloseEdit(True);
           Grid.SetFocus;
           Grid.DecCurRow;
         end;
-        imovDown:
+        mactDown:
         begin
           CloseEdit(True);
           Grid.SetFocus;
           Grid.IncCurRow;
         end;
-        imovExit: CloseEdit(True);
-        imovCancel:
+        mactExit: CloseEdit(True);
+        mactCancel:
         begin
           CloseEdit(False);
           Grid.SetFocus;
         end;
-        imovAccept:
+        mactAccept:
         begin
           CloseEdit(True);
           Grid.SetFocus;
           Grid.MoveCurrent;
         end;
-        imovPulled:
+        mactPulled:
         begin
           Pulled;
         end;
       end;
     finally
-      FInplaceMoveLock := False;
+      FMasterActionLock := False;
     end;
 end;
 
@@ -5352,13 +5380,11 @@ begin
   Result := TntvColumn(inherited Items[Index]);
 end;
 
-function TntvColumn.GetCellAttribute(vRow: Integer; var vRect: TRect): Boolean;
+function TntvColumn.GetCellArea(vRow: Integer; var vRect: TRect): Boolean;
 begin
   Result := Grid.GetCellRect(vRow, VisibleIndex, vRect);
   if Result then
-  begin
-    AdjustCellRect(vRect);
-  end;
+    CorrectCellRect(vRect);
 end;
 
 function TntvColumn.IsBiDiModeStored: Boolean;
@@ -5495,7 +5521,7 @@ var
         AColumn := FVisibleColumns[CurCol];
         aCell := AColumn.GetCell(CurRow - 1);
         if aCell <> nil then
-          AColumn.SetInfo(CurRow, aCell.Text, aCell.Data, PokeFull);
+          AColumn.SetInfo(CurRow, aCell.Text, aCell.Data, sSetCellFull);
         AfterEdit(AColumn, CurRow);
         IncCurRow(False);
       end;
@@ -5638,11 +5664,11 @@ begin
   Accept := False;
 end;
 
-function TntvColumn.SetInfo(vRow: Integer; vText: String; vData: Integer; PokeKind: TntvSetCells): Boolean;
+function TntvColumn.SetInfo(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells): Boolean;
 begin
   if not GetReadOnly then
   begin
-    InternalSetInfo(vRow, vText, vData, PokeKind);
+    InternalSetInfo(vRow, vText, vData, vSetCellKind);
     Validated;
     Result := True;
   end
@@ -5733,7 +5759,7 @@ begin
   Result := Grid.GetCellRect(vRow, VisibleIndex, vRect);
   if Result then
   begin
-    AdjustCellRect(vRect);
+    CorrectCellRect(vRect);
   end;
 end;
 
@@ -5848,7 +5874,7 @@ begin
   Handled := True;
 end;
 
-procedure TntvColumn.AdjustCellRect(var Rect: TRect);
+procedure TntvColumn.CorrectCellRect(var Rect: TRect);
 begin
   if (Grid.FGridLines in [glVertical, glBoth]) then
   begin
@@ -5987,12 +6013,12 @@ begin
   Grid.DrawString(Canvas, Hint, vRect, GetTextStyle, True);
 end;
 
-procedure TntvColumn.DoGetColor(vRow: Integer; var vColor: TColor);
+procedure TntvColumn.GetCurrentColor(vRow: Integer; var vColor: TColor);
 begin
   Grid.GetColor(Self, vRow, vColor);
 end;
 
-procedure TntvCustomGrid.DoGetColor(Column: TntvColumn; vRow: Integer; var vColor: TColor);
+procedure TntvCustomGrid.GetCurrentColor(Column: TntvColumn; vRow: Integer; var vColor: TColor);
 begin
   if Assigned(OnGetColor) then
     OnGetColor(Self, Column, vRow, vColor);
@@ -6009,7 +6035,7 @@ begin
     vColor := MixColors(vColor, SettledColor, 200);
   end;
   if vRow < Count then
-    DoGetColor(Column, vRow, vColor);
+    GetCurrentColor(Column, vRow, vColor);
 end;
 
 procedure TntvCustomGrid.SetInternalActiveRow(const Value: Integer);
@@ -6322,9 +6348,9 @@ begin
   Result := Grid.FImageList;
 end;
 
-function TntvColumn.GetEditAttribute(vRow: Integer; var vRect: TRect): Boolean;
+function TntvColumn.GetTextArea(vRow: Integer; var vRect: TRect): Boolean;
 begin
-  Result := GetCellAttribute(vRow, vRect);
+  Result := GetCellArea(vRow, vRect);
   if Result and (ImageList <> nil) and (ShowImage) then
   begin
     if UseRightToLeftAlignment then
