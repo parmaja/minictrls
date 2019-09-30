@@ -164,7 +164,7 @@ type
   TntvState = (dgsNone, dgsDown, dgsDrag, dgsResizeCol, dgsResizeRow, dgsDragSelect, dgsDragMove);
 
   TntvGridArea = (garNone, garNormal, garHeader, garFooter, garIndicator, garFringe);
-  TntvCellDrawState = set of (csdDown, csdSelected, csdCurrent, csdFixed, csdHeader, csdRightToLeft, csdFirstCell, csdLastCell, csdOpened);
+  TntvCellDrawState = set of (csdDown, csdSelected, csdCurrent, csdFixed, csdRightToLeft, csdFirstCell, csdLastCell, csdOpened);
   TntvGridLines = (glNone, glVertical, glHorizontal, glBoth);
   TntvGridOpenEdit = (goeNone, goeReturn, goeChar, goeMouse);
 
@@ -280,8 +280,8 @@ type
     FEnabled: Boolean;
     FOldData: Integer;
     FBtnRect: TRect;
-    FDown: Boolean;
-    FMouseInHeader: Boolean;
+    FDown: Boolean; //
+
     procedure BiDiModeChanged(vInvalidate: Boolean);
     procedure ParentBiDiModeChanged;
     function GetGuid: String;
@@ -321,7 +321,6 @@ type
     procedure SetEnabled(const Value: Boolean);
     procedure SetShowButton(const Value: Boolean);
     procedure SetDown(const Value: Boolean);
-    procedure SetMouseInHeader(const Value: Boolean);
   protected
     Info: TntvColumnInfo;
     FEditControl: TControl;
@@ -382,8 +381,7 @@ type
     function CreateColumnProperty(AOwner: TComponent): TntvColumnProperty;
     procedure SetColumnProperty(AProperty: TntvColumnProperty);
     procedure CurRowChanged; virtual;
-    property Down: Boolean read FDown write SetDown;
-    property MouseInHeader: Boolean read FMouseInHeader write SetMouseInHeader; deprecated;//idk what is this
+    property Down: Boolean read FDown write SetDown; deprecated;
 
     property Name: String read FName;
     property Columns: TntvColumns read FColumns;
@@ -601,7 +599,6 @@ type
     FWantReturn: Boolean;
     FDownCol: Integer;
     FOnButtonClick: TOnNotifyButton;
-    FUnderMouseCol: Integer;
     FLinesColor: TColor;
     FFixedColor: TColor;
     procedure ChangeCursor(x, y: Integer);
@@ -1646,8 +1643,6 @@ begin
     end;
     garHeader:
     begin
-      if FMouseInHeader then
-        vDrawState := vDrawState + [csdHeader];
       DrawHeader(Canvas, vRow, txtRect, vDrawState);
     end;
     garFooter:
@@ -1771,22 +1766,7 @@ begin
     end;
     Grid.DrawString(Canvas, aText, vRect, GetTextStyle(True), True);
     if FDown then
-    begin
       Frame3D(Canvas, FBtnRect, clGray, clSilver, 1);
-    end
-    else
-    if csdHeader in State then
-    begin
-      Canvas.Pen.Color := clBtnShadow;
-      Canvas.MoveTo(aLeft, FBtnRect.Top);
-      Canvas.LineTo(aleft, FBtnRect.Bottom - 1);
-      Canvas.Pen.Color := $00EEEEEE;
-      Canvas.MoveTo(aLeft, FBtnRect.Bottom - 1);
-      Canvas.LineTo(aLeft, FBtnRect.Bottom - 2);
-
-      Canvas.MoveTo(aLeft + 1, FBtnRect.Bottom - 2);
-      Canvas.LineTo(aLeft + 1, FBtnRect.Top);
-    end;
     //DrawSign(Canvas, FBtnRect, FSign, True, True);
   end
   else
@@ -2206,7 +2186,6 @@ begin
   FFringeWidth := sFringeWidth;
   ShouldCurChange := False;
   FDownCol := -1;
-  FUnderMouseCol := -1;
   FFixedColor := clBtnFace;
   FRowHeight := GetDefaultRowHeight;
 end;
@@ -2292,7 +2271,6 @@ begin
   Rows.BeginUpdate;
   try
     Columns.ClearTotals;
-    FUnderMouseCol := 0;
     Count := 0;
   finally
     Rows.EndUpdate;
@@ -4425,19 +4403,6 @@ begin
   begin
     if (aArea = garHeader) then
       ChangeCursor(X, Y);
-
-    if (aCol > -1) then
-    begin
-      if (aArea = garHeader) then
-      begin
-        if (FUnderMouseCol >= 0) and (FUnderMouseCol <> aCol) and (FUnderMouseCol < VisibleColumns.Count) then
-          VisibleColumns[FUnderMouseCol].MouseInHeader := False;
-        VisibleColumns[aCol].MouseInHeader := True;
-        FUnderMouseCol := aCol;
-      end
-      else
-        VisibleColumns[aCol].MouseInHeader := False;
-    end;
   end;
 
   if FDownCol > -1 then
@@ -5339,7 +5304,6 @@ begin
   FImageIndex := -1;
   FParentBiDiMode := True;
   FShowButton := False;
-  FMouseInHeader := False;
   FEnabled := vEnabled;
 
   Info.Visible := True;
@@ -5710,20 +5674,6 @@ begin
   end
   else
     Result := False;
-end;
-
-
-procedure TntvColumn.SetMouseInHeader(const Value: Boolean);
-begin
-  if FMouseInHeader <> Value then
-  begin
-    FMouseInHeader := Value;
-    if FShowButton then
-    begin
-      Invalidate;
-      //InvalidateHeader;
-    end;
-  end;
 end;
 
 procedure TntvCustomGrid.SetSettledColor(const Value: TColor);
