@@ -1,17 +1,15 @@
 unit ntvGrids;
-
-{**
- *  This file is part of the "Mini Library"
- *
- * @license   modifiedLGPL (modified of http://www.gnu.org/licenses/lgpl.html)
- *            See the file COPYING.MLGPL, included in this distribution,
- * @author    Zaher Dirkey <zaher at parmaja dot com>
- *}
-
 {$IFDEF FPC}
 {$MODE delphi}
 {$ENDIF}
 {$M+}{$H+}
+{**
+ *  This file is part of the "Mini Controls"
+ *
+ * @license   modifiedLGPL (modified of http://www.gnu.org/licenses/lgpl.html)
+ *            See the file COPYING.MLGPL, included in this distribution,
+ * @author    Zaher Dirkey <zaherdirkey at yahoo dot com>
+ *}
 interface
 
 uses
@@ -28,8 +26,6 @@ const
   sCellMargin = 3;
   sIndicatorWidth = 40;
   sFringeWidth = 40;
-
-
 
   cntv_EOC = #9;
   cntv_EOL = #13;
@@ -168,7 +164,7 @@ type
   TntvState = (dgsNone, dgsDown, dgsDrag, dgsResizeCol, dgsResizeRow, dgsDragSelect, dgsDragMove);
 
   TntvGridArea = (garNone, garNormal, garHeader, garFooter, garIndicator, garFringe);
-  TntvCellDrawState = set of (csdDown, csdSelected, csdCurrent, csdFixed, csdRightToLeft, csdFirstCell, csdLastCell, csdOpened);
+  TntvCellDrawState = set of (csdDown, csdSelected, csdCurrent, csdFixed, csdHeader, csdRightToLeft, csdFirstCell, csdLastCell, csdOpened);
   TntvGridLines = (glNone, glVertical, glHorizontal, glBoth);
   TntvGridOpenEdit = (goeNone, goeReturn, goeChar, goeMouse);
 
@@ -180,6 +176,7 @@ type
 
   TOnGetColor = procedure(Sender: TntvCustomGrid; Column: TntvColumn; vRow: Integer; var vColor: TColor) of object;
   TOnNotifyRow = procedure(Sender: TntvCustomGrid; vRow: Integer) of object;
+  TOnNotifyCol = procedure(Sender: TntvCustomGrid; vCol: Integer) of object;
   TOnNotifyCell = procedure(Sender: TntvCustomGrid; Column: TntvColumn; vRow: Integer) of object;
   TOnNotifyButton = procedure(Sender: TntvCustomGrid; Column: TntvColumn; X, Y: Integer) of object;
   TOnIsReadOnly = procedure(Sender: TntvCustomGrid; Column: TntvColumn; vRow: Integer; var vReadOnly: Boolean) of object;
@@ -297,7 +294,7 @@ type
     function GetAsInteger: Integer;
     function GetAsTime: TDateTime;
     function GetAsTotal: Currency;
-    function GetActiveData: Integer;
+    function GetData: Integer; overload;
     procedure SetAlignment(AValue: TAlignment);
     procedure SetAsCurrency(const Value: Currency);
     procedure SetAsFloat(const Value: Double);
@@ -330,8 +327,7 @@ type
     FEditControl: TControl;
     function GetTextStyle(vCentered: Boolean = False): TTextStyle; overload;
     function GetButtonRect(vRect: TRect): TRect; virtual;
-    procedure GetCurrentColor(vRow: Integer; var vColor: TColor); virtual;
-    procedure InternalLookup(vData: Integer; var vText: String); virtual;
+    procedure GetCurrentColor(vRow: Integer; out vColor: TColor); virtual;
     function GetRect(vRow: Integer; var vRect: TRect): Boolean;
     function GetCellArea(vRow: Integer; var vRect: TRect): Boolean;
     function GetTextArea(vRow: Integer; var vRect: TRect): Boolean;
@@ -387,7 +383,7 @@ type
     procedure SetColumnProperty(AProperty: TntvColumnProperty);
     procedure CurRowChanged; virtual;
     property Down: Boolean read FDown write SetDown;
-    property MouseInHeader: Boolean read FMouseInHeader write SetMouseInHeader;
+    property MouseInHeader: Boolean read FMouseInHeader write SetMouseInHeader; deprecated;//idk what is this
 
     property Name: String read FName;
     property Columns: TntvColumns read FColumns;
@@ -407,10 +403,10 @@ type
     property EditText: String read GetEditText write SetEditText;
     procedure SetValue(const vText: String; vData: Integer);
     procedure SetSilentValue(const vText: String; vData: Integer);
-    procedure Lookup(const vData: Integer; vForce: Boolean = False);
     function GetCell(vRow: Integer): TntvCell;
-    function GetData(vRow: Integer): Integer;
-    function GetText(vRow: Integer): String;
+
+    function GetData(vRow: Integer): Integer; overload;
+    function GetText(vRow: Integer): String; overload;
 
     property AsCurrency: Currency read GetAsCurrency write SetAsCurrency;
     property AsFloat: Double read GetAsFloat write SetAsFloat;
@@ -421,7 +417,7 @@ type
     property AsString: String read GetAsString write SetAsString;
     property AsTime: TDateTime read GetAsTime write SetAsTime;
     property AsTotal: Currency read GetAsTotal write SetAsTotal;
-    property Data: Integer read GetActiveData write SetData;
+    property Data: Integer read GetData write SetData;
     property OldData: Integer read FOldData;
     property Kind: TntvColumnKind read Info.Kind write Info.Kind;
     property Query: String read Info.Query write Info.Query;
@@ -562,6 +558,7 @@ type
     FOnChanged: TNotifyEvent;
     FOnCellClick: TOnNotifyCell;
     FOnRowClick: TOnNotifyRow;
+    FOnColClick: TOnNotifyCol;
     FOnValueChanged: TOnValueChanged;
     FOnCurChanged: TOnNotifyCell;
     FOnCurRowChanged: TOnNotifyRow;
@@ -780,7 +777,7 @@ type
     procedure TryInsertRow(vRow: Integer);
     procedure CanDeleteRow(vRow: Integer; var Accept: Boolean); virtual;
     procedure RowDeleted(vRow: Integer); virtual;
-    procedure ColChanged(OldCol, NewCol: TntvColumn); virtual;
+    procedure ColumnChanged(OldCol, NewCol: TntvColumn); virtual;
     procedure DoChanged; virtual;
     //Usefull to override it and control jumping after editing cell
     procedure MoveCurrentHorizontal(var vCol: Integer); virtual;
@@ -896,6 +893,7 @@ type
     property OnCellClick: TOnNotifyCell read FOnCellClick write FOnCellClick;
     property OnButtonClick: TOnNotifyButton read FOnButtonClick write FOnButtonClick;
     property OnRowClick: TOnNotifyRow read FOnRowClick write FOnRowClick;
+    property OnColClick: TOnNotifyRow read FOnColClick write FOnColClick;
     property OnValueChanged: TOnValueChanged read FOnValueChanged write FOnValueChanged;
     property OnCurChanged: TOnNotifyCell read FOnCurChanged write FOnCurChanged;
     property OnCurRowChanged: TOnNotifyRow read FOnCurRowChanged write FOnCurRowChanged;
@@ -913,6 +911,7 @@ type
     property Solid: Boolean read FSolid write FSolid default False;
     property ImageList: TImageList read FImageList write SetImageList;
     property OnGetColor: TOnGetColor read FOnGetColor write FOnGetColor;
+    //Show header at top full of width of the Grid
     property FullHeader: Boolean read FFullHeader write SetFullHeader default False;
     property WantTab: Boolean read FWantTab write FWantTab default False;
     property WantReturn: Boolean read FWantReturn write FWantReturn default False;
@@ -929,6 +928,7 @@ type
     property Anchors;
     property RowRefresh;
     property ParentBidiMode;
+    property BorderSpacing;
     property BorderStyle;
     property BidiMode;
     property ChaseCell;
@@ -960,12 +960,34 @@ type
     property Height;
     property Hint;
     property Left;
+    property ParentShowHint;
+    property PopupMenu;
     property MultiSelect;
     property Solid;
     property OddColor;
     property SettledColor;
     property ReturnColumns;
     property VerticalJump;
+    property ParentFont;
+    property ReadOnly;
+    property RowHeight;
+    property RowNumbers;
+    property Capacity;
+    property ScrollBars;
+    property Selected;
+    property RowSelect;
+    property ShowHint;
+    property SideCol;
+    property TabOrder;
+    property TabStop default True;
+    property Tag;
+    property Top;
+    property Visible;
+    property Width;
+    property ImageList;
+    property FullHeader;
+    property WantTab;
+
     property OnIsReadOnly;
     property OnGetColor;
     property OnAfterEdit;
@@ -989,26 +1011,6 @@ type
     property OnKeyUp;
     property OnModified;
     property OnPopupMenu;
-    property ParentFont;
-    property PopupMenu;
-    property ReadOnly;
-    property RowHeight;
-    property RowNumbers;
-    property Capacity;
-    property ScrollBars;
-    property Selected;
-    property RowSelect;
-    property ShowHint;
-    property SideCol;
-    property TabOrder;
-    property TabStop default True;
-    property Tag;
-    property Top;
-    property Visible;
-    property Width;
-    property ImageList;
-    property FullHeader;
-    property WantTab;
   end;
 
   { TntvEdit }
@@ -1570,11 +1572,6 @@ procedure TntvColumn.ValueChanging;
 begin
 end;
 
-procedure TntvColumn.InternalLookup(vData: Integer; var vText: String);
-begin
-
-end;
-
 procedure TntvColumn.Draw(Canvas: TCanvas; vDrawState: TntvCellDrawState; vRow: Integer; vRect: TRect; vArea: TntvGridArea);
 var
   aColor, aTextColor: TColor;
@@ -1647,8 +1644,16 @@ begin
       else
         Canvas.FillRect(txtRect);
     end;
-    garHeader: DrawHeader(Canvas, vRow, txtRect, vDrawState);
-    garFooter: DrawFooter(Canvas, vRow, txtRect, vDrawState);
+    garHeader:
+    begin
+      if FMouseInHeader then
+        vDrawState := vDrawState + [csdHeader];
+      DrawHeader(Canvas, vRow, txtRect, vDrawState);
+    end;
+    garFooter:
+    begin
+      DrawFooter(Canvas, vRow, txtRect, vDrawState);
+    end;
   end;
   if (csdFixed in vDrawState) then
   begin
@@ -1770,7 +1775,7 @@ begin
       Frame3D(Canvas, FBtnRect, clGray, clSilver, 1);
     end
     else
-    if FMouseInHeader then
+    if csdHeader in State then
     begin
       Canvas.Pen.Color := clBtnShadow;
       Canvas.MoveTo(aLeft, FBtnRect.Top);
@@ -1902,7 +1907,7 @@ begin
     Result := Info.Title;
 end;
 
-function TntvColumn.GetActiveData: Integer;
+function TntvColumn.GetData: Integer;
 begin
   Result := GetData(ActiveRow);
 end;
@@ -1982,7 +1987,7 @@ var
 begin
   if not Grid.Locked then
     Grid.Modified := True;
-  Grid.ActiveRow := vRow;
+  //Grid.ActiveRow := vRow; //not sure
   if (swcCheckInfo in vSetCell) then
     CheckInfo(vText, vData);
   ValidateInfo(vText, vData);
@@ -2093,14 +2098,6 @@ end;
 procedure TntvColumn.SetData(const Value: Integer);
 begin
   InternalSetInfo(ActiveRow, '', Value, [swcData, swcRefresh]);
-end;
-
-procedure TntvColumn.Lookup(const vData: Integer; vForce: Boolean);
-var
-  aText: String;
-begin
-  InternalLookup(vData, aText);
-  InternalSetInfo(ActiveRow, aText, vData, sSetCellFull, vForce);
 end;
 
 procedure TntvColumn.Zero(vRow: Integer);
@@ -2513,7 +2510,7 @@ begin
       if aClip <> '' then
       begin
         InsertRow(r);
-        ActiveRow := r;
+        //ActiveRow := r;
         LinePaste;
         AddTotals(r);
         if vCheckData then
@@ -2611,7 +2608,6 @@ begin
     vrtRect := FlipRect(ClientRect, vrtRect);
   end;
   ScrollWindow(Handle, -X * Sign, 0, nil, @vrtRect);
-  //ScrollWindowEx(Handle, -X * Sign, 0, @vrtRect, @vrtRect, 0, nil, SW_INVALIDATE or SW_ERASE);
 end;
 
 procedure TntvCustomGrid.ValueChanging(AColumn: TntvColumn);
@@ -2628,18 +2624,10 @@ begin
 end;
 
 procedure TntvCustomGrid.CreateParams(var Params: TCreateParams);
-const
-  BorderStyles: array[TBorderStyle] of DWORD = (0, WS_BORDER);
 begin
   inherited CreateParams(Params);
   with Params do
   begin
-    Params.Style := Params.Style or WS_TABSTOP or BorderStyles[FBorderStyle];
-    if NewStyleControls and (FBorderStyle = bsSingle) then
-    begin
-      Style := Style and not WS_BORDER;
-      ExStyle := ExStyle or WS_EX_CLIENTEDGE;
-    end;
     if FScrollBars in [ssHorizontal, ssBoth] then
       Style := Style or WS_HSCROLL;
     if FScrollBars in [ssVertical, ssBoth] then
@@ -2658,10 +2646,7 @@ begin
   if not Locked then
   begin
     if Assigned(FOnCurChanged) then
-    begin
-      //        Items.ColToId(vCol);
       FOnCurChanged(Self, FVisibleColumns[vCol], vRow);
-    end;
   end;
 end;
 
@@ -2707,6 +2692,9 @@ begin
     garIndicator:
       if Assigned(FOnRowClick) then
         FOnRowClick(Self, vRow);
+    garHeader:
+      if Assigned(FOnColClick) then
+        FOnColClick(Self, vCol);
   end;
 end;
 
@@ -3910,7 +3898,7 @@ begin
 
   if OldCol <> vCol then
   begin
-    ColChanged(GetVisibleColumn(OldCol), GetVisibleColumn(vCol));
+    ColumnChanged(GetVisibleColumn(OldCol), GetVisibleColumn(vCol));
     ShowCol(vCol);
   end;
 
@@ -4435,7 +4423,9 @@ begin
   inherited;
   if PosToCoord(X, Y, aRow, aCol, aArea) then
   begin
-    ChangeCursor(X, Y);
+    if (aArea = garHeader) then
+      ChangeCursor(X, Y);
+
     if (aCol > -1) then
     begin
       if (aArea = garHeader) then
@@ -6052,7 +6042,7 @@ begin
   Grid.DrawString(Canvas, Hint, vRect, GetTextStyle, True);
 end;
 
-procedure TntvColumn.GetCurrentColor(vRow: Integer; var vColor: TColor);
+procedure TntvColumn.GetCurrentColor(vRow: Integer; out vColor: TColor);
 begin
   Grid.GetColor(Self, vRow, vColor);
 end;
@@ -6338,7 +6328,6 @@ end;
 
 procedure TntvColumn.SetColumnProperty(AProperty: TntvColumnProperty);
 begin
-  //Index := AProperty.Index;
   Visible := AProperty.Visible;
   Width := AProperty.Width;
   Caption := AProperty.Caption;
@@ -6433,7 +6422,6 @@ end;
 
 procedure TntvColumn.ValidateInfo(var Text: String; var Data: Integer);
 begin
-
 end;
 
 procedure TntvCustomGrid.CMExit(var Message: TCMExit);
@@ -6507,7 +6495,7 @@ begin
   InternalSetInfo(ActiveRow, vText, vData, [swcText, swcData, swcRefresh]);
 end;
 
-procedure TntvCustomGrid.ColChanged(OldCol, NewCol: TntvColumn);
+procedure TntvCustomGrid.ColumnChanged(OldCol, NewCol: TntvColumn);
 begin
 end;
 
@@ -6733,7 +6721,6 @@ end;
 
 procedure TntvColumn.CheckInfo(var Text: String; var Data: Integer);
 begin
-
 end;
 
 { TntvSelectedRows }

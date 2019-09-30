@@ -15,12 +15,13 @@ type
   TForm1 = class(TForm)
     Button1: TButton;
     CloseBtn: TButton;
+    StringGrid1: TStringGrid;
     procedure Button1Click(Sender: TObject);
     procedure CloseBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure ntvGrid1Click(Sender: TObject);
   private
-
+    procedure OnColClick(Sender: TntvCustomGrid; vCol: Integer);
   public
     Grid: TntvGrid;
     NameCol: TntvColumn;
@@ -63,7 +64,8 @@ begin
   Grid.SetBounds(10, 10 ,ClientWidth - 20, CloseBtn.Top - 10);
   Grid.Anchors := [akLeft, akRight, akTop, akBottom];
   Grid.Capacity := 3;
-  Grid.RowHeight := 47;
+  Grid.OnColClick := @OnColClick;
+  //Grid.RowHeight := 47;
   NameCol := TntvStandardColumn.Create(Grid.Columns, 'Name');
   AddressCol := TntvStandardColumn.Create(Grid.Columns, 'Address');
   PhoneCol := TntvStandardColumn.Create(Grid.Columns, 'Phone');
@@ -81,6 +83,11 @@ end;
 procedure TForm1.ntvGrid1Click(Sender: TObject);
 begin
 
+end;
+
+procedure TForm1.OnColClick(Sender: TntvCustomGrid; vCol: Integer);
+begin
+  Grid[0, vCol] := 'Clicked';
 end;
 
 end.
