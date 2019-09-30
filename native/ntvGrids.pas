@@ -229,8 +229,8 @@ type
     property Capacity: Integer read FCapacity write FCapacity default 10000;
     property VerticalJump: Boolean read FVerticalJump write FVerticalJump default False;
     property GridLines: TntvGridLines read FGridLines write FGridLines;
-    property LinesColor: TColor read FLinesColor write FLinesColor default $00DDDDDD;
-    property OddColor: TColor read FOddColor write FOddColor default $00F8F8F8;
+    property LinesColor: TColor read FLinesColor write FLinesColor default clLtGray;
+    property OddColor: TColor read FOddColor write FOddColor default clMoneyGreen;
     property EvenColor: TColor read FEvenColor write FEvenColor default clWhite;
     property SettledColor: TColor read FSettledColor write FSettledColor default $00EAEAEA;
     property SettledCols: Integer read FSettledCols write FSettledCols default 0;
@@ -264,23 +264,19 @@ type
 
   TntvColumn = class(TInterfacedPersistent, IMaster)
   private
-    FName: String;
     FColumns: TntvColumns;
+    FMasterActionLock: Boolean;
+    FVisibleIndex: Integer;
+  private
+    FName: String;
     FBiDiMode: TBiDiMode;
     FParentBiDiMode: Boolean;
     FImageIndex: Integer;
     FAlignment : TAlignment;
     FCurrencyFormat: String;
-    FShowButton: Boolean;
-
-    FVisibleIndex: Integer;
-
-    FMasterActionLock: Boolean;
-
     FEnabled: Boolean;
+
     FOldData: Integer;
-    FBtnRect: TRect;
-    FDown: Boolean; //
 
     procedure BiDiModeChanged(vInvalidate: Boolean);
     procedure ParentBiDiModeChanged;
@@ -319,8 +315,6 @@ type
     procedure SetImageIndex(const Value: Integer);
     function GetImageList: TImageList;
     procedure SetEnabled(const Value: Boolean);
-    procedure SetShowButton(const Value: Boolean);
-    procedure SetDown(const Value: Boolean);
   protected
     Info: TntvColumnInfo;
     FEditControl: TControl;
@@ -381,8 +375,6 @@ type
     function CreateColumnProperty(AOwner: TComponent): TntvColumnProperty;
     procedure SetColumnProperty(AProperty: TntvColumnProperty);
     procedure CurRowChanged; virtual;
-    property Down: Boolean read FDown write SetDown; deprecated;
-
     property Name: String read FName;
     property Columns: TntvColumns read FColumns;
   public
@@ -428,8 +420,6 @@ type
     property ImageIndex: Integer read FImageIndex write SetImageIndex;
     property Alignment: TAlignment read FAlignment write SetAlignment;
     property ImageList: TImageList read GetImageList default nil;
-    property ShowButton: Boolean read FShowButton write SetShowButton default False;
-    property BtnRect: TRect read FBtnRect write FBtnRect;
     property TextFormat: TTextStyle read Info.TextFormat write Info.TextFormat;
   published
     property BiDiMode: TBiDiMode read FBiDiMode write SetBiDiMode stored IsBiDiModeStored;
@@ -565,6 +555,7 @@ type
     FOnPopupMenu: TNotifyEvent;
     FOnGetColor: TOnGetColor;
     FOnIsReadOnly: TOnIsReadOnly;
+    FOnButtonClick: TOnNotifyButton;
 
     FMultiSelect: Boolean;
     FRowRefresh: Boolean;
@@ -597,10 +588,9 @@ type
     FReturnColumns: Integer;
     FWantTab: Boolean;
     FWantReturn: Boolean;
-    FDownCol: Integer;
-    FOnButtonClick: TOnNotifyButton;
     FLinesColor: TColor;
     FFixedColor: TColor;
+
     procedure ChangeCursor(x, y: Integer);
     function GetValues(Row, Col: Integer): string;
     procedure SetValues(Row, Col: Integer; AValue: string);
@@ -689,7 +679,7 @@ type
     procedure SetFullHeader(const Value: Boolean);
     function OnSortByCol(Index1, Index2: Integer): Integer;
   protected
-    FSortColumn: TntvColumn;
+    FSortColumn: TntvColumn; //TODO no need for it
     FSortDown: Boolean;
     FindingText: String;
     ShouldCurChange: Boolean;
@@ -727,7 +717,6 @@ type
     procedure DoCurRowChanging(vOldRow, vNewRow: Integer); virtual;
     procedure DoCurRowChanged; virtual;
     function InternalInvalidate: Boolean; virtual;
-    procedure DoButtonClick(Column: TntvColumn; X, Y: Integer); virtual;
     procedure DrawFixed(Canvas: TCanvas; vRect: TRect; S: String; vDrawState: TntvCellDrawState);
     procedure Draw(Canvas: TCanvas; wndRect, pntRect: TRect);
     procedure DrawRow(Canvas: TCanvas; vRow: Integer; vRect, pntRect: TRect; vArea: TntvGridArea);
@@ -870,7 +859,7 @@ type
     property FollowDrag: Boolean read FFollowDrag write FFollowDrag default False;
 
     property GridLines: TntvGridLines read FGridLines write SeTntvGridLines default glBoth;
-    property LinesColor: TColor read FLinesColor write SetLinesColor default $00DDDDDD;
+    property LinesColor: TColor read FLinesColor write SetLinesColor default clLtGray;
     property Footer: Boolean read FFooter write SetFooter default False;
     property Header: Boolean read FHeader write SetHeader default True;
     property Indicator: Boolean read FIndicator write SetIndicator default True;
@@ -879,9 +868,9 @@ type
     property FringeWidth: Integer read FFringeWidth write SetFringeWidth default sFringeWidth;
     property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default True;
     property Color default clBtnFace;
-    property OddColor: TColor read FOddColor write SetOddColor default $00F8F8F8;
+    property OddColor: TColor read FOddColor write SetOddColor default clMoneyGreen;
     property EvenColor: TColor read FEvenColor write SetEvenColor default clWhite;
-    property SettledColor: TColor read FSettledColor write SetSettledColor default $00EAEAEA;
+    property SettledColor: TColor read FSettledColor write SetSettledColor default clCream;
     property SettledCols: Integer read FSettledCols write SetSettledCols default 0;
     property ReturnColumns: Integer read FReturnColumns write FReturnColumns default 0;
     property VerticalJump: Boolean read FVerticalJump write FVerticalJump default False;
@@ -1746,31 +1735,8 @@ begin
 end;
 
 procedure TntvColumn.DrawHeader(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState);
-var
-  aText: String;
-  aLeft: Integer;
 begin
-  aText := GetCaption;
-  if FShowButton then
-  begin
-    FBtnRect := GetButtonRect(vRect);
-    if UseRightToLeftAlignment then
-    begin
-      aLeft := FBtnRect.Right;
-      vRect.Left := FBtnRect.Right;
-    end
-    else
-    begin
-      aLeft := FBtnRect.Left;
-      vRect.Right := FBtnRect.Left;
-    end;
-    Grid.DrawString(Canvas, aText, vRect, GetTextStyle(True), True);
-    if FDown then
-      Frame3D(Canvas, FBtnRect, clGray, clSilver, 1);
-    //DrawSign(Canvas, FBtnRect, FSign, True, True);
-  end
-  else
-    Grid.DrawString(Canvas, aText, vRect, GetTextStyle(True), True);
+  Grid.DrawString(Canvas, GetCaption, vRect, GetTextStyle(True), True);
 end;
 
 function TntvColumn.CloseEdit(Accept: Boolean): Boolean;
@@ -2165,27 +2131,25 @@ begin
   FRowNumbers := True;
   Color := clBtnFace;
   TabStop := True;
-  FOddColor := clWhite;
+  FOddColor := clMoneyGreen;
   FEvenColor := clWhite;
-  FSettledColor := $00EAEAEA;
+  FSettledColor := clCream;
   FFixedCols := 0;
   FTopRow := 0;
   FSideCol := 0;
   FDragAfter := 0;
   FGridLines := glBoth;
-  FLinesColor := $00DDDDDD;
+  FLinesColor := clLtGray;
   FColWidth := sColWidth;
   FStateBtn := False;
   FModified := False;
   FRow := 0;
   FIndicator := True;
   FDualColor := True;
-  FOddColor := $00F8F8F8;
   FHeader := True;
   FIndicatorWidth := sIndicatorWidth;
   FFringeWidth := sFringeWidth;
   ShouldCurChange := False;
-  FDownCol := -1;
   FFixedColor := clBtnFace;
   FRowHeight := GetDefaultRowHeight;
 end;
@@ -2647,12 +2611,6 @@ end;
 procedure TntvCustomGrid.DoBeforeEdit(AColumn: TntvColumn; vRow: Integer);
 begin
 
-end;
-
-procedure TntvCustomGrid.DoButtonClick(Column: TntvColumn; X, Y: Integer);
-begin
-  if Assigned(FOnButtonClick) then
-    FOnButtonClick(Self, Column, X, Y);
 end;
 
 procedure TntvCustomGrid.DoChanged;
@@ -3463,7 +3421,6 @@ end;
 procedure TntvCustomGrid.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   aCol: Integer;
-  BtnRect: TRect;
 
   procedure DoButtonNow;
   begin
@@ -3488,15 +3445,8 @@ begin
         end;
       garHeader:
       begin
-        if aCol > -1 then
+        if aCol >= 0 then
         begin
-          BtnRect := VisibleColumns[aCol].FBtnRect;
-          if (VisibleColumns[aCol].ShowButton) and (PtInRect(BtnRect, Point(X, Y))) then
-          begin
-            VisibleColumns[aCol].Down := True;
-            FDownCol := aCol;
-          end
-          else
           if FAttemptCapture then
           begin
             if InColsWidth(X, aCol) then
@@ -3554,8 +3504,7 @@ begin
               CurrentColumn.MouseDown(Button, Shift, X, Y);
             end;
           end
-          else
-          if FAttemptCapture then
+          else if FAttemptCapture then
             DoButtonNow;
         end;
     end;
@@ -4403,14 +4352,6 @@ begin
   begin
     if (aArea = garHeader) then
       ChangeCursor(X, Y);
-  end;
-
-  if FDownCol > -1 then
-  begin
-    if (PtInRect(VisibleColumns[FDownCol].FBtnRect, Point(X, Y))) then
-      VisibleColumns[FDownCol].Down := True
-    else
-      VisibleColumns[FDownCol].Down := False;
   end;
 
   case FState of
@@ -5303,7 +5244,6 @@ begin
   FColumns := vColumns;
   FImageIndex := -1;
   FParentBiDiMode := True;
-  FShowButton := False;
   FEnabled := vEnabled;
 
   Info.Visible := True;
@@ -5795,7 +5735,6 @@ var
   aRow: Integer;
   aCol: Integer;
   aArea: TntvGridArea;
-  BtnRect: TRect;
 begin
   inherited;
   EndCapture;
@@ -5803,22 +5742,6 @@ begin
   begin
     if PosToCoord(X, Y, aRow, aCol, aArea) and (FClkRow = aRow) and (FClkCol = aCol) and (FClkArea = aArea) then
       DoClickArea(aRow, aCol, aArea);
-    if (FClkArea = garHeader) then
-    begin
-      if (aCol = FDownCol) and (aCol > -1) then
-      begin
-        if VisibleColumns[aCol].ShowButton then
-        begin
-          BtnRect := VisibleColumns[FDownCol].FBtnRect;
-          if PtInRect(BtnRect, Point(X, Y)) then
-          begin
-            DoButtonClick(VisibleColumns[aCol], X, Y);
-          end;
-          VisibleColumns[FDownCol].Down := False;
-        end;
-        FDownCol := -1;
-      end;
-    end;
   end;
 end;
 
@@ -6431,15 +6354,6 @@ begin
   Grid.Validated(self);
 end;
 
-procedure TntvColumn.SetShowButton(const Value: Boolean);
-begin
-  if FShowButton <> Value then
-  begin
-    FShowButton := Value;
-    Invalidate;
-  end;
-end;
-
 procedure TntvColumn.SetSilentValue(const vText: String; vData: Integer);
 begin
   InternalSetInfo(ActiveRow, vText, vData, [swcText, swcData, swcRefresh]);
@@ -6518,15 +6432,6 @@ begin
     FEnabled := Value;
     if FEnabled then
       Visible := False;
-  end;
-end;
-
-procedure TntvColumn.SetDown(const Value: Boolean);
-begin
-  if FDown <> Value then
-  begin
-    FDown := Value;
-    Invalidate;
   end;
 end;
 

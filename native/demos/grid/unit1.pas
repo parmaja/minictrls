@@ -15,7 +15,6 @@ type
   TForm1 = class(TForm)
     Button1: TButton;
     CloseBtn: TButton;
-    StringGrid1: TStringGrid;
     procedure Button1Click(Sender: TObject);
     procedure CloseBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -67,10 +66,12 @@ begin
   Grid.OnColClick := @OnColClick;
   //Grid.RowHeight := 47;
   NameCol := TntvStandardColumn.Create(Grid.Columns, 'Name');
-  AddressCol := TntvStandardColumn.Create(Grid.Columns, 'Address');
   PhoneCol := TntvStandardColumn.Create(Grid.Columns, 'Phone');
   EmailCol := TntvStandardColumn.Create(Grid.Columns, 'Email');
+  EmailCol.Hint := 'example: email@domain.com';
   MobileCol := TntvStandardColumn.Create(Grid.Columns, 'Mobile');
+  AddressCol := TntvStandardColumn.Create(Grid.Columns, 'Address');
+  //AddressCol.
   Grid.TabOrder := 0;
   Grid.ActiveRow := 0;
   NameCol.AsString := 'zaher';
