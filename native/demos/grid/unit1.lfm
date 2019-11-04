@@ -1,15 +1,15 @@
 object Form1: TForm1
-  Left = 477
+  Left = 238
   Height = 386
-  Top = 142
-  Width = 500
+  Top = 223
+  Width = 560
   Caption = 'Form1'
   ClientHeight = 386
-  ClientWidth = 500
+  ClientWidth = 560
   OnCreate = FormCreate
   LCLVersion = '2.1.0.0'
   object CloseBtn: TButton
-    Left = 416
+    Left = 476
     Height = 25
     Top = 355
     Width = 77
@@ -27,5 +27,28 @@ object Form1: TForm1
     Caption = 'Set'
     OnClick = Button1Click
     TabOrder = 1
+  end
+  object Button2: TButton
+    Left = 87
+    Height = 25
+    Top = 355
+    Width = 75
+    Anchors = [akLeft, akBottom]
+    Caption = 'RTL'
+    OnClick = Button2Click
+    TabOrder = 2
+  end
+  object PopupMenu1: TPopupMenu
+    Left = 157
+    Top = 270
+    object MenuItem1: TMenuItem
+      Caption = 'MenuItem1'
+    end
+    object MenuItem2: TMenuItem
+      Caption = 'MenuItem2'
+    end
+    object MenuItem3: TMenuItem
+      Caption = 'MenuItem3'
+    end
   end
 end
