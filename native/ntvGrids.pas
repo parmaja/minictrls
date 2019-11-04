@@ -166,7 +166,7 @@ type
 
   TntvColumnKind = (cokText, cokDate, cokTime, cokNumber, cokBoolean, cokData);
   TntvDragAfterMode = (damNone, damScroll, damDrag);
-  TntvState = (dgsNone, dgsDown, dgsDrag, dgsResizeCol, dgsResizeRow, dgsDragSelect, dgsDragMove);
+  TntvState = (dgsNone, dgsDown, dgsDrag, dgsResizeCol);
 
   TntvGridArea = (garNone, garNormal, garHeader, garFooter, garGutter, garFringe);
   TntvCellDrawState = set of (
@@ -175,9 +175,11 @@ type
     csdCurrent,
     csdFixed,
     csdRightToLeft,
+    csdHeaderFooter,
     csdFirstCell,
     csdLastCell,
-    csdOpened //last cell but not full header
+    csdFirstOpened,
+    csdLastOpened //last cell but not full header
   );
 
   TntvGridLines = (glNone, glVertical, glHorizontal, glBoth);
@@ -344,8 +346,8 @@ type
 
     function GetButtonRect(vRect: TRect): TRect; virtual;
     function GetRect(vRow: Integer; var vRect: TRect): Boolean;
-    function GetCellArea(vRow: Integer; var vRect: TRect): Boolean;
-    function GetTextArea(vRow: Integer; var vRect: TRect): Boolean;
+    function GetCellArea(vRow: Integer; out vRect: TRect): Boolean;
+    function GetTextArea(vRow: Integer; out vRect: TRect): Boolean;
     procedure CorrectCellRect(var Rect: TRect);
 
     function UseRightToLeftAlignment: Boolean; dynamic;
@@ -628,14 +630,14 @@ type
     function GetColRect(vCol: Integer; out vRect: TRect): Boolean;
     function GetRowRect(vRow: Integer; out vRect: TRect): Boolean;
     function GetCellRect(vRow: Integer; vCol: Integer; out vRect: TRect): Boolean; overload;
-    function GetCellRect(vRow: Integer; vCol: Integer; vArea: TntvGridArea; var vRect: TRect): Boolean; overload;
+    function GetCellRect(vRow: Integer; vCol: Integer; vArea: TntvGridArea; out vRect: TRect): Boolean; overload;
     function GetCurrentColumn: TntvColumn;
     //Rows fully visible in grid window, execlude the last row if partial visible
     function GetCompletedRows(vHeight: Integer): Integer; overload;
     //Rows Visible in grid window, even the row not fully visible (last row)
     function GetVisibleRows(vHeight: Integer): Integer; overload;
     function GetVisibleRows: Integer; overload;
-    function GetVisibleCol(vVertCol: Integer; var vRealCol: Integer): Boolean;
+    function GetVisibleCol(vVertCol: Integer; out vRealCol: Integer): Boolean;
     function GetCompletedCols(vWidth: Integer): Integer;
     function InColsWidth(X: Integer; var vCol: Integer): Boolean;
     function GetVisibleColumn(vCol: Integer): TntvColumn;
@@ -1077,7 +1079,7 @@ var
   CF_NativeGRID: Word;
 
 function KeyDownToKeyAction(var KEY: Word; Shift: TShiftState): TntvKeyAction;
-function SpliteStr(var vText: String; const vStr: String; vPart: Integer; vComma: Char; vQuoted: Char = '"'): Boolean;
+function SpliteStr(out vText: String; const vStr: String; vPart: Integer; vComma: Char; vQuoted: Char = '"'): Boolean;
 function GetPartStr(const vStr: String; vComma: Char; vPart: Integer; vQuoted: Char = '"'): String;
 function GetPartValue(const Str: String; const Default: String = ''; vComma: Char = '='): String;
 
@@ -1113,7 +1115,7 @@ begin
     Result := Default;
 end;
 
-function SpliteText(var vBeginPos, vCount: Integer; const vStr: String; vPart: Integer; vComma: Char; vQuoted: Char = '"'): Boolean;
+function SpliteText(out vBeginPos, vCount: Integer; const vStr: String; vPart: Integer; vComma: Char; vQuoted: Char = '"'): Boolean;
 var
   j, i, LastPos, l: Integer;
   InQuoted: Boolean;
@@ -1152,7 +1154,7 @@ begin
   end;
 end;
 
-function SpliteStr(var vText: String; const vStr: String; vPart: Integer; vComma: Char; vQuoted: Char): Boolean;
+function SpliteStr(out vText: String; const vStr: String; vPart: Integer; vComma: Char; vQuoted: Char): Boolean;
 var
   b, c: Integer;
 begin
@@ -1612,7 +1614,7 @@ begin
   else
   begin
     if aNewRow then
-      aTextColor := clBtnFace
+      aTextColor := clBtnFace //ZAHER
     else
       aTextColor := Grid.Font.Color;
   end;
@@ -1623,7 +1625,7 @@ begin
       aColor := MixColors(clBtnFace, Grid.Selected.Color, 230)
     else
       aColor := clBtnFace;
-    aTextColor := clBtnText;
+    aTextColor := Grid.FixedFontColor;
   end;
 
   if not aSelected and (VisibleIndex < Grid.SettledCols) and (Grid.SettledColor <> clNone) then
@@ -1635,8 +1637,8 @@ begin
   if (VisibleIndex = Grid.FCurCol) and (vRow = Grid.FCurRow) and (Grid.Focused or (csDesigning in Grid.ComponentState)) then
     vDrawState := vDrawState + [csdCurrent];
   Canvas.Font.Color := aTextColor;
-  txtRect := vRect;
   Canvas.Brush.Color := aColor;
+  txtRect := vRect;
   CorrectCellRect(txtRect);
   case vArea of
     garNormal:
@@ -1656,6 +1658,15 @@ begin
     garFooter:
     begin
       DrawFooter(Canvas, vRow, txtRect, vDrawState);
+    end;
+    garFringe:
+    begin
+    end;
+    garGutter:
+    begin
+    end;
+    else
+    begin
     end;
   end;
 
@@ -1679,7 +1690,7 @@ begin
         Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
       end;
     end;
-    if (Grid.FGridLines in [glVertical, glBoth]) then
+    if (Grid.GridLines in [glVertical, glBoth]) then
     begin
       Canvas.Pen.Color := Grid.LinesColor;
       if Grid.UseRightToLeftAlignment then
@@ -1735,7 +1746,7 @@ begin
       end;
     end;
     InflateRect(vRect, - sCellMargin, - sCellMargin);
-    Canvas.Font.Color :=clBlack;
+    Canvas.Font.Color := Grid.Font.Color;
     Grid.DrawString(Canvas, aCell.Text, vRect, GetTextStyle, True);
   end;
 end;
@@ -2515,7 +2526,7 @@ var
   aCol: Integer;
   aArea: TntvGridArea;
 begin
-  if (FState in [dgsResizeCol, dgsResizeRow]) or (PosToCoord(Message.XPos, Message.YPos, aRow, aCol, aArea) and (aArea = garHeader) and (InColsWidth(Message.XPos, aCol))) then
+  if (FState in [dgsResizeCol]) or (PosToCoord(Message.XPos, Message.YPos, aRow, aCol, aArea) and (aArea = garHeader) and (InColsWidth(Message.XPos, aCol))) then
   begin
     Message.Result := 1;
   end
@@ -2691,8 +2702,6 @@ begin
 end;
 
 procedure TntvCustomGrid.DeleteRow(vRow: Integer);
-var
-  c: Integer;
 begin
   if vRow < Count then
   begin
@@ -2705,8 +2714,6 @@ begin
 end;
 
 procedure TntvCustomGrid.ClearRow(vRow: Integer);
-var
-  c: Integer;
 begin
   if vRow < Count then
   begin
@@ -2753,12 +2760,11 @@ end;
 
 procedure TntvCustomGrid.Draw(Canvas: TCanvas; wndRect, pntRect: TRect);
 var
-  vrtRect, TmpRect, SavePntRect: TRect;
+  vrtRect, TmpRect: TRect;
   aRow: Integer;
   aRect: TRect;
 begin
   Canvas.Pen.Color := Color;
-  SavePntRect := PntRect;
   vrtRect := RowsClient;
   if Header and (pntRect.Top < vrtRect.Top) then
   begin
@@ -2858,6 +2864,7 @@ begin
       //ExcludeClipRect(Canvas.Handle, TmpRect.Left, tmpRect.Top, tmpRect.Right, tmpRect.Bottom);
     end;
   end;
+
   if Fringe then
   begin
     tmpRect := vRect;
@@ -2879,6 +2886,7 @@ begin
       ExcludeClipRect(Canvas.Handle, TmpRect.Left, tmpRect.Top, tmpRect.Right, tmpRect.Bottom);
     end;
   end;
+
   aCol := 0;
   aColCount := FVisibleColumns.Count;
   while (X < pntRect.Right) do
@@ -2894,10 +2902,14 @@ begin
       aDrawState := aDrawState + [csdLastCell];
     if (vrtCol = 0) then
       aDrawState := aDrawState + [csdFirstCell];
+    if Gutter then
+      aDrawState := aDrawState + [csdFirstOpened];
     FVisibleColumns[vrtCol].Draw(Canvas, aDrawState, vRow, aRect, vArea);
     Inc(aCol);
     X := X + W;
   end;
+
+  //Draw Empty Cell after last cell, if it full header we will draw fixed cell header at top
   if (X < pntRect.Right) then
   begin
     TmpRect := pntRect;
@@ -2905,12 +2917,17 @@ begin
     TmpRect.Top := vRect.Top;
     TmpRect.Bottom := vRect.Bottom;
     tmpRect := FlipRect(cliRect, tmpRect);
+    aDrawState := [csdFixed];
+    if Gutter then
+      aDrawState := aDrawState + [csdFirstOpened];
+    if Fringe then
+      aDrawState := aDrawState + [csdLastOpened];
     if (vArea = garHeader) and FullHeader then
     begin
       Canvas.Brush.Color := FixedColor;
       Canvas.Font.Color := FixedFontColor;
       Canvas.FillRect(TmpRect);
-      DrawFixed(Canvas, tmpRect, '', [csdFixed, csdOpened]);
+      DrawFixed(Canvas, tmpRect, '', aDrawState);
     end
     else
     begin
@@ -3018,6 +3035,9 @@ end;
 procedure TntvCustomGrid.EndCapture;
 begin
   case FState of
+    dgsNone:
+    begin
+    end;
     dgsDown:
     begin
       FStateBtn := False;
@@ -3197,7 +3217,7 @@ begin
   Result := vRow + FTopRow;
 end;
 
-function TntvCustomGrid.GetVisibleCol(vVertCol: Integer; var vRealCol: Integer): Boolean;
+function TntvCustomGrid.GetVisibleCol(vVertCol: Integer; out vRealCol: Integer): Boolean;
 var
   R, W, vCol, fCol: Integer;
 begin
@@ -3499,6 +3519,9 @@ begin
   begin
     aCol := FClkCol;
     case FClkArea of
+      garNone:
+      begin
+      end;
       garGutter, garFooter, garFringe:
         if FAttemptCapture then
         begin
@@ -4420,6 +4443,9 @@ begin
     SetCursor(crDefault);
 
   case FState of
+    dgsNone:
+    begin
+    end;
     dgsDrag:
     begin
       if (csLButtonDown in ControlState) then
@@ -4512,17 +4538,13 @@ procedure TntvCustomGrid.WMTimer(var Message: TWMTimer);
 var
   Pt: TPoint;
 begin
-  case FState of
-    dgsDrag:
+  if FState = dgsDrag then
+  begin
+    if FDragAfterMode = damNone then
     begin
-      case FDragAfterMode of
-        damNone:
-        begin
-          Pt := ScreenToClient(Mouse.CursorPos);
-          if not PtInRect(VirtualClient, Pt) then
-            Perform(WM_MOUSEMOVE, 0, MakeLong(Word(Pt.x), Word(Pt.y)));
-        end;
-      end;
+      Pt := ScreenToClient(Mouse.CursorPos);
+      if not PtInRect(VirtualClient, Pt) then
+        Perform(WM_MOUSEMOVE, 0, MakeLong(Word(Pt.x), Word(Pt.y)));
     end;
   end;
 end;
@@ -4955,75 +4977,41 @@ begin
   Canvas.Pen.Color := LinesColor;
   Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
   Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
+  if csdHeaderFooter in vDrawState then
+  begin
+    Canvas.MoveTo(vRect.Left, vRect.Top);
+    Canvas.LineTo(vRect.Right, vRect.Top);
+  end;
 
   if not (csdDown in vDrawState) then
   begin
     if UseRightToLeftAlignment then
     begin
-      if csdFirstCell in vDrawState then
+      if not (csdLastOpened in vDrawState) then
       begin
-        Canvas.MoveTo(vRect.Right - 1, vRect.Top);
-        Canvas.LineTo(vRect.Right - 1, vRect.Bottom + 1);
-      end
-      else
-      begin
-        Canvas.MoveTo(vRect.Right - 1, vRect.Top + 2);
-        Canvas.LineTo(vRect.Right - 1, vRect.Bottom - 2);
+        Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
+        Canvas.LineTo(vRect.Left, vRect.Top - 1);
       end;
 
-      if not (csdOpened in vDrawState) then
+      if not (csdFirstOpened in vDrawState) then
       begin
-        if not ((csdLastCell in vDrawState) and not FullHeader) then
-        begin
-          Canvas.Pen.Color := clBtnFace;
-          Canvas.MoveTo(vRect.Left, vRect.Top);
-          Canvas.LineTo(vRect.Left, vRect.Bottom - 1);
-        end;
-      end;
-      Canvas.Pen.Color := $00EEEEEE;
-      Canvas.MoveTo(vRect.Left, vRect.Top);
-      Canvas.LineTo(vRect.Right, vRect.Top);
-      if not (csdOpened in vDrawState) then
-      begin
-        if (csdLastCell in vDrawState) and not FullHeader then
-        begin
-          Canvas.MoveTo(vRect.Left, vRect.Top);
-          Canvas.LineTo(vRect.Left, vRect.Bottom);
-        end;
-        begin
-          Canvas.MoveTo(vRect.Left, vRect.Top + 2);
-          Canvas.LineTo(vRect.Left, vRect.Bottom - 2);
-        end;
+        Canvas.MoveTo(vRect.Right - 1, vRect.Bottom - 1);
+        Canvas.LineTo(vRect.Right - 1, vRect.Top - 1);
       end;
     end
     else
     begin
-      if not (csdOpened in vDrawState) then
+      if not (csdLastOpened in vDrawState) then
       begin
         Canvas.MoveTo(vRect.Right - 1, vRect.Bottom - 1);
-        Canvas.LineTo(vRect.Right - 1, vRect.Top);
+        Canvas.LineTo(vRect.Right - 1, vRect.Top - 1);
       end;
 
-{      if not (csdFirstCell in vDrawState) then
+      if not (csdFirstOpened in vDrawState) then
       begin
-        Canvas.Pen.Color := clBlue;
-        Canvas.MoveTo(vRect.Left, vRect.Top);
+        Canvas.MoveTo(vRect.Left, vRect.Top - 1);
         Canvas.LineTo(vRect.Left, vRect.Bottom - 1);
-      end;}
-
-      {Canvas.MoveTo(vRect.Right - 1, vRect.Top);
-      Canvas.LineTo(vRect.Left - 1, vRect.Top);
-}
-      if csdFirstCell in vDrawState then
-      begin
-{        Canvas.MoveTo(vRect.Left, vRect.Top);
-        Canvas.LineTo(vRect.Left, vRect.Bottom - 1);}
       end
-      else
-      begin
-      {  Canvas.MoveTo(vRect.Left, vRect.Top + 2);
-        Canvas.LineTo(vRect.Left, vRect.Bottom - 2);}
-      end;
     end;
   end
   else
@@ -5098,7 +5086,7 @@ begin
   end;
 end;
 
-function TntvCustomGrid.GetCellRect(vRow: Integer; vCol: Integer; vArea: TntvGridArea; var vRect: TRect): Boolean;
+function TntvCustomGrid.GetCellRect(vRow: Integer; vCol: Integer; vArea: TntvGridArea; out vRect: TRect): Boolean;
 begin
   Result := False;
   case vArea of
@@ -5349,7 +5337,7 @@ begin
   end;
 end;
 
-function TntvColumn.GetCellArea(vRow: Integer; var vRect: TRect): Boolean;
+function TntvColumn.GetCellArea(vRow: Integer; out vRect: TRect): Boolean;
 begin
   Result := Grid.GetCellRect(vRow, VisibleIndex, vRect);
   if Result then
@@ -6253,7 +6241,7 @@ begin
   Result := Grid.FImageList;
 end;
 
-function TntvColumn.GetTextArea(vRow: Integer; var vRect: TRect): Boolean;
+function TntvColumn.GetTextArea(vRow: Integer; out vRect: TRect): Boolean;
 begin
   Result := GetCellArea(vRow, vRect);
   if Result and (ImageList <> nil) and (ShowImage) then

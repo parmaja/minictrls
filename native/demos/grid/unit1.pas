@@ -82,6 +82,9 @@ begin
   Grid.Footer := True;
   Grid.Fringe := True;
   Grid.PopupMenu := PopupMenu1;
+  Grid.FullHeader := true;
+  Grid.SettledCols := 1;
+  Grid.BorderStyle := bsSingle;
 
   //Grid.RowHeight := 47;
   NameCol := TntvStandardColumn.Create(Grid.Columns, 'Name');
@@ -99,7 +102,7 @@ begin
   NameCol.AsString := 'zaher';
   AddressCol.AsString := 'syria';
 
-  Grid.SettledCols := 1;
+
   Grid.Visible := True;
   ActiveControl := Grid;
 end;
