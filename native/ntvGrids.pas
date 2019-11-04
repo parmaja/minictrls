@@ -260,9 +260,7 @@ type
     TextFormat: TTextStyle;
     Caption: String;
     Title: String;
-    Query: String;
     Hint: String;
-    Value: Variant;
     Kind: TntvColumnKind;
     IsTotal: Boolean;
     Total: Currency;
@@ -299,6 +297,7 @@ type
     procedure ParentBiDiModeChanged;
     procedure SetBiDiMode(const Value: TBiDiMode);
     procedure SetParentBiDiMode(const Value: Boolean);
+    procedure SetTitle(AValue: String);
     procedure SetWidth(const Value: Integer);
 
     function GetData: Integer; overload;
@@ -437,7 +436,6 @@ type
     property Data: Integer read GetData write SetData;
     property OldData: Integer read FOldData;
     property Kind: TntvColumnKind read Info.Kind write Info.Kind;
-    property Query: String read Info.Query write Info.Query;
     property Total: Currency read Info.Total write Info.Total;
     property StoreCol: Integer read Info.StoreCol write Info.StoreCol;
     property VisibleIndex: Integer read FVisibleIndex write FVisibleIndex;
@@ -454,7 +452,7 @@ type
     property IsTotal: Boolean read Info.IsTotal write Info.IsTotal default False;
     property ReadOnly: Boolean read Info.ReadOnly write Info.ReadOnly default False;
     //Title a column header text
-    property Title: String read Info.Title write Info.Title;
+    property Title: String read Info.Title write SetTitle;
     //Caption keep it empty until you want override the title that will draw in header
     property Caption: String read Info.Caption write Info.Caption;
     property Visible: Boolean read Info.Visible write SetVisible default True;
@@ -609,8 +607,10 @@ type
     FLinesColor: TColor;
     FFixedColor: TColor;
 
-    function GetValues(Row, Col: Integer): string;
-    procedure SetValues(Row, Col: Integer; AValue: string);
+    function GetColumnsCount: integer;
+    function GetValues(Col, Row: Integer): string;
+    procedure SetValues(Col, Row: Integer; AValue: string);
+    procedure SetColumnsCount(AValue: integer);
     procedure SetImageList(Value: TImageList);
     procedure ImageListChange(Sender: TObject);
     procedure CalcNewWidth(X: Smallint);
@@ -716,7 +716,6 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     function DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean; override;
     function DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean; override;
-    procedure KeyPress(var Key: char); override;
 
     procedure Validate(AColumn: TntvColumn); virtual;
     procedure UpdateColumnsWidths;
@@ -743,7 +742,7 @@ type
     function GetMaxSideCol: Integer;
     function GetAllowedRows: Integer;
     function GetCompletedRows: Integer; overload;
-    function GetCount: Integer; virtual;
+    function GetRowsCount: Integer; virtual;
     function GetRealRow(vRow: Integer): Integer;
     function GetMaxCols: Integer; virtual;
     function GetCapacity: Integer; virtual;
@@ -758,7 +757,7 @@ type
     procedure LockChanged(Value: Boolean); virtual;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SelectRows(vOldRow, vRow: Integer);
-    procedure SetCount(Value: Integer);
+    procedure SetRowsCount(Value: Integer);
     procedure SetCapacity(Value: Integer);
     procedure SetSideCol(vCol: Integer);
     procedure SetTopRow(vRow: Integer); virtual;
@@ -772,6 +771,7 @@ type
     property LockAutoSum: Boolean read GetLockAutoSum write SetLockAutoSum;
     procedure DoExit; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure KeyPress(var Key: char); override;
     procedure KeyAccident(vKeyAccident: TntvKeyAction; var Resumed: Boolean); virtual;
     function CreateRows: TntvRows; virtual;
     function ShowPopupMenu: Boolean; virtual;
@@ -857,6 +857,8 @@ type
     procedure SortByColumn(Column: TntvColumn; SortDown: Boolean = False);
     function FindText(Column: TntvColumn; From: Integer; S: String): Boolean;
     property Columns: TntvColumns read FColumns;
+    property ColumnsCount: integer read GetColumnsCount write SetColumnsCount;
+    property RowsCount: Integer read GetRowsCount write SetRowsCount stored False default 0;
     property VisibleColumns: TntvColumnList read FVisibleColumns;
     property CurrentColumn: TntvColumn read GetCurrentColumn;
     property Locked: Boolean read GetLock write SetLock;
@@ -873,7 +875,6 @@ type
     property DesignColumns: Boolean read FDesignColumns write FDesignColumns default True;
     property DragAfterMode: TntvDragAfterMode read FDragAfterMode write FDragAfterMode default damNone;
     property DualColor: Boolean read FDualColor write SetDualColor default True;
-    property Count: Integer read GetCount write SetCount stored False default 0;
     property FixedCols: Integer read FFixedCols write SetFixedCols default 0;
     property FixedColor: TColor read FFixedColor write SetFixedColor default clBtnFace;
     property FixedFontColor: TColor read FFixedFontColor write SetFixedFontColor default clBtnFace;
@@ -900,7 +901,7 @@ type
     property OnCellClick: TOnNotifyCell read FOnCellClick write FOnCellClick;
     property OnButtonClick: TOnNotifyButton read FOnButtonClick write FOnButtonClick;
     property OnRowClick: TOnNotifyRow read FOnRowClick write FOnRowClick;
-    property OnColClick: TOnNotifyRow read FOnColClick write FOnColClick;
+    property OnColClick: TOnNotifyCol read FOnColClick write FOnColClick;
     property OnValueChanged: TOnValueChanged read FOnValueChanged write FOnValueChanged;
     property OnCurChanged: TOnNotifyCell read FOnCurChanged write FOnCurChanged;
     property OnCurRowChanged: TOnNotifyRow read FOnCurRowChanged write FOnCurRowChanged;
@@ -925,7 +926,7 @@ type
     property Font;
 
     property Items[Index: Integer]: TntvRow read GetItems;
-    property Values[Row, Col: Integer]: string read GetValues write SetValues; default;
+    property Values[Col, Row: Integer]: string read GetValues write SetValues; default;
   end;
 
   TntvGrid = class(TntvCustomGrid)
@@ -948,7 +949,6 @@ type
     property DragCursor;
     property DragMode;
     property DualColor;
-    property Count;
     property Enabled;
     property EvenColor;
     property FixedCols;
@@ -1004,6 +1004,7 @@ type
     property OnButtonClick;
     property OnValueChanged;
     property OnRowClick;
+    property OnColClick;
     property OnCurChanged;
     property OnCurRowChanged;
     property OnDblClick;
@@ -1590,7 +1591,7 @@ begin
     GetCurrentColor(vRow, aColor); //zaher the Row
   end;
   aSelected := Grid.IsSelected(vRow, VisibleIndex);
-  aNewRow := (vRow = Grid.Count);
+  aNewRow := (vRow = Grid.RowsCount);
   if aSelected then
   begin
     vDrawState := vDrawState + [csdSelected];
@@ -1646,7 +1647,7 @@ begin
       if aNewRow then
         DrawHint(Canvas, vRow, txtRect, vDrawState, aColor)
       else
-      if (vRow < Grid.Count) then
+      if (vRow < Grid.RowsCount) then
         DrawCell(Canvas, vRow, txtRect, vDrawState, aColor)
       else
         Canvas.FillRect(txtRect);
@@ -2288,7 +2289,7 @@ begin
   Rows.BeginUpdate;
   try
     Columns.ClearTotals;
-    Count := 0;
+    RowsCount := 0;
   finally
     Rows.EndUpdate;
   end;
@@ -2347,8 +2348,8 @@ begin
         aColumns.Add(VisibleColumns[i]);
     end;
     isR := False;
-    if vEndRow >= Count then
-      vEndRow := Count - 1;
+    if vEndRow >= RowsCount then
+      vEndRow := RowsCount - 1;
     if vStartRow < 0 then
       vStartRow := 0;
     for r := vStartRow to vEndRow do
@@ -2703,19 +2704,19 @@ end;
 
 procedure TntvCustomGrid.DeleteRow(vRow: Integer);
 begin
-  if vRow < Count then
+  if vRow < RowsCount then
   begin
     SubTotals(vRow);
     Rows.Delete(vRow);
     RowDeleted(vRow);
     if Solid then
-      Capacity := Count;
+      Capacity := RowsCount;
   end;
 end;
 
 procedure TntvCustomGrid.ClearRow(vRow: Integer);
 begin
-  if vRow < Count then
+  if vRow < RowsCount then
   begin
     SubTotals(vRow);
     Rows[vRow].Clear;
@@ -2819,7 +2820,7 @@ end;
 procedure TntvCustomGrid.DrawRow(Canvas: TCanvas; vRow: Integer; vRect, pntRect: TRect; vArea: TntvGridArea);
 var
   X, W: Integer;
-  aColCount, aCol, vrtCol: Integer;
+  aColumnsCount, aCol, vrtCol: Integer;
   cliRect, TmpRect, aRect: TRect;
   s: String;
   aDrawState: TntvCellDrawState;
@@ -2848,7 +2849,7 @@ begin
       if RowNumbers and (vRow >= 0) then
       begin
         s := IntToStr(vRow + 1);
-        if vRow >= Count then
+        if vRow >= RowsCount then
           Canvas.Font.Color := MixColors(FixedColor, FixedFontColor, 150)
         else
           Canvas.Font.Color := FixedFontColor;
@@ -2888,17 +2889,17 @@ begin
   end;
 
   aCol := 0;
-  aColCount := FVisibleColumns.Count;
+  aColumnsCount := FVisibleColumns.Count;
   while (X < pntRect.Right) do
   begin
     vrtCol := GetVirtualCol(aCol);
-    if vrtCol >= aColCount then
+    if vrtCol >= aColumnsCount then
       break;
     W := FVisibleColumns[vrtCol].Width;
     aRect := Rect(X, vRect.Top, X + W, vRect.Bottom);
     aRect := FlipRect(cliRect, aRect);
     aDrawState := [];
-    if (vrtCol = aColCount - 1) then
+    if (vrtCol = aColumnsCount - 1) then
       aDrawState := aDrawState + [csdLastCell];
     if (vrtCol = 0) then
       aDrawState := aDrawState + [csdFirstCell];
@@ -2997,8 +2998,8 @@ procedure TntvCustomGrid.CountChanged;
 begin
   if not (csDestroying in ComponentState) then
   begin
-    if Count > Capacity then
-      Capacity := Count;
+    if RowsCount > Capacity then
+      Capacity := RowsCount;
     UpdateScrollBar;
     InternalInvalidate;
     //  CheckPosition;
@@ -3028,8 +3029,8 @@ procedure TntvCustomGrid.EndUpdate;
 begin
   CheckPosition;
   Rows.EndUpdate;
-  Locked := False;
   LockAutoSum := False;
+  Locked := False;
 end;
 
 procedure TntvCustomGrid.EndCapture;
@@ -3137,9 +3138,12 @@ begin
     Result := nil;
 end;
 
-function TntvCustomGrid.GetCount: Integer;
+function TntvCustomGrid.GetRowsCount: Integer;
+var
+  c: integer;
 begin
-  Result := FRows.Count;
+  c := FRows.Count;
+  Result := c;
 end;
 
 function TntvCustomGrid.GetRealRow(vRow: Integer): Integer;
@@ -3180,7 +3184,7 @@ var
   aData: Integer;
 begin
   if not vSelected then
-    Result := GetTextRange(0, Count - 1, SpecialFormat)
+    Result := GetTextRange(0, RowsCount - 1, SpecialFormat)
   else
   if Selected.StartRow > -1 then
     Result := GetTextRange(Selected.StartRow, Selected.EndRow, SpecialFormat)
@@ -3354,8 +3358,8 @@ procedure TntvCustomGrid.InsertRows(vRow, vCount: Integer);
 begin
   Rows.BeginUpdate;
   try
-    if Count < vRow then
-      Count := vRow;
+    if RowsCount < vRow then
+      RowsCount := vRow;
     if Rows.Capacity < (vRow + vCount) then
       Rows.Capacity := (vRow + vCount);
     while vCount > 0 do
@@ -3420,7 +3424,7 @@ end;
 
 function TntvCustomGrid.IsBlankRow(vRow: Integer): Boolean;
 begin
-  Result := ((vRow = Count) and (Count >= 0));
+  Result := ((vRow = RowsCount) and (RowsCount >= 0));
 end;
 
 function TntvCustomGrid.IsSelecting: Boolean;
@@ -3599,7 +3603,7 @@ procedure TntvCustomGrid.StartUpdate;
 var
   aRP: Boolean;
 begin
-  aRP := Count > 0;
+  aRP := RowsCount > 0;
   Rows.BeginUpdate;
   Locked := True;
   LockAutoSum := True;
@@ -3955,7 +3959,7 @@ begin
   end;
 end;
 
-procedure TntvCustomGrid.SetCount(Value: Integer);
+procedure TntvCustomGrid.SetRowsCount(Value: Integer);
 begin
   if not (csLoading in ComponentState) then //zaher temp
     FRows.Count := Value;
@@ -4028,6 +4032,7 @@ begin
       if FLockCount = 0 then
       begin
         LockChanged(False);
+        Invalidate;
       end;
     end;
   end;
@@ -4483,14 +4488,35 @@ begin
   end;
 end;
 
-function TntvCustomGrid.GetValues(Row, Col: Integer): string;
+function TntvCustomGrid.GetValues(Col, Row: Integer): string;
 var
   aRow: TntvRow;
   aCell: TntvCell;
 begin
   aRow := Rows[Row];
   aCell := aRow[Col];
-  Result := aCell.Text;
+  if aCell <> nil then
+    Result := aCell.Text
+  else
+    Result := '';
+end;
+
+function TntvCustomGrid.GetColumnsCount: integer;
+begin
+  Result := Columns.Count;
+end;
+
+procedure TntvCustomGrid.SetColumnsCount(AValue: integer);
+var
+  i: Integer;
+begin
+  if AValue <= Columns.Count then
+    Columns.Count := AValue
+  else
+  begin
+    for i := Columns.Count to AValue - 1 do
+      Columns.AddColumn;
+  end;
 end;
 
 procedure TntvCustomGrid.SetFixedFontColor(AValue: TColor);
@@ -4502,7 +4528,7 @@ begin
   end;
 end;
 
-procedure TntvCustomGrid.SetValues(Row, Col: Integer; AValue: string);
+procedure TntvCustomGrid.SetValues(Col, Row: Integer; AValue: string);
 var
   aRow: TntvRow;
   aCell: TntvCell;
@@ -4544,7 +4570,7 @@ begin
     begin
       Pt := ScreenToClient(Mouse.CursorPos);
       if not PtInRect(VirtualClient, Pt) then
-        Perform(WM_MOUSEMOVE, 0, MakeLong(Word(Pt.x), Word(Pt.y)));
+        MouseMove([], Pt.x, Pt.y);
     end;
   end;
 end;
@@ -4879,7 +4905,7 @@ begin
   begin
     aScrollInfo.cbSize := SizeOf(aScrollInfo);
     aScrollInfo.fMask := SIF_RANGE or SIF_PAGE or SIF_POS or SIF_DISABLENOSCROLL;
-    aMax := Count;
+    aMax := RowsCount;
     if aMax <= MAX_SCROLL then
     begin
       aScrollInfo.nMin := 0;
@@ -5168,7 +5194,7 @@ var
   aCell: TntvCell;
 begin
   Result := -1;
-  for i := vStartRow to Count - 1 do
+  for i := vStartRow to RowsCount - 1 do
   begin
     aCell := FRows.SafeGet(i, vInCol);
     if (aCell <> nil) and (Pos(vText, aCell.Text) > 0) then
@@ -5369,6 +5395,15 @@ begin
   end;
 end;
 
+procedure TntvColumn.SetTitle(AValue: String);
+begin
+  if Info.Title <> AValue then
+  begin
+    Info.Title := AValue;
+    Grid.RefreshCol(VisibleIndex);
+  end;
+end;
+
 procedure TntvColumn.BiDiModeChanged(vInvalidate: Boolean);
 begin
   if vInvalidate then
@@ -5518,7 +5553,7 @@ begin
     keyaDeleteLine: TryDeleteRow(CurRow);
     keyaInsertLine: TryInsertRow(CurRow);
     keyaTop, keyaSelectTop, keyaTopPage: InternalSetCurRow(0, vKeyAccident = keyaSelectTop);
-    keyaBottom, keyaSelectBottom, keyaBottomPage: InternalSetCurRow(Count - 1, vKeyAccident = keyaSelectBottom);
+    keyaBottom, keyaSelectBottom, keyaBottomPage: InternalSetCurRow(RowsCount - 1, vKeyAccident = keyaSelectBottom);
     keyaScrollDown:
     begin
       MoveDown;
@@ -5692,7 +5727,7 @@ procedure TntvCheckColumn.Toggle;
 begin
   if not ReadOnly and Grid.CanEdit(Grid.CurRow, Grid.CurCol) then
   begin
-    if not Grid.Solid or (Grid.CurRow < Grid.Count) then
+    if not Grid.Solid or (Grid.CurRow < Grid.RowsCount) then
     begin
       Grid.ActiveRow := Grid.CurRow; //zaher
       AsBoolean := not AsBoolean;
@@ -5729,10 +5764,12 @@ var
   aRow: Integer;
   aCol: Integer;
   aArea: TntvGridArea;
+  aState: TntvState;
 begin
   inherited;
+  aState := FState;
   EndCapture;
-  if mbLeft = Button then
+  if (aState = dgsDown) and (mbLeft = Button) then
   begin
     if PosToCoord(X, Y, aRow, aCol, aArea) and (FClkRow = aRow) and (FClkCol = aCol) and (FClkArea = aArea) then
       DoClickArea(aRow, aCol, aArea);
@@ -5742,7 +5779,7 @@ end;
 procedure TntvCustomGrid.KeyPress(var Key: char);
 begin
   inherited;
-  if (Key > #31) and (GetKeyShiftState = []) then
+  if (Key > #31) then //do not (GetKeyShiftState = []) how to type capital with shift
   begin
     if Editing then
     begin
@@ -5886,13 +5923,13 @@ end;
 
 procedure TntvCustomGrid.CheckPosition;
 begin
-  if (Count > 0) then
+  if (RowsCount > 0) then
   begin
-    if (FCurRow > 0) and (FCurRow >= Count) then
-      FCurRow := Count - 1;
-    if (FTopRow > 0) and (FTopRow >= Count) then
+    if (FCurRow > 0) and (FCurRow >= RowsCount) then
+      FCurRow := RowsCount - 1;
+    if (FTopRow > 0) and (FTopRow >= RowsCount) then
     begin
-      FTopRow := Count - 1;
+      FTopRow := RowsCount - 1;
       UpdateScrollBar;
     end;
   end;
@@ -5933,7 +5970,7 @@ begin
   begin
     vColor := MixColors(vColor, SettledColor, 200);
   end;
-  if vRow < Count then
+  if vRow < RowsCount then
     GetCurrentColor(Column, vRow, vColor);
 end;
 
@@ -5954,8 +5991,8 @@ begin
   if FActiveRow <> Value then
   begin
     SetInternalActiveRow(Value);
-    if FActiveRow > Count - 1 then
-      Count := FActiveRow + 1;
+    if FActiveRow > RowsCount - 1 then
+      RowsCount := FActiveRow + 1;
   end;
 end;
 
