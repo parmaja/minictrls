@@ -385,12 +385,11 @@ type
     procedure NeedEdit;
 
     function CloseEdit(Accept: Boolean): Boolean;
-    function OpenEdit(OpenBy: TntvGridOpenEdit; Key: Char): Boolean;
+    function OpenEdit(OpenBy: TntvGridOpenEdit; InitText: string): Boolean;
 
     procedure HideEdit; virtual;
-    procedure ShowEdit(vChar: Char = #0); virtual;
+    procedure ShowEdit; virtual;
     procedure FreeEdit; virtual;
-    procedure SendChar(vChar: Char); virtual;
     procedure SelectAll; virtual;
     procedure SelectPos(X: Integer); virtual;
 
@@ -772,7 +771,8 @@ type
     procedure DoExit; override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyPress(var Key: char); override;
-    procedure KeyAccident(vKeyAccident: TntvKeyAction; var Resumed: Boolean); virtual;
+    function DoUTF8KeyPress(var UTF8Key: TUTF8Char): boolean; override;
+    procedure KeyAction(vKeyAction: TntvKeyAction; var Resumed: Boolean); virtual;
     function CreateRows: TntvRows; virtual;
     function ShowPopupMenu: Boolean; virtual;
     procedure DoContextPopup(MousePos: TPoint; var Handled: Boolean); override;
@@ -817,7 +817,7 @@ type
     procedure CorrectRow(vRow: Integer); virtual;
     procedure DecCurCol(Selecting: Boolean = False);
     procedure DecCurRow(Selecting: Boolean = False);
-    function OpenEdit(OpenBy: TntvGridOpenEdit; Key: Char = #0): Boolean;
+    function OpenEdit(OpenBy: TntvGridOpenEdit; InitText: string = ''): Boolean;
     function CancelEdit: Boolean;
     procedure CloseEdit;
     function Editing: Boolean;
@@ -1037,15 +1037,16 @@ type
     destructor Destroy; override;
   end;
 
+  { TntvStandardColumn }
+
   TntvStandardColumn = class(TntvColumn)
   protected
     function Edit: TntvEdit;
     function CreateEdit: TControl; override;
     procedure HideEdit; override;
-    procedure SendChar(vChar: Char); override;
     procedure SelectAll; override;
     procedure SelectPos(X: Integer); override;
-    procedure ShowEdit(vChar: Char); override;
+    procedure ShowEdit; override;
     function GetEditText: String; override;
     procedure SetEditText(const Value: String); override;
   public
@@ -1798,7 +1799,7 @@ begin
   end;
 end;
 
-function TntvColumn.OpenEdit(OpenBy: TntvGridOpenEdit; Key: Char): Boolean;
+function TntvColumn.OpenEdit(OpenBy: TntvGridOpenEdit; InitText: string): Boolean;
 begin
   if GetReadOnly then
     Result := False
@@ -1815,14 +1816,14 @@ begin
           goeReturn:
           begin
             EditText := AsString;
-            ShowEdit(#0);
+            ShowEdit;
             SelectAll;
           end;
           goeChar:
           begin
             EditText := '';
-            ShowEdit(Key);
-            SendChar(Key);
+            ShowEdit;
+            SetEditText(InitText);
           end;
           goeMouse:
           begin
@@ -1833,7 +1834,7 @@ begin
           else
           begin
             EditText := AsString;
-            ShowEdit(#0);
+            ShowEdit;
           end;
         end;
         Result := True;
@@ -2977,7 +2978,7 @@ begin
   Result := (ColumnEdit <> nil);
 end;
 
-function TntvCustomGrid.OpenEdit(OpenBy: TntvGridOpenEdit; Key: Char): Boolean;
+function TntvCustomGrid.OpenEdit(OpenBy: TntvGridOpenEdit; InitText: string): Boolean;
 begin
   Result := not ReadOnly and (CurrentColumn <> nil);
   if Result then
@@ -2986,7 +2987,7 @@ begin
     if CanEdit(CurRow, CurCol) then
     begin
       DoBeforeEdit(CurrentColumn, CurRow);
-      Result := CurrentColumn.OpenEdit(OpenBy, Key);
+      Result := CurrentColumn.OpenEdit(OpenBy, InitText);
       Modified := True;
     end
     else
@@ -3459,7 +3460,7 @@ begin
   aResumed := False;
   if aKeyEvent <> keyaNone then
   begin
-    KeyAccident(aKeyEvent, aResumed);
+    KeyAction(aKeyEvent, aResumed);
     if aResumed then
       Key := 0;
   end;
@@ -4663,7 +4664,7 @@ begin
 
 end;
 
-procedure TntvColumn.ShowEdit(vChar: Char);
+procedure TntvColumn.ShowEdit;
 begin
 end;
 
@@ -4802,7 +4803,7 @@ begin
   FEditControl.Hide;
 end;
 
-procedure TntvStandardColumn.ShowEdit(vChar: Char);
+procedure TntvStandardColumn.ShowEdit;
 var
   aEdit: TntvEdit;
   aRect: TRect;
@@ -4833,6 +4834,7 @@ end;
 procedure TntvStandardColumn.SetEditText(const Value: String);
 begin
   (FEditControl as TntvEdit).Text := Value;
+  (FEditControl as TntvEdit).SelStart := Length(Value);
 end;
 
 procedure TntvEdit.WMGetDlgCode(var Message: TWMGetDlgCode);
@@ -5173,16 +5175,6 @@ begin
     FEditControl := CreateEdit;
 end;
 
-procedure TntvColumn.SendChar(vChar: Char);
-begin
-end;
-
-procedure TntvStandardColumn.SendChar(vChar: Char);
-begin
-  inherited;
-  PostMessage((FEditControl as TntvEdit).Handle, WM_CHAR, Word(vChar), 0);
-end;
-
 function TntvCustomGrid.CheckEmpty(vRow: Integer): Boolean;
 begin
   Result := FRows.CheckEmpty(vRow);
@@ -5476,7 +5468,7 @@ begin
     Grid.DoIsReadOnly(Self, ActiveRow, Result);
 end;
 
-procedure TntvCustomGrid.KeyAccident(vKeyAccident: TntvKeyAction; var Resumed: Boolean);
+procedure TntvCustomGrid.KeyAction(vKeyAction: TntvKeyAction; var Resumed: Boolean);
 var
   AColumn: TntvColumn;
 
@@ -5498,7 +5490,7 @@ var
 
 begin
   Resumed := True;
-  case vKeyAccident of
+  case vKeyAction of
     keyaTab:
       MoveCurrent;
     keyaEdit:
@@ -5525,35 +5517,35 @@ begin
     keyaCopy:
       ClipboardCopy(True);
     keyaDown, keyaSelectDown:
-      InternalSetCurRow(FCurRow + 1, vKeyAccident = keyaSelectDown);
+      InternalSetCurRow(FCurRow + 1, vKeyAction = keyaSelectDown);
     keyaUp, keyaSelectUp:
-      InternalSetCurRow(FCurRow - 1, vKeyAccident = keyaSelectUp);
+      InternalSetCurRow(FCurRow - 1, vKeyAction = keyaSelectUp);
     keyaLeft, keyaSelectLeft:
     begin
       if UseRightToLeftAlignment then
-        IncCurCol(vKeyAccident = keyaSelectLeft)
+        IncCurCol(vKeyAction = keyaSelectLeft)
       else
-        DecCurCol(vKeyAccident = keyaSelectLeft);
+        DecCurCol(vKeyAction = keyaSelectLeft);
     end;
     keyaRight, keyaSelectRight:
     begin
       if UseRightToLeftAlignment then
-        DecCurCol(vKeyAccident = keyaSelectRight)
+        DecCurCol(vKeyAction = keyaSelectRight)
       else
-        IncCurCol(vKeyAccident = keyaSelectRight);
+        IncCurCol(vKeyAction = keyaSelectRight);
     end;
     keyaPageDown:
-      InternalSetCurRow(FCurRow + GetCompletedRows, vKeyAccident = keyaSelectPageDown);
+      InternalSetCurRow(FCurRow + GetCompletedRows, vKeyAction = keyaSelectPageDown);
     keyaPageUp:
       InternalSetCurRow(FCurRow - GetCompletedRows, False);
     keyaHome, keyaSelectHome:
-      InternalSetCurCol(FFixedCols, vKeyAccident = keyaSelectHome);
+      InternalSetCurCol(FFixedCols, vKeyAction = keyaSelectHome);
     keyaEnd, keyaSelectEnd:
-      InternalSetCurCol(FVisibleColumns.Count - 1, vKeyAccident = keyaSelectEnd);
+      InternalSetCurCol(FVisibleColumns.Count - 1, vKeyAction = keyaSelectEnd);
     keyaDeleteLine: TryDeleteRow(CurRow);
     keyaInsertLine: TryInsertRow(CurRow);
-    keyaTop, keyaSelectTop, keyaTopPage: InternalSetCurRow(0, vKeyAccident = keyaSelectTop);
-    keyaBottom, keyaSelectBottom, keyaBottomPage: InternalSetCurRow(RowsCount - 1, vKeyAccident = keyaSelectBottom);
+    keyaTop, keyaSelectTop, keyaTopPage: InternalSetCurRow(0, vKeyAction = keyaSelectTop);
+    keyaBottom, keyaSelectBottom, keyaBottomPage: InternalSetCurRow(RowsCount - 1, vKeyAction = keyaSelectBottom);
     keyaScrollDown:
     begin
       MoveDown;
@@ -5785,11 +5777,24 @@ begin
     begin
       if not ReadOnly and (CurrentColumn <> nil) then
       begin
-        CurrentColumn.SendChar(Key);
+      end;
+    end
+  end;
+end;
+
+function TntvCustomGrid.DoUTF8KeyPress(var UTF8Key: TUTF8Char): boolean;
+begin
+  Result :=inherited DoUTF8KeyPress(UTF8Key);
+  if (UTF8Key > #31) then //do not (GetKeyShiftState = []) how to type capital with shift
+  begin
+    if Editing then
+    begin
+      if not ReadOnly and (CurrentColumn <> nil) then
+      begin
       end;
     end
     else
-      OpenEdit(goeChar, Key);
+      OpenEdit(goeChar, UTF8Key);
   end;
 end;
 
