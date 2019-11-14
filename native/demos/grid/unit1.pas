@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Grids, Menus,
-  ntvGrids, ntvImgBtns, ntvPanels;
+  DBGrids, ntvGrids, ntvImgBtns, ntvPanels;
 
 type
 
@@ -16,6 +16,7 @@ type
     Button1: TButton;
     Button2: TButton;
     CloseBtn: TButton;
+    DBGrid1: TDBGrid;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
@@ -26,7 +27,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure ntvGrid1Click(Sender: TObject);
   private
-    procedure OnColClick(Sender: TntvCustomGrid; vCol: Integer);
+    procedure OnColClick(Sender: TntvCustomGrid; Column: TntvColumn);
   public
     Grid: TntvGrid;
     NameCol: TntvColumn;
@@ -87,21 +88,23 @@ begin
   Grid.BorderStyle := bsSingle;
 
   //Grid.RowHeight := 47;
-  NameCol := TntvStandardColumn.Create(Grid.Columns, 'Name');
-  PhoneCol := TntvStandardColumn.Create(Grid.Columns, 'Phone');
-  MobileCol := TntvStandardColumn.Create(Grid.Columns, 'Mobile');
-  EmailCol := TntvStandardColumn.Create(Grid.Columns, 'Email');
+  NameCol := TntvStandardColumn.Create(Grid, 'Name');
+  PhoneCol := TntvStandardColumn.Create(Grid, 'Phone');
+  MobileCol := TntvStandardColumn.Create(Grid, 'Mobile');
+  EmailCol := TntvStandardColumn.Create(Grid, 'Email');
   EmailCol.Hint := 'example: email@domain.com';
-  PayCol := TntvStandardColumn.Create(Grid.Columns, 'Pay');
+  PayCol := TntvStandardColumn.Create(Grid, 'Pay');
   PayCol.IsTotal := True;
   //PayCol.AutoSize := True;
-  AddressCol := TntvStandardColumn.Create(Grid.Columns, 'Address');
+  AddressCol := TntvStandardColumn.Create(Grid, 'Address');
   Grid.TabOrder := 0;
 
   Grid.ActiveRow := 0;
   NameCol.AsString := 'zaher';
   AddressCol.AsString := 'syria';
 
+  MobileCol.OrderIndex := PhoneCol.OrderIndex;
+  EmailCol.Visible := False;
 
   Grid.Visible := True;
   ActiveControl := Grid;
@@ -112,9 +115,9 @@ begin
 
 end;
 
-procedure TForm1.OnColClick(Sender: TntvCustomGrid; vCol: Integer);
+procedure TForm1.OnColClick(Sender: TntvCustomGrid; Column: TntvColumn);
 begin
-  Grid[0, vCol] := 'Clicked';
+  Grid.Values[Column.Index, 0] := 'Clicked';
 end;
 
 end.
