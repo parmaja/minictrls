@@ -187,7 +187,7 @@ type
   TntvGridLines = (glNone, glVertical, glHorizontal, glBoth);
   TntvGridOpenEdit = (goeNone, goeReturn, goeChar, goeMouse);
 
-  TntvSetCell = (swcText, swcData, swcInvalidate, swcComplete, swcCheckInfo);
+  TntvSetCell = (swcText, swcData, swcInvalidate, swcComplete, swcCorrectValue);
   TntvSetCells = set of TntvSetCell;
 
   TntvColumn = class;
@@ -340,11 +340,6 @@ type
     function GetCaption: String;
     function GetDisplayName: String;
 
-    function GetCell(vRow: Integer): TntvCell;
-
-    function GetCellData(vRow: Integer): Integer; overload;
-    function GetCellText(vRow: Integer): String; overload;
-
     procedure CorrectCellRect(var Rect: TRect);
     function GetRect(vRow: Integer; var vRect: TRect): Boolean;
     function GetCellArea(vRow: Integer; out vRect: TRect): Boolean;
@@ -362,19 +357,21 @@ type
     procedure DrawHint(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState; const vColor: TColor); virtual;
     procedure DrawFooter(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState); virtual;
 
-    procedure SetCellInfo(vRow: Integer; vText: String; vData: Integer = 0; vSetCell: TntvSetCells = [swcText, swcData, swcInvalidate, swcComplete, swcCheckInfo]; vForce: Boolean = False);
-    //SetInfo called by user
-    function SetInfo(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells = [swcText, swcData, swcInvalidate, swcComplete]): Boolean;
-    procedure SetSilentValue(const vText: String; vData: Integer);
+    function GetCell(vRow: Integer): TntvCell;
+    function GetCellData(vRow: Integer): Integer; overload;
+    function GetCellText(vRow: Integer): String; overload;
 
-    procedure ValidateInfo(var Text: String; var Data: Integer); virtual;
-    procedure CheckInfo(var Text: String; var Data: Integer); virtual;
+    procedure SetCellValue(vRow: Integer; vText: String; vData: Integer = 0; vSetCell: TntvSetCells = [swcText, swcData, swcInvalidate, swcComplete, swcCorrectValue]; vForce: Boolean = False);
+    //SetValue called by user
+    function SetValue(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells = [swcText, swcData, swcInvalidate, swcComplete]): Boolean;
+
+    procedure CorrectValue(var Text: String; var Data: Integer); virtual;
+    procedure ValidateValue(var Text: String; var Data: Integer); virtual;
     procedure Validate; virtual;
     procedure ValueChanging; virtual;
     procedure ValueChanged; virtual;
-    procedure CompleteCell(vComplete, vForce: Boolean);
+    procedure Complete(vForce: Boolean);
     function GetReadOnly: Boolean;
-
 
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); virtual;
     procedure KeyDown(var KEY: Word; Shift: TShiftState); virtual;
@@ -382,16 +379,16 @@ type
 
     function CanEdit: Boolean; virtual;
     function CreateEdit: TControl; virtual;
-    procedure NeedEdit;
+    procedure InitEdit;
 
     function CloseEdit(Accept: Boolean): Boolean;
     function OpenEdit(OpenBy: TntvGridOpenEdit; InitText: string): Boolean;
 
     procedure HideEdit; virtual;
-    procedure ShowEdit; virtual;
+    procedure ShowEdit(SelectAll: Boolean); virtual; overload;
+    procedure ShowEdit; overload;
     procedure FreeEdit; virtual;
-    procedure SelectAll; virtual;
-    procedure SelectPos(X: Integer); virtual;
+    function EditFocused(Handle: THandle = 0): Boolean; virtual;
 
     function GetEditData: Integer; virtual;
     procedure SetEditData(const Value: Integer); virtual;
@@ -418,12 +415,6 @@ type
     destructor Destroy; override;
     procedure Invalidate;
     procedure Assign(Source: TPersistent); override;
-
-    procedure Complete;
-    procedure Zero(vRow: Integer);
-    //<edit>
-    function IsFocused(Handle: THandle = 0): Boolean; virtual;
-    procedure SetValue(const vText: String; vData: Integer);
 
     property AsCurrency: Currency read GetAsCurrency write SetAsCurrency;
     property AsFloat: Double read GetAsFloat write SetAsFloat;
@@ -681,6 +672,7 @@ type
     procedure CMExit(var Message: TCMExit); Message CM_Exit;
     procedure CMDesignHitTest(var Message: TCMDesignHitTest); Message CM_DESIGNHITTEST;
     procedure CMBiDiModeChanged(var Message: TMessage); Message CM_BIDIMODECHANGED;
+
     procedure SetLinesColor(const Value: TColor);
     procedure SetFixedColor(const Value: TColor);
     procedure SetFixedFontColor(AValue: TColor);
@@ -734,7 +726,7 @@ type
     function DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean; override;
 
     procedure Validate(AColumn: TntvColumn); virtual;
-    procedure UpdateColumnsWidths;
+    procedure ColumnsWidthsChanged;
     procedure ScrollBarChanged;
     procedure ColumnsChanged; virtual;
     procedure DoModified; virtual;
@@ -1060,13 +1052,11 @@ type
     function Edit: TntvEdit;
     function CreateEdit: TControl; override;
     procedure HideEdit; override;
-    procedure SelectAll; override;
-    procedure SelectPos(X: Integer); override;
-    procedure ShowEdit; override;
+    procedure ShowEdit(SelectAll: Boolean); override;
     function GetEditText: String; override;
     procedure SetEditText(const Value: String); override;
   public
-    function IsFocused(Handle: THandle = 0): Boolean; override;
+    function EditFocused(Handle: THandle = 0): Boolean; override;
   end;
 
   TntvCheckColumn = class(TntvColumn)
@@ -1091,7 +1081,7 @@ type
   end;
 
 const
-  sSetCellFull: TntvSetCells = [low(TntvSetCell)..high(TntvSetCell)] - [swcCheckInfo];
+  sDefaultSetCell: TntvSetCells = [low(TntvSetCell)..high(TntvSetCell)] - [swcCorrectValue];
 
 var
   CF_NativeGRID: Word;
@@ -1644,7 +1634,7 @@ end;
 
 procedure TntvColumn.Validate;
 begin
-  Grid.Validate(self);
+  Grid.Validate(Self);
 end;
 
 procedure TntvColumn.ValueChanging;
@@ -1861,7 +1851,7 @@ begin
   try
     if Accept then
     begin
-      SetInfo(ActiveRow, EditText, EditData, sSetCellFull);
+      SetValue(ActiveRow, EditText, EditData, sDefaultSetCell);
     end;
   finally
     Grid.AfterEdit(Self, ActiveRow);
@@ -1879,7 +1869,7 @@ begin
     if CanEdit then
     begin
       Grid.ColumnEdit := Self;
-      NeedEdit;
+      InitEdit;
       if FEditControl <> nil then
       begin
         EditData := Data;
@@ -1887,8 +1877,7 @@ begin
           goeReturn:
           begin
             EditText := AsString;
-            ShowEdit;
-            SelectAll;
+            ShowEdit(True);
           end;
           goeChar:
           begin
@@ -1900,7 +1889,6 @@ begin
           begin
             EditText := AsString;
             ShowEdit;
-            //SelectPos(Param);
           end;
           else
           begin
@@ -2009,14 +1997,9 @@ procedure TntvColumn.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: I
 begin
 end;
 
-procedure TntvColumn.Complete;
+procedure TntvColumn.Complete(vForce: Boolean);
 begin
-  CompleteCell(True, True);
-end;
-
-procedure TntvColumn.CompleteCell(vComplete, vForce: Boolean);
-begin
-  if vComplete and (vForce or not Grid.Updating) then
+  if (vForce or not Grid.Updating) then
   begin
     Grid.Updating := True;
     try
@@ -2030,15 +2013,15 @@ begin
   end;
 end;
 
-procedure TntvColumn.SetCellInfo(vRow: Integer; vText: String; vData: Integer; vSetCell: TntvSetCells; vForce: Boolean);
+procedure TntvColumn.SetCellValue(vRow: Integer; vText: String; vData: Integer; vSetCell: TntvSetCells; vForce: Boolean);
 var
   aCell: TntvCell;
 begin
   if not Grid.Updating then
     Grid.Modified := True;
-  if (swcCheckInfo in vSetCell) then
-    CheckInfo(vText, vData);
-  ValidateInfo(vText, vData);
+  if (swcCorrectValue in vSetCell) then
+    CorrectValue(vText, vData);
+  ValidateValue(vText, vData);
   if not Grid.LockAutoTotal and IsTotal then
   begin
     aCell := GetCell(vRow);
@@ -2056,25 +2039,21 @@ begin
     end;
     if not Grid.LockAutoTotal and IsTotal then
       Info.Total := Info.Total + StrToCurrDef(vText, 0);
-    if not (swcCheckInfo in vSetCell) then
+    if not (swcCorrectValue in vSetCell) then
       Validate;
 
-    CompleteCell((swcComplete in vSetCell), vForce);
+    if (swcComplete in vSetCell) then
+      Complete(vForce);
   finally
   end;
 
   if (swcInvalidate in vSetCell) then
   begin
     Grid.InvalidateCell(vRow, VisibleIndex);
-    Grid.InvalidateFooter;
+    Grid.InvalidateFooter; //For totals
   end;
   if not Grid.Updating then
     Grid.Rows[vRow].Modified := True;
-end;
-
-procedure TntvColumn.SetValue(const vText: String; vData: Integer);
-begin
-  SetCellInfo(ActiveRow, vText, vData, [swcText, swcData, swcInvalidate, swcComplete]);
 end;
 
 procedure TntvColumn.SetAsCurrency(const Value: Currency);
@@ -2108,7 +2087,7 @@ end;
 
 procedure TntvColumn.SetAsString(const Value: String);
 begin
-  SetCellInfo(ActiveRow, Value, 0, [swcText, swcInvalidate, swcComplete]);
+  SetCellValue(ActiveRow, Value, 0, [swcText, swcInvalidate, swcComplete]);
 end;
 
 procedure TntvColumn.SetAsTime(Value: TDateTime);
@@ -2122,19 +2101,12 @@ end;
 procedure TntvColumn.SetAsTotal(const Value: Currency);
 begin
   Total := Value;
-  CompleteCell(True, False);
+  Complete(False);
 end;
 
 procedure TntvColumn.SetData(const Value: Integer);
 begin
-  SetCellInfo(ActiveRow, '', Value, [swcData, swcInvalidate]);
-end;
-
-procedure TntvColumn.Zero(vRow: Integer);
-begin
-  if Grid.Updating then
-    Info.Total := Info.Total - AsCurrency;
-  AsString := '';
+  SetCellValue(ActiveRow, '', Value, [swcData, swcInvalidate]);
 end;
 
 destructor TntvColumns.Destroy;
@@ -2451,7 +2423,7 @@ begin
 end;
 
 const
-  sCheckOrValidate: array[Boolean] of TntvSetCells = ([], [swcCheckInfo]);
+  sCheckOrValidate: array[Boolean] of TntvSetCells = ([], [swcCorrectValue]);
 
 procedure TntvCustomGrid.PasteRange(vText: String; SpecialFormat, vCheckData: Boolean);
 var
@@ -2483,7 +2455,7 @@ var
           AColumn := VisibleColumns.Find(aColName) as TntvColumn;
           if (AColumn <> nil) and (not AColumn.GetReadOnly) then
           begin
-            AColumn.SetInfo(R, aText, aData, [swcText, swcData] + sCheckOrValidate[vCheckData]);
+            AColumn.SetValue(R, aText, aData, [swcText, swcData] + sCheckOrValidate[vCheckData]);
             AfterPaste(AColumn, R);
             //            AfterEdit(AColumn, R);
           end;
@@ -2495,7 +2467,7 @@ var
         AColumn := VisibleColumns[c];
         if (not AColumn.GetReadOnly) then
         begin
-          AColumn.SetInfo(R, S, 0, [swcText, swcData] + sCheckOrValidate[vCheckData]);
+          AColumn.SetValue(R, S, 0, [swcText, swcData] + sCheckOrValidate[vCheckData]);
           AfterPaste(AColumn, R);
           //        AfterEdit(AColumn, R);
         end;
@@ -2579,7 +2551,7 @@ begin
       OrderColumns[i].FVisibleIndex := -1;
   end;
 
-  UpdateColumnsWidths;
+  ColumnsWidthsChanged;
   ScrollBarChanged;
   Invalidate;
 end;
@@ -4116,10 +4088,10 @@ begin
       begin
         aText := GetPartStr(vText, cntv_X_DATA, 0, #0);
         aData := StrToIntDef(GetPartStr(vText, cntv_X_DATA, 1, #0), 0);
-        aColumn.SetInfo(ActiveRow, aText, aData, sSetCellFull + sCheckOrValidate[aCheckData or (aData = 0)]);
+        aColumn.SetValue(ActiveRow, aText, aData, sDefaultSetCell + sCheckOrValidate[aCheckData or (aData = 0)]);
       end
       else
-        aColumn.SetInfo(ActiveRow, vText, 0, sSetCellFull + sCheckOrValidate[aCheckData]);
+        aColumn.SetValue(ActiveRow, vText, 0, sDefaultSetCell + sCheckOrValidate[aCheckData]);
       AfterPaste(aColumn, ActiveRow);
       AfterEdit(aColumn, ActiveRow);
     end;
@@ -4488,13 +4460,13 @@ var
   aColumn: TntvColumn;
 begin
   aColumn := Columns[Col];
-  aColumn.SetCellInfo(Row, AValue);
+  aColumn.SetCellValue(Row, AValue);
 end;
 
 procedure TntvCustomGrid.WMSetFocus(var Message: TWMSetFocus);
 begin
   inherited;
-  if (Editing and (ColumnEdit.IsFocused(Message.FocusedWnd))) then //TODO review it
+  if (Editing and (ColumnEdit.EditFocused(Message.FocusedWnd))) then //TODO review it
   begin
     CloseEdit;
   end;
@@ -4507,7 +4479,7 @@ begin
   inherited;
   if not (csLoading in ComponentState) then
   begin
-    UpdateColumnsWidths;
+    ColumnsWidthsChanged;
     ScrollBarChanged;
   end;
 end;
@@ -4602,7 +4574,7 @@ procedure TntvColumn.HideEdit;
 begin
 end;
 
-function TntvColumn.IsFocused(Handle: THandle = 0): Boolean;
+function TntvColumn.EditFocused(Handle: THandle = 0): Boolean;
 begin
   Result := False;
 end;
@@ -4616,7 +4588,7 @@ begin
 
 end;
 
-procedure TntvColumn.ShowEdit;
+procedure TntvColumn.ShowEdit(SelectAll: Boolean);
 begin
 end;
 
@@ -4755,7 +4727,7 @@ begin
   FEditControl.Hide;
 end;
 
-procedure TntvStandardColumn.ShowEdit;
+procedure TntvStandardColumn.ShowEdit(SelectAll: Boolean);
 var
   aEdit: TntvEdit;
   aRect: TRect;
@@ -4771,6 +4743,8 @@ begin
   aEdit.Top := aEdit.Top + (aRect.Height - aEdit.Height) div 2; //centering it
   FEditControl.Show;
   aEdit.SetFocus;
+  if SelectAll then
+    aEdit.SelectAll;
 end;
 
 function TntvStandardColumn.GetEditText: String;
@@ -4778,7 +4752,7 @@ begin
   Result := (FEditControl as TntvEdit).Text;
 end;
 
-function TntvStandardColumn.IsFocused(Handle: THandle = 0): Boolean;
+function TntvStandardColumn.EditFocused(Handle: THandle = 0): Boolean;
 begin
   Result := (FEditControl as TntvEdit).Handle = Handle;
 end;
@@ -5157,7 +5131,7 @@ begin
   end;
 end;
 
-procedure TntvColumn.NeedEdit;
+procedure TntvColumn.InitEdit;
 begin
   if FEditControl = nil then
     FEditControl := CreateEdit;
@@ -5311,26 +5285,9 @@ begin
   end;
 end;
 
-procedure TntvColumn.SelectAll;
+procedure TntvColumn.ShowEdit;
 begin
-end;
-
-procedure TntvStandardColumn.SelectAll;
-begin
-  (FEditControl as TntvEdit).SelectAll;
-end;
-
-procedure TntvColumn.SelectPos(X: Integer);
-begin
-end;
-
-procedure TntvStandardColumn.SelectPos(X: Integer);
-var
-  c: Integer;
-begin
-  c := SendMessage(Edit.Handle, EM_CHARFROMPOS, 0, X - Edit.Left);
-  Edit.SelLength := 0;
-  Edit.SelStart := c;
+  ShowEdit(False);
 end;
 
 function TntvStandardColumn.Edit: TntvEdit;
@@ -5448,7 +5405,7 @@ begin
     Info.OrignalWidth := Value;
     if Grid <> nil then
     begin
-      Grid.UpdateColumnsWidths;
+      Grid.ColumnsWidthsChanged;
       Grid.ScrollBarChanged;
       Grid.Invalidate;
     end;
@@ -5495,7 +5452,7 @@ var
         AColumn := FVisibleColumns[Current.Col];
         aCell := AColumn.GetCell(Current.Row - 1);
         if aCell <> nil then
-          AColumn.SetInfo(Current.Row, aCell.Text, aCell.Data, sSetCellFull);
+          AColumn.SetValue(Current.Row, aCell.Text, aCell.Data, sDefaultSetCell);
         AfterEdit(AColumn, Current.Row);
         IncCurRow(False);
       end;
@@ -5521,7 +5478,7 @@ begin
     begin
       if (FVisibleColumns[Current.Col].GetCellText(Current.Row) <> '') or (FVisibleColumns[Current.Col].GetCellData(Current.Row) <> 0) then
       begin
-        FVisibleColumns[Current.Col].SetInfo(Current.Row, '', 0);
+        FVisibleColumns[Current.Col].SetValue(Current.Row, '', 0);
         AfterEdit(FVisibleColumns[Current.Col], Current.Row);
       end;
     end;
@@ -5638,11 +5595,11 @@ begin
   Accept := False;
 end;
 
-function TntvColumn.SetInfo(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells): Boolean;
+function TntvColumn.SetValue(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells): Boolean;
 begin
   if not GetReadOnly then
   begin
-    SetCellInfo(vRow, vText, vData, vSetCellKind);
+    SetCellValue(vRow, vText, vData, vSetCellKind);
     Result := True;
   end
   else
@@ -5897,7 +5854,7 @@ begin
   end;
 end;
 
-procedure TntvCustomGrid.UpdateColumnsWidths;
+procedure TntvCustomGrid.ColumnsWidthsChanged;
 var
   aColumns: TntvColumnList;
   i, w, r: Integer;
@@ -6338,7 +6295,7 @@ begin
   Result := (aRow <> Current.Row) or (aCol <> Current.Col);
 end;
 
-procedure TntvColumn.ValidateInfo(var Text: String; var Data: Integer);
+procedure TntvColumn.ValidateValue(var Text: String; var Data: Integer);
 begin
 end;
 
@@ -6388,11 +6345,6 @@ begin
     DecCurRow(False);
     Modified := True;
   end;
-end;
-
-procedure TntvColumn.SetSilentValue(const vText: String; vData: Integer);
-begin
-  SetCellInfo(ActiveRow, vText, vData, [swcText, swcData, swcInvalidate]);
 end;
 
 procedure TntvCustomGrid.ColumnChanged(OldCol, NewCol: TntvColumn);
@@ -6609,7 +6561,7 @@ begin
   end;
 end;
 
-procedure TntvColumn.CheckInfo(var Text: String; var Data: Integer);
+procedure TntvColumn.CorrectValue(var Text: String; var Data: Integer);
 begin
 end;
 
