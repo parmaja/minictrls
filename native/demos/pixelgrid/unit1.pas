@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  FPimage, ntvPixelGrids;
+  FPimage, FPCanvas, ntvPixelGrids;
 
 type
 
@@ -53,9 +53,10 @@ end;
 
 procedure TForm1.Button2Click(Sender: TObject);
 begin
-  Grid.Dots.Canvas.DrawPixel(2, 2, FPColor(255,0,0,150));
+  Grid.Dots.Canvas.DrawingMode := dmOpaque;
+  Grid.Dots.Canvas.Pen.Color := clFuchsia;
+  Grid.Dots.Canvas.DrawPixel(2, 2, FPColor(255, 255, 0, 150));
   Grid.Dots.SaveToFile(Application.Location+'test.png');
-
 end;
 
 constructor TForm1.Create(TheOwner: TComponent);
@@ -71,6 +72,51 @@ begin
     Font.Quality := fqNonAntialiased;
   end;
 end;
+{
+uses
+  GraphType, FpImage, intfGraphics, EasyLazFreeType, LazFreeTypeIntfDrawer;
 
+procedure TForm1.Button1Click(Sender: TObject);
+var
+  png: TPortableNetworkGraphic;
+  img: TLazIntfImage;
+  drw: TIntfFreeTypeDrawer;
+  fnt: TFreeTypeFont;
+begin
+  png := TPortableNetworkGraphic.Create;
+  try
+    img := TLazIntfImage.Create(0,0, [riqfRGB, riqfAlpha]);
+    try
+      img.SetSize(400, 200);
+      drw := TIntfFreeTypeDrawer.Create(img);
+      fnt := TFreeTypeFont.Create;
+      try
+        fnt.Name := 'c:\Windows\fonts\Arial.ttf';
+        fnt.SizeInPixels := 36;
+        fnt.Hinted := true;
+        fnt.ClearType := true;
+        fnt.Quality := grqHighQuality;
+
+        // Transparent background
+        drw.FillPixels(colTransparent);
+        // Yellow rectangle on transparent background
+        drw.FillRect(30, 30, img.Width-30, img.Height-30, colYellow);
+        // Text, partially on transparent background, partially on yellow rectangle
+        drw.DrawText('Lazarus', fnt, 0, 100, colRed);
+
+        png.LoadFromIntfImage(img);
+        png.saveToFile('d:\test.png');
+      finally
+        fnt.Free;
+        drw.Free;
+      end;
+    finally
+      img.Free;
+    end;
+  finally
+    png.Free;
+  end;
+end;
+}
 end.
 

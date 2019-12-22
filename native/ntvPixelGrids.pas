@@ -13,9 +13,10 @@ unit ntvPixelGrids;
 interface
 
 uses
-  LMessages, SysUtils, Classes, Graphics, Controls, Variants,
-  LCLIntf, LCLType, IntfGraphics, FPimage, GraphType, mnUtils,
-  Types;
+  LMessages, SysUtils, Classes, Graphics, Controls, Variants, Types,
+  LCLIntf, LCLType, IntfGraphics,
+  FPimage, FPCanvas, GraphType,
+  mnUtils;
 
 const
   cDotSize = 10;
@@ -469,11 +470,12 @@ begin
   Matrix.DotSize := cDotSize;
   Matrix.DotMargin := 1;
 
-  FRawImage := TLazIntfImage.Create(10, 10, [riqfRGB, riqfPalette, riqfAlpha]);
+  FRawImage := TLazIntfImage.Create(10, 10, [riqfRGB, riqfAlpha]);
   FBitmap := TImageClass.Create;
   FBitmap.SetSize(10, 10);
   Clear;
   FBitmap.Canvas.OnChange := @CanvasChanged;
+  Changed;
   Invalidate;
 end;
 
