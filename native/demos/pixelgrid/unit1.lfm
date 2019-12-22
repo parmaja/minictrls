@@ -1,0 +1,37 @@
+object Form1: TForm1
+  Left = 424
+  Height = 367
+  Top = 141
+  Width = 527
+  Caption = 'Form1'
+  ClientHeight = 367
+  ClientWidth = 527
+  OnCreate = FormCreate
+  LCLVersion = '2.1.0.0'
+  object Panel1: TPanel
+    Left = 15
+    Height = 268
+    Top = 15
+    Width = 498
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    TabOrder = 0
+  end
+  object Button1: TButton
+    Left = 10
+    Height = 25
+    Top = 292
+    Width = 75
+    Caption = 'Text'
+    OnClick = Button1Click
+    TabOrder = 1
+  end
+  object Button2: TButton
+    Left = 92
+    Height = 25
+    Top = 292
+    Width = 75
+    Caption = 'Pixel'
+    OnClick = Button2Click
+    TabOrder = 2
+  end
+end

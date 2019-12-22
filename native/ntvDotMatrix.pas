@@ -173,7 +173,9 @@ type
     property Font;
     property ParentBidiMode;
     property ParentFont;
-  end;
+    property BorderWidth;
+    property BorderStyle;
+end;
 
   { TntvTextDotMatrix }
 

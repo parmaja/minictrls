@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Grids, Menus,
-  DBGrids, ntvGrids, ntvImgBtns, ntvPanels;
+  DBGrids, ntvGrids;
 
 type
 
@@ -16,7 +16,6 @@ type
     Button1: TButton;
     Button2: TButton;
     CloseBtn: TButton;
-    DBGrid1: TDBGrid;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
