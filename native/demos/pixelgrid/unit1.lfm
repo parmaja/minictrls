@@ -1,37 +1,80 @@
 object Form1: TForm1
   Left = 424
-  Height = 367
+  Height = 388
   Top = 141
   Width = 527
   Caption = 'Form1'
-  ClientHeight = 367
+  ClientHeight = 388
   ClientWidth = 527
   OnCreate = FormCreate
   LCLVersion = '2.1.0.0'
   object Panel1: TPanel
     Left = 15
-    Height = 268
-    Top = 15
-    Width = 498
+    Height = 308
+    Top = 47
+    Width = 384
     Anchors = [akTop, akLeft, akRight, akBottom]
     TabOrder = 0
   end
   object Button1: TButton
-    Left = 10
+    Left = 7
     Height = 25
-    Top = 292
+    Top = 357
     Width = 75
+    Anchors = [akLeft]
     Caption = 'Text'
     OnClick = Button1Click
     TabOrder = 1
   end
   object Button2: TButton
-    Left = 92
+    Left = 86
     Height = 25
-    Top = 292
+    Top = 357
     Width = 75
+    Anchors = [akLeft]
     Caption = 'Pixel'
     OnClick = Button2Click
     TabOrder = 2
+  end
+  object Button4: TButton
+    Left = 165
+    Height = 25
+    Top = 357
+    Width = 75
+    Anchors = [akLeft]
+    Caption = 'Pixel'
+    OnClick = Button4Click
+    TabOrder = 3
+  end
+  object ColorListBox1: TColorListBox
+    Left = 411
+    Height = 308
+    Top = 47
+    Width = 108
+    ColorRectWidth = 16
+    Style = [cbStandardColors, cbCustomColor, cbPrettyNames]
+    ItemHeight = 0
+    OnSelectionChange = ColorListBox1SelectionChange
+    TabOrder = 4
+  end
+  object Button5: TButton
+    Left = 247
+    Height = 25
+    Top = 357
+    Width = 75
+    Anchors = [akLeft]
+    Caption = 'Pixel'
+    OnClick = Button5Click
+    TabOrder = 5
+  end
+  object AlphaTrack: TTrackBar
+    Left = 416
+    Height = 25
+    Top = 8
+    Width = 100
+    Max = 255
+    OnChange = AlphaTrackChange
+    Position = 255
+    TabOrder = 6
   end
 end

@@ -6,6 +6,13 @@ unit ntvPixelGrids;
  * @license   modifiedLGPL (modified of http://www.gnu.org/licenses/lgpl.html)
  *            See the file COPYING.MLGPL, included in this distribution,
  * @author    Zaher Dirkey <zaher at parmaja dot com>
+ *
+ *
+ * Thanks to
+ *
+ * https://sites.google.com/a/gorilla3d.com/fpc-docs/built-in-units/fcl-image/filling-the-circle
+ * https://forum.lazarus.freepascal.org/index.php?topic=35424.msg234045
+ *
  *}
 
 {$mode objfpc}{$H+}
@@ -15,7 +22,7 @@ interface
 uses
   LMessages, SysUtils, Classes, Graphics, Controls, Variants, Types,
   LCLIntf, LCLType, IntfGraphics,
-  FPimage, FPCanvas, GraphType,
+  FPImage, FPCanvas, FPImgCanv, GraphType, EasyLazFreeType, LazFreeTypeIntfDrawer,
   mnUtils;
 
 const
@@ -24,6 +31,9 @@ const
 
   cForeColor = clBlack;
   cBackColor = clSilver;
+
+  colWhiteTransparent: TFPColor = (Red: $ffff; Green: $ffff; Blue: $ffff; Alpha: alphaTransparent);
+  colFuchsiaTransparent: TFPColor = (Red: $ffff; Green: $0000; Blue: $ffff; Alpha: alphaTransparent);
 
 type
   TImageClass = TPortableNetworkGraphic;
@@ -38,40 +48,48 @@ type
 
   TntvDisplayDots = class(TPersistent)
   private
-    FRawImage: TLazIntfImage;
-    FBitmap: TImageClass;
+    FImage: TLazIntfImage;
+    FDrawer: TIntfFreeTypeDrawer;
+    FCanvas: TFPImageCanvas;
+    FFont: TFreeTypeFont;
     FOffsetX: Integer;
     FOffsetY: Integer;
-    FRotateOffset: Boolean;
     FUpdateCount: Integer;
-    FBitmapChanged: Boolean;
-    FOnInvalidate: TNotifyEvent;
+
     procedure CanvasChanged(Sender: TObject);
-    procedure DrawPixelGrid(vCanvas: TCanvas; vRect: TRect);
-    function GetCanvas: TCanvas;
+    function GetFontName: string;
+
     function GetHeight: Integer;
     function GetPixel(x, y: integer): TColor;
     function GetWidth: Integer;
     procedure SetDotMargin(const AValue: Integer);
     procedure SetDotSize(const AValue: Integer);
+    procedure SetFontName(AValue: string);
     procedure SetWidth(const AValue: Integer);
     procedure SetHeight(const AValue: Integer);
     procedure SetOffsetX(const AValue: Integer);
     procedure SetOffsetY(const AValue: Integer);
-    procedure SetRotateOffset(const AValue: Boolean);
     function GetUpdating: Boolean;
-    procedure InternalInvalidate;
     procedure SetPixel(x, y: integer; const AValue: TColor);
     procedure SetBackColor(const AValue: TColor);
   protected
     Matrix: TPixelGridInfo;
+
     procedure Changed;
     procedure Invalidate;
-    property Bitmap: TImageClass read FBitmap;
+    procedure DoInvalidate; virtual;
+
+    procedure PushHistory;
+    procedure PopHistory;
+    function VisualToIndex(x, y: Integer; out col, row: Integer): Boolean;
   public
     constructor Create; virtual;
     destructor Destroy; override;
-    procedure Draw(vCanvas: TCanvas; vRect: TRect);
+    procedure Paint(vCanvas: TCanvas; vRect: TRect);
+    //y here is the base line of text, bottom of text
+    procedure DrawText(x, y: Integer; AText: string; AColor: TColor);
+    procedure DrawPixel(x, y: Integer; AColor: TColor; Alpha: Byte = 100);
+    procedure FloodFill(x, y: Integer; AColor: TColor; Alpha: Byte = 100);
     procedure SetSize(const AWidth, AHeight: Integer);
     procedure SaveToFile(FileName: string);
     procedure LoadFromFile(FileName: string);
@@ -82,44 +100,64 @@ type
     procedure Scroll(x, y: Integer);
     procedure Assign(Source: TPersistent); override;
     property Updating: Boolean read GetUpdating;
-    property RawImage: TLazIntfImage read FRawImage;
-    property Canvas: TCanvas read GetCanvas;
+    property Image: TLazIntfImage read FImage;
+
     property Pixels[x, y:integer] : TColor read GetPixel write SetPixel;
-    //For auto refresh it when draw to Canvas
-    property OnInvalidate: TNotifyEvent read FOnInvalidate write FOnInvalidate;
-    //Some control need to redraw bitmap after bitmap is clear
     property Width: Integer read GetWidth write SetWidth;
     property Height: Integer read GetHeight write SetHeight;
     //Scroll the dots
     property OffsetX: Integer read FOffsetX write SetOffsetX;
     property OffsetY: Integer read FOffsetY write SetOffsetY;
-    //when the dots is out of canvas take the dot from the first, Rotate the dots one time only
-    property RotateOffset: Boolean read FRotateOffset write SetRotateOffset;
   published
     property BackColor: TColor read Matrix.BackColor write SetBackColor default cBackColor;
     property DotSize: Integer read Matrix.DotSize write SetDotSize default cDotSize;
     property DotMargin: Integer read Matrix.DotMargin write SetDotMargin default 1;
+    property FontName: string read GetFontName write SetFontName;
   end;
+
+
+  TntvPixelGrid = class;
+
+  { TntvGridDisplayDots }
+
+  TntvGridDisplayDots = class(TntvDisplayDots)
+  private
+    FControl: TntvPixelGrid;
+  protected
+    procedure DoInvalidate; override;
+  end;
+
+  TCurrentAction = (actPixel, actMerge, actFlood, actRectangle);
 
   { TntvPixelGrid }
 
   TntvPixelGrid = class(TCustomControl)
   private
+    FCurrentAction: TCurrentAction;
     FDots: TntvDisplayDots;
+    procedure SetCurrentAction(AValue: TCurrentAction);
   protected
+    StartPoint: TPoint;
+    FCurrentColor: TColor;
+    FCurrentAlpha: Byte;
+    procedure Action(APosition: TPoint);
     procedure FontChanged(Sender: TObject); override;
     procedure Paint; override;
     procedure CMBidModeChanged(var Message: TLMessage); message CM_BIDIMODECHANGED;
-    procedure DoInvalidate(Sender: TObject);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure EraseBackground(DC: HDC); override;
     procedure Resize; override;
     procedure Loaded; override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure BeginUpdate;
     procedure EndUpdate;
     property Dots: TntvDisplayDots read FDots;
+    property CurrentAction: TCurrentAction read FCurrentAction write SetCurrentAction;
+    property CurrentColor: TColor read FCurrentColor write FCurrentColor;
+    property CurrentAlpha: Byte read FCurrentAlpha write FCurrentAlpha;
   published
     property Align;
     property Anchors;
@@ -141,56 +179,24 @@ begin
   R.Left := x;
   R.Top := y;
 
-  {R.Right := x + vInfo.DotSize + vInfo.DotMargin;
-  R.Bottom := Y + vInfo.DotSize + vInfo.DotMargin;
-  Canvas.Brush.Color := vInfo.BackColor;
-  Canvas.FillRect(R);}
-
   R.Right := x + vInfo.DotSize;
   R.Bottom := Y + vInfo.DotSize;
   Canvas.Brush.Color := PixelColor;
   Canvas.FillRect(R);
 end;
 
-procedure TntvDisplayDots.DrawPixelGrid(vCanvas: TCanvas; vRect: TRect);
-var
-  x, y: integer;
-  ix, iy: integer;
-  ox, oy: integer;
-  aPixelColor: TColor;
+{ TntvGridDisplayDots }
+
+procedure TntvGridDisplayDots.DoInvalidate;
 begin
-  vCanvas.Brush.Color := Matrix.BackColor;
-  vCanvas.FillRect(vRect);
-  y := vRect.Top;
-  iy := 0;
-  while iy < RawImage.Height do
-  begin
-    x := vRect.Left;
-    ix := 0;
-    while ix < RawImage.Width do
-    begin
-      ox := ix + OffsetX;
-      oy := iy + OffsetY;
-      if RotateOffset then
-      begin
-        if ox >= RawImage.Width then
-          ox := ox - RawImage.Width;
-        if oy >= RawImage.Height then
-          oy := oy - RawImage.Height;
-      end;
+  inherited DoInvalidate;
+  if FControl <> nil then
+    FControl.Invalidate;
+end;
 
-      if (ox < RawImage.Width) and (oy < RawImage.Height) then
-        aPixelColor := RawImage.TColors[ox, oy]
-      else
-        aPixelColor := BackColor;
-
-      DrawDot(vCanvas, x, y, aPixelColor, Matrix);
-      x := x + (Matrix.DotSize + Matrix.DotMargin);
-      Inc(ix);
-    end;
-    Inc(iy);
-    y := y + (Matrix.DotSize + Matrix.DotMargin);
-  end;
+function TntvDisplayDots.GetFontName: string;
+begin
+  Result := FFont.Name;
 end;
 
 { TntvPixelGrid }
@@ -198,11 +204,12 @@ end;
 constructor TntvPixelGrid.Create(AOwner: TComponent);
 begin
   inherited;
-  ControlStyle := ControlStyle + [csDoubleClicks] - [csOpaque];
-  FDots := TntvDisplayDots.Create;
-  FDots.Canvas.Font.Assign(Font);
-  FDots.OnInvalidate := @DoInvalidate;
+  ControlStyle := ControlStyle + [csCaptureMouse, csDoubleClicks] - [csOpaque];
+  FDots := TntvGridDisplayDots.Create;
+  (FDots as TntvGridDisplayDots).FControl:= Self;
   Color := cBackColor;
+  FCurrentColor := clBlack;
+  FCurrentAlpha := 255;
 end;
 
 destructor TntvPixelGrid.Destroy;
@@ -211,10 +218,40 @@ begin
   inherited;
 end;
 
+procedure TntvPixelGrid.SetCurrentAction(AValue: TCurrentAction);
+begin
+  if FCurrentAction = AValue then
+    Exit;
+  FCurrentAction :=AValue;
+  Invalidate;
+end;
+
+procedure TntvPixelGrid.Action(APosition: TPoint);
+var
+  x, y: Integer;
+begin
+  if Dots.VisualToIndex(APosition.x, APosition.y, x, y) then
+  begin
+    case FCurrentAction of
+      actPixel:
+      begin
+        Dots.DrawPixel(x, y, CurrentColor, CurrentAlpha);
+      end;
+      actFlood:
+      begin
+        Dots.FloodFill(x, y, CurrentColor, CurrentAlpha);
+      end;
+      actRectangle:
+      begin
+      end;
+    end;
+  end;
+end;
+
 procedure TntvPixelGrid.FontChanged(Sender: TObject);
 begin
   inherited FontChanged(Sender);
-  FDots.Canvas.Font.Assign(Font);
+
 end;
 
 procedure TntvPixelGrid.Paint;
@@ -222,7 +259,7 @@ begin
   inherited;
   Canvas.Brush.Color := Color;
   Canvas.FillRect(ClientRect);
-  Dots.Draw(Canvas, ClientRect);
+  Dots.Paint(Canvas, ClientRect);
 end;
 
 procedure TntvPixelGrid.EraseBackground(DC: HDC);
@@ -240,11 +277,6 @@ begin
   end;
 end;
 
-procedure TntvPixelGrid.DoInvalidate(Sender: TObject);
-begin
-  Invalidate;
-end;
-
 procedure TntvPixelGrid.Resize;
 begin
   inherited;
@@ -256,7 +288,20 @@ end;
 procedure TntvPixelGrid.Loaded;
 begin
   inherited Loaded;
-  FDots.Canvas.Font.Assign(Font);
+end;
+
+procedure TntvPixelGrid.MouseMove(Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseMove(Shift, X, Y);
+  if MouseCapture then
+    Action(Point(x, y));
+end;
+
+procedure TntvPixelGrid.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  StartPoint := Point(x, y);
+  Action(StartPoint);
 end;
 
 procedure TntvPixelGrid.BeginUpdate;
@@ -276,33 +321,105 @@ begin
   Inc(FUpdateCount);
 end;
 
-procedure TntvDisplayDots.Draw(vCanvas: TCanvas; vRect: TRect);
+procedure TntvDisplayDots.Paint(vCanvas: TCanvas; vRect: TRect);
+var
+  x, y: integer;
+  ix, iy: integer;
+  ox, oy: integer;
+  aPixelColor: TColor;
 begin
-  if FBitmapChanged then
+  y := vRect.Top;
+  iy := 0;
+  while iy < Image.Height do
   begin
-    RawImage.LoadFromBitmap(Bitmap.BitmapHandle, Bitmap.MaskHandle);
-    FBitmapChanged := False;
+    x := vRect.Left;
+    ix := 0;
+    while ix < Width do
+    begin
+      ox := ix + OffsetX;
+      oy := iy + OffsetY;
+
+      if (ox < Image.Width) and (oy < Image.Height) then
+        aPixelColor := Image.TColors[ox, oy]
+      else
+        aPixelColor := BackColor;
+
+      DrawDot(vCanvas, x, y, aPixelColor, Matrix);
+      x := x + (Matrix.DotSize + Matrix.DotMargin);
+      Inc(ix);
+    end;
+    Inc(iy);
+    y := y + (Matrix.DotSize + Matrix.DotMargin);
   end;
-  DrawPixelGrid(vCanvas, vRect);
+end;
+
+procedure TntvDisplayDots.DrawText(x, y: Integer; AText: string; AColor: TColor);
+begin
+  FDrawer.DrawText(AText, FFont, x, y, TColorToFPColor(AColor));
+  Changed;
+  Invalidate;
+end;
+
+procedure TntvDisplayDots.DrawPixel(x, y: Integer; AColor: TColor; Alpha: Byte);
+var
+  c: TFPColor;
+begin
+  c := TColorToFPColor(AColor);
+  c.Alpha := MAXWORD * Alpha div 255;
+  FDrawer.UnClippedDrawPixel(x, y, c);
+  //FCanvas.FloodFill()
+  Changed;
+  Invalidate;
+end;
+
+procedure TntvDisplayDots.FloodFill(x, y: Integer; AColor: TColor; Alpha: Byte);
+var
+  c: TFPColor;
+begin
+  c := TColorToFPColor(AColor);
+  c.Alpha := MAXWORD * Alpha div 255;
+  FCanvas.Brush.FPColor := c;
+  FCanvas.FloodFill(x, y);
+  Changed;
+  Invalidate;
 end;
 
 procedure TntvDisplayDots.SetSize(const AWidth, AHeight: Integer);
 begin
   if (Width <> AWidth) or (Height <> AHeight) then
   begin
-    Bitmap.SetSize(AWidth, AHeight);
+    FImage.SetSize(AWidth, AHeight);
     Invalidate;
   end;
 end;
 
 procedure TntvDisplayDots.SaveToFile(FileName: string);
+var
+  png: TPortableNetworkGraphic;
 begin
-  Bitmap.SaveToFile(FileName);
+  png := TPortableNetworkGraphic.Create;
+  try
+    png.LoadFromIntfImage(FImage);
+    png.Transparent := True;
+    //png.TransparentColor := clFuchsia;
+    //png.PixelFormat := pf32bit;
+    png.SaveToFile(FileName);
+  finally
+    png.Free;
+  end;
 end;
 
 procedure TntvDisplayDots.LoadFromFile(FileName: string);
+var
+  png: TPortableNetworkGraphic;
 begin
-  Bitmap.LoadFromFile(FileName);
+  png := TPortableNetworkGraphic.Create;
+  try
+    png.LoadFromFile(FileName);
+    FImage.LoadFromBitmap(png.Handle, png.MaskHandle);
+  finally
+    png.Free;
+  end;
 end;
 
 procedure TntvDisplayDots.EndUpdate;
@@ -317,8 +434,7 @@ end;
 
 procedure TntvDisplayDots.Clear;
 begin
-  Bitmap.Canvas.Brush.Color := clWhite;
-  Bitmap.Canvas.FillRect(0, 0, Width, Height);
+  FDrawer.FillPixels(colWhiteTransparent);
   Invalidate;
 end;
 
@@ -366,7 +482,36 @@ end;
 procedure TntvDisplayDots.Invalidate;
 begin
   if not Updating then
-    InternalInvalidate;
+    DoInvalidate;
+end;
+
+procedure TntvDisplayDots.DoInvalidate;
+begin
+end;
+
+procedure TntvDisplayDots.PushHistory;
+begin
+  FImage.GetRawImage()
+end;
+
+procedure TntvDisplayDots.PopHistory;
+begin
+
+end;
+
+function TntvDisplayDots.VisualToIndex(x, y: Integer; out col, row: Integer): Boolean;
+var
+  aSize: Integer;
+begin
+  if (x >= 0) and (y >= 0) then
+  begin
+    aSize := Matrix.DotSize + Matrix.DotMargin;
+    col := (x + aSize) div aSize - 1;
+    row := (y + aSize) div aSize - 1;
+    Result := (col < Width) and (row < Height);
+  end
+  else
+    Result := False;
 end;
 
 procedure TntvDisplayDots.SetDotMargin(const AValue: Integer);
@@ -385,38 +530,27 @@ begin
   Invalidate;
 end;
 
-function TntvDisplayDots.GetCanvas: TCanvas;
-begin
-  Result := Bitmap.Canvas;
-end;
 
 function TntvDisplayDots.GetHeight: Integer;
 begin
-  Result := FBitmap.Height;
+  Result := FImage.Height;
 end;
 
 function TntvDisplayDots.GetPixel(x, y: integer): TColor;
 begin
-  Result := RawImage.TColors[x, y];
+  Result := Image.TColors[x, y];
 end;
 
 function TntvDisplayDots.GetWidth: Integer;
 begin
-  Result := FBitmap.Width;
-end;
-
-procedure TntvDisplayDots.InternalInvalidate;
-begin
-  if Assigned(OnInvalidate) then
-    OnInvalidate(Self);
+  Result := FImage.Width;
 end;
 
 procedure TntvDisplayDots.SetHeight(const AValue: Integer);
 begin
-  if FBitmap.Height <> AValue then
+  if FImage.Height <> AValue then
   begin
-    FBitmap.Height := AValue;
-    Invalidate;
+    SetSize(Width, AValue);
   end;
 end;
 
@@ -438,28 +572,17 @@ begin
   end;
 end;
 
-procedure TntvDisplayDots.SetRotateOffset(const AValue: Boolean);
-begin
-  if FRotateOffset <> AValue then
-  begin
-    FRotateOffset :=AValue;
-    Invalidate;
-  end;
-
-end;
-
 procedure TntvDisplayDots.SetPixel(x, y: integer; const AValue: TColor);
 begin
-  RawImage.TColors[x, y] := AValue;
+  Image.TColors[x, y] := AValue;
   Invalidate;
 end;
 
 procedure TntvDisplayDots.SetWidth(const AValue: Integer);
 begin
-  if FBitmap.Width <> AValue then
+  if FImage.Width <> AValue then
   begin
-    FBitmap.Width := AValue;
-    Invalidate;
+    SetSize(AValue, Height);
   end;
 end;
 
@@ -470,13 +593,18 @@ begin
   Matrix.DotSize := cDotSize;
   Matrix.DotMargin := 1;
 
-  FRawImage := TLazIntfImage.Create(10, 10, [riqfRGB, riqfAlpha]);
-  FBitmap := TImageClass.Create;
-  FBitmap.SetSize(10, 10);
+  FImage := TLazIntfImage.Create(10, 10, [riqfRGB, riqfPalette, riqfAlpha]);
+  FDrawer := TIntfFreeTypeDrawer.Create(FImage);
+  FCanvas := TFPImageCanvas.Create(FImage);
+  FFont := TFreeTypeFont.Create;
+  FFont.Name := 'c:\Windows\fonts\Arial.ttf';
+  FFont.SizeInPixels := 9;
+  FFont.Hinted := False;
+  FFont.ClearType := False;
+  FFont.Quality := grqLowQuality;
+  SetSize(8, 8);
   Clear;
-  FBitmap.Canvas.OnChange := @CanvasChanged;
-  Changed;
-  Invalidate;
+
 end;
 
 procedure TntvDisplayDots.SetDotSize(const AValue: Integer);
@@ -489,9 +617,17 @@ begin
   end;
 end;
 
+procedure TntvDisplayDots.SetFontName(AValue: string);
+begin
+  FFont.Name := AValue;
+end;
+
 destructor TntvDisplayDots.Destroy;
 begin
-  FreeAndNil(FRawImage);
+  FreeAndNil(FCanvas);
+  FreeAndNil(FDrawer);
+  FreeAndNil(FFont);
+  FreeAndNil(FImage);
   inherited;
 end;
 
@@ -506,7 +642,6 @@ end;
 
 procedure TntvDisplayDots.Changed;
 begin
-  FBitmapChanged := True;
 end;
 
 end.
