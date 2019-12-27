@@ -22,7 +22,7 @@ interface
 uses
   LMessages, SysUtils, Classes, Graphics, Controls, Variants, Types,
   fgl, LCLIntf, LCLType, IntfGraphics,
-  FPImage, FPCanvas, FPImgCanv, GraphType, EasyLazFreeType, LazFreeTypeIntfDrawer,
+  FPImage, FPCanvas, FPImgCanv, GraphType, EasyLazFreeType, LazFreeTypeIntfDrawer, LazCanvas,
   mnUtils;
 
 const
@@ -76,6 +76,9 @@ type
     FUpdateCount: Integer;
     FHistory: TntvHistory;
 
+    TempImage: TLazIntfImage;
+    TempCanvas: TFPImageCanvas;
+
     procedure CanvasChanged(Sender: TObject);
     function GetFontName: string;
 
@@ -109,9 +112,6 @@ type
     procedure Paint(vCanvas: TCanvas; vRect: TRect; PaintTool: TntvPaintTool);
     //y here is the base line of text, bottom of text
     procedure DrawText(x, y: Integer; AText: string; AColor: TColor);
-    procedure DrawPixel(x, y: Integer; AColor: TColor; Alpha: Byte = 100);
-    procedure DrawLine(FromPoint, ToPoint: TPoint; AColor: TColor; Alpha: Byte = 100);
-    procedure FloodFill(x, y: Integer; AColor: TColor; Alpha: Byte = 100);
     procedure SetSize(const AWidth, AHeight: Integer);
     procedure SaveToFile(FileName: string);
     procedure LoadFromFile(FileName: string);
@@ -600,17 +600,32 @@ begin
 end;
 
 procedure TntvDisplayDots.Paint(vCanvas: TCanvas; vRect: TRect; PaintTool: TntvPaintTool);
+  procedure DrawIt(Canvas: TFPImageCanvas; x: integer; y: integer; PixelColor: TFPColor; vInfo: TPixelGridInfo);
+  var
+    R: TRect;
+  begin
+    R.Left := x;
+    R.Top := y;
+
+    R.Right := x + vInfo.DotSize - vInfo.DotPadding;
+    R.Bottom := Y + vInfo.DotSize - vInfo.DotPadding;
+    Canvas.Brush.FPColor := PixelColor;
+    Canvas.Rectangle(R);
+  end;
 var
   x, y: integer;
   ix, iy: integer;
   ox, oy: integer;
   aPixelColor: TColor;
+  aColor: TFPColor;
 begin
   try
     ScrachImage.CopyPixels(FImage);
+
     if PaintTool <> nil then
       if not (ptsDirect in PaintTool.Style) then
           PaintTool.Paint(FScrachCanvas);
+
     y := vRect.Top;
     iy := 0;
     while iy < ScrachImage.Height do
@@ -625,17 +640,24 @@ begin
         if (ox < ScrachImage.Width) and (oy < ScrachImage.Height) then
         begin
           aPixelColor := ScrachImage.TColors[ox, oy];
+          aColor := ScrachImage.Colors[ox, oy];
         end
         else
+        begin
           aPixelColor := BackColor;
+          aColor := colGray;
+        end;
 
-        DrawDot(vCanvas, x, y, aPixelColor, Matrix);
+        //DrawDot(vCanvas, x, y, aPixelColor, Matrix);
+        DrawIt(TempCanvas, x, y, aColor, Matrix);
         x := x + (Matrix.DotSize);
         Inc(ix);
       end;
       Inc(iy);
       y := y + (Matrix.DotSize);
-    end
+    end;
+    //vCanvas.Interpolation := TFPSharpInterpolation.Create;
+    (vCanvas as TFPCustomCanvas).Draw(0, 0, TempImage);
   finally
   end;
 end;
@@ -647,49 +669,13 @@ begin
   Invalidate;
 end;
 
-procedure TntvDisplayDots.DrawPixel(x, y: Integer; AColor: TColor; Alpha: Byte);
-var
-  c: TFPColor;
-begin
-  FScrachImage.FillPixels(colTransparent);
-  c := TColorToFPColor(AColor);
-  c.Alpha := MAXWORD * Alpha div 255;
-  FScrachCanvas.DrawPixel(x, y, c);
-  Changed;
-  Invalidate;
-end;
-
-procedure TntvDisplayDots.DrawLine(FromPoint, ToPoint: TPoint; AColor: TColor; Alpha: Byte);
-var
-  c: TFPColor;
-begin
-  FScrachImage.FillPixels(colTransparent);
-  c := TColorToFPColor(AColor);
-  c.Alpha := MAXWORD * Alpha div 255;
-  FScrachCanvas.Pen.FPColor := c;
-  FScrachCanvas.Line(FromPoint, ToPoint);
-  Changed;
-  Invalidate;
-end;
-
-procedure TntvDisplayDots.FloodFill(x, y: Integer; AColor: TColor; Alpha: Byte);
-var
-  c: TFPColor;
-begin
-  c := TColorToFPColor(AColor);
-  c.Alpha := MAXWORD * Alpha div 255;
-  FCanvas.Brush.FPColor := c;
-  FCanvas.FloodFill(x, y);
-  Changed;
-  Invalidate;
-end;
-
 procedure TntvDisplayDots.SetSize(const AWidth, AHeight: Integer);
 begin
   if (Width <> AWidth) or (Height <> AHeight) then
   begin
     FImage.SetSize(AWidth, AHeight);
     FScrachImage.SetSize(AWidth, AHeight);
+    TempImage.SetSize(AWidth, AHeight);
     Invalidate;
   end;
 end;
@@ -923,6 +909,9 @@ begin
   FFont.ClearType := False;
   FFont.Quality := grqLowQuality;
 
+  TempImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
+  TempCanvas := TFPImageCanvas.Create(TempImage);
+
   FHistory := TntvHistory.Create;
 
   SetSize(cDefaultWidth, cDefaultHeight);
@@ -947,6 +936,8 @@ end;
 
 destructor TntvDisplayDots.Destroy;
 begin
+  TempImage.Free;
+  TempCanvas.Free;
   FreeAndNil(FHistory);
   FreeAndNil(FCanvas);
   FreeAndNil(FScrachCanvas);
