@@ -1,80 +1,168 @@
 object Form1: TForm1
-  Left = 424
-  Height = 388
-  Top = 141
-  Width = 527
-  Caption = 'Form1'
-  ClientHeight = 388
-  ClientWidth = 527
+  Left = 395
+  Height = 427
+  Top = 173
+  Width = 571
+  Caption = 'Mini Paint'
+  ClientHeight = 407
+  ClientWidth = 571
+  Menu = MainMenu1
   OnCreate = FormCreate
+  ShowHint = True
   LCLVersion = '2.1.0.0'
-  object Panel1: TPanel
-    Left = 15
-    Height = 308
-    Top = 47
-    Width = 384
-    Anchors = [akTop, akLeft, akRight, akBottom]
+  object Panel3: TPanel
+    Left = 472
+    Height = 373
+    Top = 29
+    Width = 94
+    Align = alRight
+    BorderSpacing.Around = 5
+    BevelOuter = bvNone
+    ClientHeight = 373
+    ClientWidth = 94
     TabOrder = 0
+    object ColorListBox1: TColorListBox
+      Left = 0
+      Height = 341
+      Top = 32
+      Width = 94
+      ColorRectWidth = 16
+      Style = [cbStandardColors, cbCustomColor, cbPrettyNames]
+      Align = alClient
+      ItemHeight = 0
+      OnSelectionChange = ColorListBox1SelectionChange
+      TabOrder = 0
+    end
+    object AlphaTrack: TTrackBar
+      Left = 0
+      Height = 32
+      Top = 0
+      Width = 94
+      Max = 255
+      OnChange = AlphaTrackChange
+      Position = 255
+      Align = alTop
+      TabOrder = 1
+    end
   end
-  object Button1: TButton
-    Left = 7
-    Height = 25
-    Top = 357
-    Width = 75
-    Anchors = [akLeft]
-    Caption = 'Text'
-    OnClick = Button1Click
+  object ToolBar1: TToolBar
+    Left = 0
+    Height = 24
+    Top = 0
+    Width = 571
+    AutoSize = True
+    Caption = 'Toolbar'
+    ShowCaptions = True
     TabOrder = 1
+    object ToolButton1: TToolButton
+      Left = 1
+      Top = 2
+      Caption = 'Pixel'
+      Down = True
+      Grouped = True
+      OnClick = ToolButton1Click
+      Style = tbsCheck
+    end
+    object ToolButton8: TToolButton
+      Left = 33
+      Top = 2
+      Caption = 'Draw'
+      Grouped = True
+      OnClick = ToolButton8Click
+      Style = tbsCheck
+    end
+    object ToolButton2: TToolButton
+      Left = 98
+      Top = 2
+      Caption = 'Rectangle'
+      Grouped = True
+      OnClick = ToolButton2Click
+      Style = tbsCheck
+    end
+    object ToolButton3: TToolButton
+      Left = 68
+      Top = 2
+      Caption = 'Line'
+      Grouped = True
+      OnClick = ToolButton3Click
+      Style = tbsCheck
+    end
+    object ToolButton4: TToolButton
+      Left = 196
+      Top = 2
+      Caption = 'Fill'
+      Grouped = True
+      OnClick = ToolButton4Click
+      Style = tbsCheck
+    end
+    object ToolButton5: TToolButton
+      Left = 158
+      Top = 2
+      Caption = 'Circle'
+      Grouped = True
+      OnClick = ToolButton5Click
+      Style = tbsCheck
+    end
+    object ToolButton6: TToolButton
+      Left = 219
+      Top = 2
+      Caption = 'Replace'
+      Grouped = True
+      OnClick = ToolButton6Click
+      Style = tbsCheck
+    end
+    object ToolButton7: TToolButton
+      Left = 276
+      Top = 2
+      Caption = 'Clear'
+      OnClick = ToolButton7Click
+    end
+    object ToolButton9: TToolButton
+      Left = 268
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton9'
+      Style = tbsSeparator
+    end
   end
-  object Button2: TButton
-    Left = 86
-    Height = 25
-    Top = 357
-    Width = 75
-    Anchors = [akLeft]
-    Caption = 'Pixel'
-    OnClick = Button2Click
-    TabOrder = 2
+  object Grid: TntvPixelGrid
+    Left = 0
+    Height = 383
+    Top = 24
+    Width = 467
+    Align = alClient
   end
-  object Button4: TButton
+  object MainMenu1: TMainMenu
     Left = 165
-    Height = 25
-    Top = 357
-    Width = 75
-    Anchors = [akLeft]
-    Caption = 'Pixel'
-    OnClick = Button4Click
-    TabOrder = 3
+    Top = 159
+    object MenuItem1: TMenuItem
+      Caption = 'File'
+      object MenuItem2: TMenuItem
+        Caption = 'Open'
+        OnClick = MenuItem2Click
+      end
+      object MenuItem3: TMenuItem
+        Caption = 'Save'
+      end
+      object N1: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem4: TMenuItem
+        Caption = 'Exit'
+        OnClick = MenuItem4Click
+      end
+    end
   end
-  object ColorListBox1: TColorListBox
-    Left = 411
-    Height = 308
-    Top = 47
-    Width = 108
-    ColorRectWidth = 16
-    Style = [cbStandardColors, cbCustomColor, cbPrettyNames]
-    ItemHeight = 0
-    OnSelectionChange = ColorListBox1SelectionChange
-    TabOrder = 4
+  object OpenDialog1: TOpenDialog
+    FileName = '*.png'
+    Filter = '*.png'
+    Left = 123
+    Top = 90
   end
-  object Button5: TButton
-    Left = 247
-    Height = 25
-    Top = 357
-    Width = 75
-    Anchors = [akLeft]
-    Caption = 'Pixel'
-    OnClick = Button5Click
-    TabOrder = 5
-  end
-  object AlphaTrack: TTrackBar
-    Left = 416
-    Height = 25
-    Top = 8
-    Width = 100
-    Max = 255
-    OnChange = AlphaTrackChange
-    Position = 255
-    TabOrder = 6
+  object SaveDialog1: TSaveDialog
+    FileName = '*.png'
+    Filter = '*.png'
+    Left = 190
+    Top = 86
   end
 end
