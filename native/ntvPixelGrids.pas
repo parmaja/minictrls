@@ -12,6 +12,7 @@ unit ntvPixelGrids;
  *
  * https://sites.google.com/a/gorilla3d.com/fpc-docs/built-in-units/fcl-image/filling-the-circle
  * https://forum.lazarus.freepascal.org/index.php?topic=35424.msg234045
+ * https://wiki.freepascal.org/Graphics_-_Working_with_TCanvas
  *
  *}
 
@@ -607,6 +608,11 @@ procedure TntvDisplayDots.Paint(vCanvas: TCanvas; vRect: TRect; PaintTool: TntvP
     R.Left := x;
     R.Top := y;
 
+    R.Right := x + vInfo.DotSize;
+    R.Bottom := Y + vInfo.DotSize;
+    Canvas.Brush.FPColor := colFuchsia;
+    Canvas.Rectangle(R);
+
     R.Right := x + vInfo.DotSize - vInfo.DotPadding;
     R.Bottom := Y + vInfo.DotSize - vInfo.DotPadding;
     Canvas.Brush.FPColor := PixelColor;
@@ -618,8 +624,10 @@ var
   ox, oy: integer;
   aPixelColor: TColor;
   aColor: TFPColor;
+  Img: TBitmap;
 begin
   try
+    Img := TBitmap.Create;
     ScrachImage.CopyPixels(FImage);
 
     if PaintTool <> nil then
@@ -650,15 +658,16 @@ begin
 
         //DrawDot(vCanvas, x, y, aPixelColor, Matrix);
         DrawIt(TempCanvas, x, y, aColor, Matrix);
-        x := x + (Matrix.DotSize);
+        x := x + Matrix.DotSize;
         Inc(ix);
       end;
       Inc(iy);
-      y := y + (Matrix.DotSize);
+      y := y + Matrix.DotSize;
     end;
-    //vCanvas.Interpolation := TFPSharpInterpolation.Create;
-    (vCanvas as TFPCustomCanvas).Draw(0, 0, TempImage);
+    Img.LoadFromIntfImage(TempImage);
+    vCanvas.Draw(0, 0, Img);
   finally
+    Img.Free;
   end;
 end;
 
