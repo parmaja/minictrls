@@ -323,7 +323,7 @@ begin
     begin
       y := 0;
       sy := 0;
-      while sy < Source.Width do
+      while sy < Source.Height do
       begin
         dy := 0;
         while dy < ScaleBy do
@@ -858,6 +858,7 @@ begin
   ScaledImage.SetSize(Width * DotSize, Height * DotSize);
   BackgroundImage.SetSize(Width * DotSize, Height * DotSize);
   PaintBackground;
+  ScrachImage.CopyPixels(Image);
   Changed;
 end;
 
@@ -879,7 +880,8 @@ begin
   if FHistory.Count > 0 then
   begin
     AImage := FHistory.Last.Image;
-    FImage.CopyPixels(AImage);
+    Image.CopyPixels(AImage);
+    ScrachImage.CopyPixels(AImage);
     FHistory.Delete(FHistory.Count - 1);
     Changed;
   end;

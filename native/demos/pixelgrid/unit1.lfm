@@ -156,7 +156,7 @@ object Form1: TForm1
       Style = tbsDivider
     end
     object MergeBtn: TToolButton
-      Left = 475
+      Left = 476
       Top = 2
       Caption = 'Merge'
       OnClick = MergeBtnClick
@@ -193,14 +193,16 @@ object Form1: TForm1
     end
   end
   object OpenDialog1: TOpenDialog
+    DefaultExt = '.png'
     FileName = '*.png'
-    Filter = '*.png'
+    Filter = 'png|*.png'
     Left = 123
     Top = 90
   end
   object SaveDialog1: TSaveDialog
+    DefaultExt = '.png'
     FileName = '*.png'
-    Filter = '*.png'
+    Filter = 'png|*.png'
     Left = 190
     Top = 86
   end
