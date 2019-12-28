@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  ColorBox, ComCtrls, Menus, FPimage, FPCanvas, ntvPixelGrids;
+  ColorBox, ComCtrls, Menus, FPimage, FPCanvas, ntvPixelGrids, ntvDotMatrix;
 
 type
 
@@ -27,6 +27,10 @@ type
     SaveDialog1: TSaveDialog;
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
+    ToolButton10: TToolButton;
+    ToolButton11: TToolButton;
+    ToolButton12: TToolButton;
+    ToolButton13: TToolButton;
     ToolButton2: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
@@ -44,6 +48,10 @@ type
     procedure FormCreate(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
+    procedure ToolButton10Click(Sender: TObject);
+    procedure ToolButton11Click(Sender: TObject);
+    procedure ToolButton12Click(Sender: TObject);
+    procedure ToolButton13Click(Sender: TObject);
     procedure ToolButton1Click(Sender: TObject);
     procedure ToolButton2Click(Sender: TObject);
     procedure ToolButton3Click(Sender: TObject);
@@ -78,6 +86,26 @@ end;
 procedure TForm1.MenuItem4Click(Sender: TObject);
 begin
   Exit;
+end;
+
+procedure TForm1.ToolButton10Click(Sender: TObject);
+begin
+  Grid.Dots.SetSize(64, 64);
+end;
+
+procedure TForm1.ToolButton11Click(Sender: TObject);
+begin
+  Grid.Dots.SetSize(128, 128);
+end;
+
+procedure TForm1.ToolButton12Click(Sender: TObject);
+begin
+  Grid.Dots.SetSize(32, 32);
+end;
+
+procedure TForm1.ToolButton13Click(Sender: TObject);
+begin
+  Grid.Dots.SetSize(16, 16);
 end;
 
 procedure TForm1.ToolButton1Click(Sender: TObject);

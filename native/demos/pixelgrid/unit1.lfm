@@ -124,6 +124,30 @@ object Form1: TForm1
       Caption = 'ToolButton9'
       Style = tbsSeparator
     end
+    object ToolButton10: TToolButton
+      Left = 385
+      Top = 2
+      Caption = '64*64'
+      OnClick = ToolButton10Click
+    end
+    object ToolButton11: TToolButton
+      Left = 422
+      Top = 2
+      Caption = '128*128'
+      OnClick = ToolButton11Click
+    end
+    object ToolButton12: TToolButton
+      Left = 348
+      Top = 2
+      Caption = '32*32'
+      OnClick = ToolButton12Click
+    end
+    object ToolButton13: TToolButton
+      Left = 311
+      Top = 2
+      Caption = '16*16'
+      OnClick = ToolButton13Click
+    end
   end
   object Grid: TntvPixelGrid
     Left = 0

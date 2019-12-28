@@ -27,7 +27,7 @@ uses
   mnUtils;
 
 const
-  cDotSize = 5;
+  cDotSize = 11;
   cDotPadding = 1;
   cDefaultWidth = 32;
   cDefaultHeight = 32;
@@ -77,8 +77,8 @@ type
     FUpdateCount: Integer;
     FHistory: TntvHistory;
 
-    TempImage: TLazIntfImage;
-    TempCanvas: TFPImageCanvas;
+    ScaledImage: TLazIntfImage;
+    ScaledCanvas: TFPImageCanvas;
 
     BackgroundImage: TLazIntfImage;
     BackgroundCanvas: TFPImageCanvas;
@@ -101,6 +101,7 @@ type
     procedure SetPixel(x, y: integer; const AValue: TColor);
     procedure SetBackColor(const AValue: TColor);
   protected
+    IsChanged: Boolean;
     Matrix: TPixelGridInfo;
 
     procedure Changed;
@@ -460,7 +461,7 @@ begin
   if FCurrentTool = AValue then
     Exit;
   FCurrentTool := AValue;
-  Invalidate;
+  Dots.Changed;
 end;
 
 procedure TntvPixelGrid.StartTool(RealPoint: TPoint);
@@ -535,7 +536,7 @@ begin
         FCurrentTool.CurrentPoint := RealPoint;
         if ptsDirect in FCurrentTool.Style then
           FCurrentTool.Paint(Dots.Canvas);
-        Invalidate;
+        Dots.Changed;
       end;
     end;
 end;
@@ -579,7 +580,7 @@ begin
         FCurrentTool.Paint(Dots.Canvas);
       if ptsEnd in FCurrentTool.Style then
         EndTool(True);
-      Invalidate;
+      Dots.Changed;
     end;
   end
   else
@@ -611,19 +612,29 @@ end;
 procedure TntvDisplayDots.Paint(vCanvas: TCanvas; vRect: TRect; PaintTool: TntvPaintTool);
 var
   Img: TBitmap;
+  fpimage: TLazIntfImage;
 begin
-  ScrachImage.CopyPixels(FImage);
+  if IsChanged then
+  begin
+    IsChanged := False;
+    if (PaintTool <> nil) and not (ptsDirect in PaintTool.Style) then
+    begin
+      ScrachImage.CopyPixels(FImage);
+      PaintTool.Paint(FScrachCanvas);
+      fpimage := ScrachImage;
+    end
+    else
+      fpimage := Image;
 
-  if PaintTool <> nil then
-    if not (ptsDirect in PaintTool.Style) then
-        PaintTool.Paint(FScrachCanvas);
+    ScaledImage.CopyPixels(BackgroundImage);
+    ScaledCanvas.DrawingMode := dmAlphaBlend;
+    //ScaledCanvas.Interpolation := TFPBoxInterpolation.Create; moved to after create ScaledCanvas
+    ScaledCanvas.StretchDraw(0, 0, ScaledImage.Width, ScaledImage.Height, fpimage);
+  end;
+
+  Img := TBitmap.Create;
   try
-    TempImage.CopyPixels(BackgroundImage);
-    TempCanvas.DrawingMode := dmAlphaBlend;
-    TempCanvas.StretchDraw(0, 0, TempImage.Width, TempImage.Height, ScrachImage);
-
-    Img := TBitmap.Create;
-    Img.LoadFromIntfImage(TempImage);
+    Img.LoadFromIntfImage(ScaledImage);
     vCanvas.Draw(0, 0, Img);
   finally
     Img.Free;
@@ -692,7 +703,6 @@ procedure TntvDisplayDots.DrawText(x, y: Integer; AText: string; AColor: TColor)
 begin
   FDrawer.DrawText(AText, FFont, x, y, TColorToFPColor(AColor));
   Changed;
-  Invalidate;
 end;
 
 procedure TntvDisplayDots.SetSize(const AWidth, AHeight: Integer);
@@ -737,7 +747,7 @@ begin
   begin
     Dec(FUpdateCount);
     if (FUpdateCount = 0) then
-      Invalidate;
+      Changed;
   end;
 end;
 
@@ -745,7 +755,7 @@ procedure TntvDisplayDots.Clear;
 begin
   FImage.FillPixels(colWhiteTransparent);
   FScrachImage.FillPixels(colWhiteTransparent);
-  Invalidate;
+  Changed;
 end;
 
 procedure TntvDisplayDots.Reset;
@@ -802,10 +812,10 @@ end;
 procedure TntvDisplayDots.UpdateSize;
 begin
   FScrachImage.SetSize(Width, Height);
-  TempImage.SetSize(Width * DotSize, Height * DotSize);
+  ScaledImage.SetSize(Width * DotSize, Height * DotSize);
   BackgroundImage.SetSize(Width * DotSize, Height * DotSize);
   PaintBackground;
-  Invalidate;
+  Changed;
 end;
 
 procedure TntvDisplayDots.PushHistory;
@@ -829,7 +839,6 @@ begin
     FImage.CopyPixels(AImage);
     FHistory.Delete(FHistory.Count - 1);
     Changed;
-    Invalidate;
   end;
 end;
 
@@ -854,14 +863,12 @@ begin
   begin
     Matrix.DotPadding := AValue;
     Changed;
-    Invalidate;
   end;
 end;
 
 procedure TntvDisplayDots.CanvasChanged(Sender: TObject);
 begin
   Changed;
-  Invalidate;
 end;
 
 
@@ -893,7 +900,7 @@ begin
   if FOffsetX <> AValue then
   begin
     FOffsetX := AValue;
-    Invalidate;
+    Changed;
   end;
 end;
 
@@ -902,14 +909,14 @@ begin
   if FOffsetY <> AValue then
   begin
     FOffsetY := AValue;
-    Invalidate;
+    Changed;
   end;
 end;
 
 procedure TntvDisplayDots.SetPixel(x, y: integer; const AValue: TColor);
 begin
   Image.TColors[x, y] := AValue;
-  Invalidate;
+  Changed;
 end;
 
 procedure TntvDisplayDots.SetWidth(const AValue: Integer);
@@ -927,10 +934,7 @@ begin
   Matrix.DotSize := cDotSize;
   Matrix.DotPadding := cDotPadding;
 
-  FScrachImage := TLazIntfImage.Create(cDefaultWidth, cDefaultHeight, [riqfRGB, riqfPalette, riqfAlpha]);
-  FScrachCanvas := TFPImageCanvas.Create(FScrachImage);
-
-  FImage := TLazIntfImage.Create(cDefaultWidth, cDefaultHeight, [riqfRGB, riqfPalette, riqfAlpha]);
+  FImage := TLazIntfImage.Create(cDefaultWidth, cDefaultHeight, [riqfRGB, riqfAlpha]);
   FCanvas := TFPImageCanvas.Create(FImage);
   FDrawer := TIntfFreeTypeDrawer.Create(FImage);
   FFont := TFreeTypeFont.Create;
@@ -940,9 +944,12 @@ begin
   FFont.ClearType := False;
   FFont.Quality := grqLowQuality;
 
-  TempImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
-  TempCanvas := TFPImageCanvas.Create(TempImage);
-  TempCanvas.Interpolation := TFPBoxInterpolation.Create;
+  FScrachImage := TLazIntfImage.CreateCompatible(FImage, cDefaultWidth, cDefaultHeight);
+  FScrachCanvas := TFPImageCanvas.Create(FScrachImage);
+
+  ScaledImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
+  ScaledCanvas := TFPImageCanvas.Create(ScaledImage);
+  ScaledCanvas.Interpolation := TFPBoxInterpolation.Create;
 
   BackgroundImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
   BackgroundCanvas := TFPImageCanvas.Create(BackgroundImage);
@@ -960,7 +967,6 @@ begin
   begin
     Matrix.DotSize := AValue;
     Changed;
-    Invalidate;
   end;
 end;
 
@@ -973,9 +979,9 @@ destructor TntvDisplayDots.Destroy;
 begin
   BackgroundImage.Free;
   BackgroundCanvas.Free;
-  TempCanvas.Interpolation.Free;
-  TempImage.Free;
-  TempCanvas.Free;
+  ScaledCanvas.Interpolation.Free;
+  ScaledImage.Free;
+  ScaledCanvas.Free;
   FreeAndNil(FHistory);
   FreeAndNil(FCanvas);
   FreeAndNil(FScrachCanvas);
@@ -991,12 +997,14 @@ begin
   if Matrix.BackColor <> AValue then
   begin
     Matrix.BackColor := AValue;
-    Invalidate;
+    Changed;
   end;
 end;
 
 procedure TntvDisplayDots.Changed;
 begin
+  IsChanged := True;
+  Invalidate;
 end;
 
 end.
