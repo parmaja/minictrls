@@ -27,7 +27,7 @@ uses
   mnUtils;
 
 const
-  cDotSize = 10;
+  cDotSize = 5;
   cDotPadding = 1;
   cDefaultWidth = 32;
   cDefaultHeight = 32;
@@ -80,12 +80,16 @@ type
     TempImage: TLazIntfImage;
     TempCanvas: TFPImageCanvas;
 
+    BackgroundImage: TLazIntfImage;
+    BackgroundCanvas: TFPImageCanvas;
+
     procedure CanvasChanged(Sender: TObject);
     function GetFontName: string;
 
     function GetHeight: Integer;
     function GetPixel(x, y: integer): TColor;
     function GetWidth: Integer;
+    procedure PaintBackground;
     procedure SetDotPadding(const AValue: Integer);
     procedure SetDotSize(const AValue: Integer);
     procedure SetFontName(AValue: string);
@@ -103,6 +107,7 @@ type
     procedure Invalidate;
     procedure DoInvalidate; virtual;
 
+    procedure UpdateSize;
     procedure PushHistory;
     procedure PopHistory;
     property Canvas: TFPImageCanvas read FCanvas;
@@ -135,7 +140,7 @@ type
   published
     property BackColor: TColor read Matrix.BackColor write SetBackColor default cBackColor;
     property DotSize: Integer read Matrix.DotSize write SetDotSize default cDotSize;
-    property DotPadding: Integer read Matrix.DotPadding write SetDotPadding default 1;
+    property DotPadding: Integer read Matrix.DotPadding write SetDotPadding default cDotPadding;
     property FontName: string read GetFontName write SetFontName;
   end;
 
@@ -525,10 +530,13 @@ begin
   if FCurrentTool <> nil then
     if Dots.VisualToReal(Point(X, Y), RealPoint) then
     begin
-      FCurrentTool.CurrentPoint := RealPoint;
-      if ptsDirect in FCurrentTool.Style then
-        FCurrentTool.Paint(Dots.Canvas);
-      Invalidate;
+      if (RealPoint.X <> FCurrentTool.CurrentPoint.X) or (RealPoint.Y <> FCurrentTool.CurrentPoint.Y) then
+      begin
+        FCurrentTool.CurrentPoint := RealPoint;
+        if ptsDirect in FCurrentTool.Style then
+          FCurrentTool.Paint(Dots.Canvas);
+        Invalidate;
+      end;
     end;
 end;
 
@@ -601,73 +609,82 @@ begin
 end;
 
 procedure TntvDisplayDots.Paint(vCanvas: TCanvas; vRect: TRect; PaintTool: TntvPaintTool);
-  procedure DrawIt(Canvas: TFPImageCanvas; x: integer; y: integer; PixelColor: TFPColor; vInfo: TPixelGridInfo);
-  var
-    R: TRect;
-  begin
-    R.Left := x;
-    R.Top := y;
-
-    R.Right := x + vInfo.DotSize;
-    R.Bottom := Y + vInfo.DotSize;
-    Canvas.Brush.FPColor := colFuchsia;
-    Canvas.Rectangle(R);
-
-    R.Right := x + vInfo.DotSize - vInfo.DotPadding;
-    R.Bottom := Y + vInfo.DotSize - vInfo.DotPadding;
-    Canvas.Brush.FPColor := PixelColor;
-    Canvas.Rectangle(R);
-  end;
 var
-  x, y: integer;
-  ix, iy: integer;
-  ox, oy: integer;
-  aPixelColor: TColor;
-  aColor: TFPColor;
   Img: TBitmap;
 begin
+  ScrachImage.CopyPixels(FImage);
+
+  if PaintTool <> nil then
+    if not (ptsDirect in PaintTool.Style) then
+        PaintTool.Paint(FScrachCanvas);
   try
+    TempImage.CopyPixels(BackgroundImage);
+    TempCanvas.DrawingMode := dmAlphaBlend;
+    TempCanvas.StretchDraw(0, 0, TempImage.Width, TempImage.Height, ScrachImage);
+
     Img := TBitmap.Create;
-    ScrachImage.CopyPixels(FImage);
-
-    if PaintTool <> nil then
-      if not (ptsDirect in PaintTool.Style) then
-          PaintTool.Paint(FScrachCanvas);
-
-    y := vRect.Top;
-    iy := 0;
-    while iy < ScrachImage.Height do
-    begin
-      x := vRect.Left;
-      ix := 0;
-      while ix < Width do
-      begin
-        ox := ix + OffsetX;
-        oy := iy + OffsetY;
-
-        if (ox < ScrachImage.Width) and (oy < ScrachImage.Height) then
-        begin
-          aPixelColor := ScrachImage.TColors[ox, oy];
-          aColor := ScrachImage.Colors[ox, oy];
-        end
-        else
-        begin
-          aPixelColor := BackColor;
-          aColor := colGray;
-        end;
-
-        //DrawDot(vCanvas, x, y, aPixelColor, Matrix);
-        DrawIt(TempCanvas, x, y, aColor, Matrix);
-        x := x + Matrix.DotSize;
-        Inc(ix);
-      end;
-      Inc(iy);
-      y := y + Matrix.DotSize;
-    end;
     Img.LoadFromIntfImage(TempImage);
     vCanvas.Draw(0, 0, Img);
   finally
     Img.Free;
+  end;
+end;
+
+procedure TntvDisplayDots.PaintBackground;
+  procedure DrawIt(Canvas: TFPImageCanvas; x: integer; y: integer);
+  var
+    R: TRect;
+    d: Integer;
+  begin
+    Canvas.Brush.Style := bsSolid;
+
+    R.Left := x;
+    R.Top := y;
+    R.Right := R.Left + DotSize - 1;
+    R.Bottom := R.Top + DotSize - 1;
+    Canvas.Brush.FPColor := colBlack;
+    Canvas.FillRect(R);
+
+    R.Left := x;
+    R.Top := y;
+    R.Right := R.Left + DotSize - DotPadding - 1;
+    R.Bottom := R.Top + DotSize - DotPadding - 1;
+    Canvas.Brush.FPColor := colLtGray;
+    Canvas.FillRect(R);
+
+    Canvas.Brush.FPColor := colWhite;
+
+    d := (DotSize - DotPadding) div 2;
+    R.Left := x;
+    R.Top := y;
+    R.Right := R.Left + d - 1;
+    R.Bottom := R.Top + d - 1 ;
+    Canvas.FillRect(R);
+
+    R.Left := x + d;
+    R.Top := y + d;
+    R.Right := R.Left + d - 1;
+    R.Bottom := R.Top + d - 1;
+    Canvas.FillRect(R);
+  end;
+var
+  x, y: integer;
+  ix, iy: integer;
+begin
+  y := 0;
+  iy := 0;
+  while iy < Height do
+  begin
+    x := 0;
+    ix := 0;
+    while ix < Width do
+    begin
+      DrawIt(BackgroundCanvas, x, y);
+      x := x + DotSize;
+      Inc(ix);
+    end;
+    y := y + DotSize;
+    Inc(iy);
   end;
 end;
 
@@ -680,13 +697,8 @@ end;
 
 procedure TntvDisplayDots.SetSize(const AWidth, AHeight: Integer);
 begin
-  if (Width <> AWidth) or (Height <> AHeight) then
-  begin
-    FImage.SetSize(AWidth, AHeight);
-    FScrachImage.SetSize(AWidth, AHeight);
-    TempImage.SetSize(AWidth, AHeight);
-    Invalidate;
-  end;
+  FImage.SetSize(AWidth, AHeight);
+  UpdateSize;
 end;
 
 procedure TntvDisplayDots.SaveToFile(FileName: string);
@@ -713,6 +725,7 @@ begin
   try
     png.LoadFromFile(FileName);
     FImage.LoadFromBitmap(png.Handle, png.MaskHandle);
+    UpdateSize;
   finally
     png.Free;
   end;
@@ -784,6 +797,15 @@ end;
 
 procedure TntvDisplayDots.DoInvalidate;
 begin
+end;
+
+procedure TntvDisplayDots.UpdateSize;
+begin
+  FScrachImage.SetSize(Width, Height);
+  TempImage.SetSize(Width * DotSize, Height * DotSize);
+  BackgroundImage.SetSize(Width * DotSize, Height * DotSize);
+  PaintBackground;
+  Invalidate;
 end;
 
 procedure TntvDisplayDots.PushHistory;
@@ -920,6 +942,10 @@ begin
 
   TempImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
   TempCanvas := TFPImageCanvas.Create(TempImage);
+  TempCanvas.Interpolation := TFPBoxInterpolation.Create;
+
+  BackgroundImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
+  BackgroundCanvas := TFPImageCanvas.Create(BackgroundImage);
 
   FHistory := TntvHistory.Create;
 
@@ -945,6 +971,9 @@ end;
 
 destructor TntvDisplayDots.Destroy;
 begin
+  BackgroundImage.Free;
+  BackgroundCanvas.Free;
+  TempCanvas.Interpolation.Free;
   TempImage.Free;
   TempCanvas.Free;
   FreeAndNil(FHistory);

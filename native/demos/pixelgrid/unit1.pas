@@ -72,6 +72,7 @@ end;
 
 procedure TForm1.MenuItem2Click(Sender: TObject);
 begin
+  Grid.Dots.LoadFromFile(Application.Location + 'richard-say.png');
 end;
 
 procedure TForm1.MenuItem4Click(Sender: TObject);
