@@ -130,6 +130,7 @@ type
     procedure Assign(Source: TPersistent); override;
     property Updating: Boolean read GetUpdating;
     property ScrachImage: TLazIntfImage read FScrachImage;
+    property ScrachCanvas: TFPImageCanvas read FScrachCanvas;
     property Image: TLazIntfImage read FImage;
 
     property Pixels[x, y:integer] : TColor read GetPixel write SetPixel;
@@ -159,6 +160,7 @@ type
   TntvPixelGridInfo = record
     CurrentColor: TColor;
     CurrentAlpha: Byte;
+    CurrentMerge: Boolean;
   end;
 
   TntvPaintToolStyle = set of (
@@ -274,6 +276,7 @@ type
     property CurrentTool: TntvPaintTool read FCurrentTool;
     property CurrentColor: TColor read Info.CurrentColor write Info.CurrentColor;
     property CurrentAlpha: Byte read Info.CurrentAlpha write Info.CurrentAlpha;
+    property CurrentMerge: Boolean read Info.CurrentMerge write Info.CurrentMerge; //TODO
   published
     property Align;
     property Anchors;
@@ -292,19 +295,6 @@ function ToFPColor(AColor: TColor; AAlpha: Byte): TFPColor;
 begin
   Result := TColorToFPColor(AColor);
   Result.Alpha := MAXWORD * AAlpha div 255;
-end;
-
-procedure DrawDot(Canvas: TCanvas; x: integer; y: integer; PixelColor: TColor; vInfo: TPixelGridInfo);
-var
-  R: TRect;
-begin
-  R.Left := x;
-  R.Top := y;
-
-  R.Right := x + vInfo.DotSize - vInfo.DotPadding;
-  R.Bottom := Y + vInfo.DotSize - vInfo.DotPadding;
-  Canvas.Brush.Color := PixelColor;
-  Canvas.FillRect(R);
 end;
 
 { TntvDraw }
@@ -366,11 +356,17 @@ begin
 end;
 
 procedure TntvFill.Paint(Canvas: TFPImageCanvas);
+var
+  c: TFPColor;
 begin
-  Canvas.Pen.FPColor := ToFPColor(Control.CurrentColor, Control.CurrentAlpha);
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.FPColor := ToFPColor(Control.CurrentColor, Control.CurrentAlpha);
-  Canvas.FloodFill(CurrentPoint.X, CurrentPoint.Y);
+  c := ToFPColor(Control.CurrentColor, Control.CurrentAlpha);
+  if Canvas.Image.Colors[CurrentPoint.X, CurrentPoint.Y] <> c then
+  begin
+    //Canvas.Pen.FPColor := c;
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.FPColor := c;
+    Canvas.FloodFill(CurrentPoint.X, CurrentPoint.Y);
+  end;
 end;
 
 { TntvCircle }
@@ -476,7 +472,8 @@ begin
   begin
     if not Cancel then
     begin
-      FCurrentTool.Paint(Dots.FCanvas);
+      if not (ptsDirect in FCurrentTool.Style) then
+        Dots.Image.CopyPixels(Dots.ScrachImage);
     end;
     FreeAndNil(FCurrentTool);
   end;
@@ -534,8 +531,10 @@ begin
       if (RealPoint.X <> FCurrentTool.CurrentPoint.X) or (RealPoint.Y <> FCurrentTool.CurrentPoint.Y) then
       begin
         FCurrentTool.CurrentPoint := RealPoint;
+        Dots.ScrachImage.CopyPixels(Dots.Image);
+        FCurrentTool.Paint(Dots.ScrachCanvas);
         if ptsDirect in FCurrentTool.Style then
-          FCurrentTool.Paint(Dots.Canvas);
+          Dots.Image.CopyPixels(Dots.ScrachImage);
         Dots.Changed;
       end;
     end;
@@ -576,8 +575,10 @@ begin
     begin
       Dots.PushHistory;
       StartTool(RealPoint);
+      Dots.ScrachImage.CopyPixels(Dots.Image);
+      FCurrentTool.Paint(Dots.ScrachCanvas);
       if ptsDirect in FCurrentTool.Style then
-        FCurrentTool.Paint(Dots.Canvas);
+        Dots.Image.CopyPixels(Dots.ScrachImage);
       if ptsEnd in FCurrentTool.Style then
         EndTool(True);
       Dots.Changed;
@@ -612,27 +613,19 @@ end;
 procedure TntvDisplayDots.Paint(vCanvas: TCanvas; vRect: TRect; PaintTool: TntvPaintTool);
 var
   Img: TBitmap;
-  fpimage: TLazIntfImage;
 begin
   if IsChanged then
   begin
     IsChanged := False;
-    if (PaintTool <> nil) and not (ptsDirect in PaintTool.Style) then
-    begin
-      ScrachImage.CopyPixels(FImage);
-      PaintTool.Paint(FScrachCanvas);
-      fpimage := ScrachImage;
-    end
-    else
-      fpimage := Image;
 
     ScaledImage.CopyPixels(BackgroundImage);
     ScaledCanvas.DrawingMode := dmAlphaBlend;
     //ScaledCanvas.Interpolation := TFPBoxInterpolation.Create; moved to after create ScaledCanvas
-    ScaledCanvas.StretchDraw(0, 0, ScaledImage.Width, ScaledImage.Height, fpimage);
+    //ScaledCanvas.Draw(0, 0, ScrachImage);
+    ScaledCanvas.StretchDraw(0, 0, ScaledImage.Width, ScaledImage.Height, ScrachImage);
   end;
 
-  Img := TBitmap.Create;
+  Img := TBitmap.Create; //maybe make it as cache
   try
     Img.LoadFromIntfImage(ScaledImage);
     vCanvas.Draw(0, 0, Img);
@@ -811,7 +804,7 @@ end;
 
 procedure TntvDisplayDots.UpdateSize;
 begin
-  FScrachImage.SetSize(Width, Height);
+  ScrachImage.SetSize(Width, Height);
   ScaledImage.SetSize(Width * DotSize, Height * DotSize);
   BackgroundImage.SetSize(Width * DotSize, Height * DotSize);
   PaintBackground;

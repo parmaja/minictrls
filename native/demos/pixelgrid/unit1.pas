@@ -31,6 +31,8 @@ type
     ToolButton11: TToolButton;
     ToolButton12: TToolButton;
     ToolButton13: TToolButton;
+    MergeBtn: TToolButton;
+    ToolButton15: TToolButton;
     ToolButton2: TToolButton;
     ToolButton3: TToolButton;
     ToolButton4: TToolButton;
@@ -47,11 +49,13 @@ type
     procedure ColorListBox1SelectionChange(Sender: TObject; User: boolean);
     procedure FormCreate(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
+    procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
     procedure ToolButton10Click(Sender: TObject);
     procedure ToolButton11Click(Sender: TObject);
     procedure ToolButton12Click(Sender: TObject);
     procedure ToolButton13Click(Sender: TObject);
+    procedure MergeBtnClick(Sender: TObject);
     procedure ToolButton1Click(Sender: TObject);
     procedure ToolButton2Click(Sender: TObject);
     procedure ToolButton3Click(Sender: TObject);
@@ -80,7 +84,15 @@ end;
 
 procedure TForm1.MenuItem2Click(Sender: TObject);
 begin
-  Grid.Dots.LoadFromFile(Application.Location + 'richard-say.png');
+  //Grid.Dots.LoadFromFile(Application.Location + 'richard-say.png');
+  if OpenDialog1.Execute then
+    Grid.Dots.LoadFromFile(OpenDialog1.FileName);
+end;
+
+procedure TForm1.MenuItem3Click(Sender: TObject);
+begin
+  if SaveDialog1.Execute then
+    Grid.Dots.SaveToFile(SaveDialog1.FileName);
 end;
 
 procedure TForm1.MenuItem4Click(Sender: TObject);
@@ -106,6 +118,11 @@ end;
 procedure TForm1.ToolButton13Click(Sender: TObject);
 begin
   Grid.Dots.SetSize(16, 16);
+end;
+
+procedure TForm1.MergeBtnClick(Sender: TObject);
+begin
+  Grid.CurrentMerge := MergeBtn.Down;
 end;
 
 procedure TForm1.ToolButton1Click(Sender: TObject);
