@@ -39,6 +39,14 @@ const
   colFuchsiaTransparent: TFPColor = (Red: $ffff; Green: $0000; Blue: $ffff; Alpha: alphaTransparent);
 
 type
+
+  { TLazIntfImageHelper }
+
+  TLazIntfImageHelper = class helper for TLazIntfImage
+  public
+    procedure ScalePixels(Source: TLazIntfImage; ScaleBy: Integer = 1; WithAlphaBlend: Boolean = True); //1 = no scale
+  end;
+
   TImageClass = TPortableNetworkGraphic;
   TntvPaintTool = class;
 
@@ -78,7 +86,7 @@ type
     FHistory: TntvHistory;
 
     ScaledImage: TLazIntfImage;
-    ScaledCanvas: TFPImageCanvas;
+    //ScaledCanvas: TFPImageCanvas;
 
     BackgroundImage: TLazIntfImage;
     BackgroundCanvas: TFPImageCanvas;
@@ -295,6 +303,45 @@ function ToFPColor(AColor: TColor; AAlpha: Byte): TFPColor;
 begin
   Result := TColorToFPColor(AColor);
   Result.Alpha := MAXWORD * AAlpha div 255;
+end;
+
+{ TLazIntfImageHelper }
+
+procedure TLazIntfImageHelper.ScalePixels(Source: TLazIntfImage; ScaleBy: Integer; WithAlphaBlend: Boolean);
+var
+  x, y: Integer;
+  sx, sy: Integer;
+  dx, dy: integer;
+begin
+  //TODO check if source greater than self
+  x := 0;
+  sx := 0;
+  while sx < Source.Width do
+  begin
+    dx := 0;
+    while dx < ScaleBy do
+    begin
+      y := 0;
+      sy := 0;
+      while sy < Source.Width do
+      begin
+        dy := 0;
+        while dy < ScaleBy do
+        begin
+          if WithAlphaBlend then
+            Colors[x, y] := FPImage.AlphaBlend(Colors[x,y], Source.Colors[sx, sy])
+          else
+            Colors[x, y] := Source.Colors[sx, sy];
+          inc(y);
+          inc(dy);
+        end;
+        inc(sy);
+      end;
+      inc(x);
+      inc(dx);
+    end;
+    inc(sx);
+  end;
 end;
 
 { TntvDraw }
@@ -619,11 +666,14 @@ begin
     IsChanged := False;
 
     ScaledImage.CopyPixels(BackgroundImage);
-    ScaledCanvas.DrawingMode := dmAlphaBlend;
+    //ScaledCanvas.DrawingMode := dmAlphaBlend;
     //ScaledCanvas.Interpolation := TFPBoxInterpolation.Create; moved to after create ScaledCanvas
-    //ScaledCanvas.Draw(0, 0, ScrachImage);
-    ScaledCanvas.StretchDraw(0, 0, ScaledImage.Width, ScaledImage.Height, ScrachImage);
+    //ScaledCanvas.Draw(0, 0, ScrachImage); for testing
+    //ScaledCanvas.StretchDraw(0, 0, ScaledImage.Width, ScaledImage.Height, ScrachImage);
+    ScaledImage.ScalePixels(ScrachImage, DotSize, True); //still slow
   end;
+
+  //(vCanvas as TFPCustomCanvas).Draw(0, 0, ScaledImage); //very slow than loading it into bmp
 
   Img := TBitmap.Create; //maybe make it as cache
   try
@@ -941,8 +991,8 @@ begin
   FScrachCanvas := TFPImageCanvas.Create(FScrachImage);
 
   ScaledImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
-  ScaledCanvas := TFPImageCanvas.Create(ScaledImage);
-  ScaledCanvas.Interpolation := TFPBoxInterpolation.Create;
+  //ScaledCanvas := TFPImageCanvas.Create(ScaledImage);
+  //ScaledCanvas.Interpolation := TFPBoxInterpolation.Create;
 
   BackgroundImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
   BackgroundCanvas := TFPImageCanvas.Create(BackgroundImage);
@@ -972,9 +1022,9 @@ destructor TntvDisplayDots.Destroy;
 begin
   BackgroundImage.Free;
   BackgroundCanvas.Free;
-  ScaledCanvas.Interpolation.Free;
   ScaledImage.Free;
-  ScaledCanvas.Free;
+  //ScaledCanvas.Interpolation.Free;
+  //ScaledCanvas.Free;
   FreeAndNil(FHistory);
   FreeAndNil(FCanvas);
   FreeAndNil(FScrachCanvas);
