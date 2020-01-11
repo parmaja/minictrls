@@ -10,9 +10,14 @@ unit ntvPixelGrids;
  *
  * Thanks to
  *
+ * Ref:
  * https://sites.google.com/a/gorilla3d.com/fpc-docs/built-in-units/fcl-image/filling-the-circle
  * https://forum.lazarus.freepascal.org/index.php?topic=35424.msg234045
  * https://wiki.freepascal.org/Graphics_-_Working_with_TCanvas
+ * https://wiki.freepascal.org/GraphicTest
+ * https://wiki.freepascal.org/Accessing_the_Interfaces_directly
+ * https://wiki.freepascal.org/Fast_direct_pixel_access
+ * http://free-pascal-general.1045716.n5.nabble.com/FPImage-and-GetDataLineStart-td4329151.html
  *
  *}
 
@@ -40,9 +45,28 @@ const
 
 type
 
+  TRGBAColor = TFPCompactImgRGBA8BitValue;
+
+  { TRGBAImage }
+
+  TRGBAImage = class(TFPCompactImgRGBA8Bit)
+  private
+    function GetRGBAColor(x, y: integer): TRGBAColor;
+    procedure SetRGBAColor(x, y: integer; AValue: TRGBAColor);
+  public
+    function GetDataSize: Integer;
+    procedure CopyPixels(ASource: TRGBAImage); virtual;
+    function AlphaBlend(const color1, color2: TRGBAColor): TRGBAColor;
+    constructor CreateCompatible(AImage: TRGBAImage; AWidth, AHeight: integer);
+    procedure ScalePixels(Source: TRGBAImage; ScaleBy: Integer = 1; WithAlphaBlend: Boolean = True); //1 = no scale
+    procedure FillPixels(const Color: TFPColor); virtual;
+    procedure FillPixels(const Color: TRGBAColor); virtual;
+    property RGBAColors [x, y: integer]: TRGBAColor read GetRGBAColor write SetRGBAColor; default;
+  end;
+
   { TLazIntfImageHelper }
 
-  TLazIntfImageHelper = class helper for TLazIntfImage
+  TLazIntfImageHelper = class helper for TFPCustomImage
   public
     procedure ScalePixels(Source: TLazIntfImage; ScaleBy: Integer = 1; WithAlphaBlend: Boolean = True); //1 = no scale
   end;
@@ -56,12 +80,15 @@ type
     DotPadding: Integer;
   end;
 
+  //TDisplayImage = TLazIntfImage;
+  TDisplayImage = TRGBAImage;
+
   { TntvHistoryObject }
 
   TntvHistoryObject = class(TObject)
   public
-    Image: TLazIntfImage;
-    constructor Create(AImage: TLazIntfImage);
+    Image: TDisplayImage;
+    constructor Create(AImage: TDisplayImage);
     destructor Destroy; override;
   end;
 
@@ -72,12 +99,12 @@ type
 
   TntvDisplayDots = class(TPersistent)
   private
-    FScrachImage: TLazIntfImage;
+    FScrachImage: TDisplayImage;
     FScrachCanvas: TFPImageCanvas;
 
-    FImage: TLazIntfImage;
+    FImage: TDisplayImage;
     FCanvas: TFPImageCanvas;
-    FDrawer: TIntfFreeTypeDrawer;
+    //FDrawer: TIntfFreeTypeDrawer;
 
     FFont: TFreeTypeFont;
     FOffsetX: Integer;
@@ -85,10 +112,10 @@ type
     FUpdateCount: Integer;
     FHistory: TntvHistory;
 
-    ScaledImage: TLazIntfImage;
+    ScaledImage: TDisplayImage;
     //ScaledCanvas: TFPImageCanvas;
 
-    BackgroundImage: TLazIntfImage;
+    BackgroundImage: TDisplayImage;
     BackgroundCanvas: TFPImageCanvas;
 
     procedure CanvasChanged(Sender: TObject);
@@ -137,9 +164,9 @@ type
     procedure Scroll(x, y: Integer);
     procedure Assign(Source: TPersistent); override;
     property Updating: Boolean read GetUpdating;
-    property ScrachImage: TLazIntfImage read FScrachImage;
+    property ScrachImage: TDisplayImage read FScrachImage;
     property ScrachCanvas: TFPImageCanvas read FScrachCanvas;
-    property Image: TLazIntfImage read FImage;
+    property Image: TDisplayImage read FImage;
 
     property Pixels[x, y:integer] : TColor read GetPixel write SetPixel;
     property Width: Integer read GetWidth write SetWidth;
@@ -305,6 +332,121 @@ begin
   Result.Alpha := MAXWORD * AAlpha div 255;
 end;
 
+{ TRGBAImage }
+
+function TRGBAImage.GetRGBAColor(x, y: integer): TRGBAColor;
+begin
+  Result := FData[ x + y * Width];
+end;
+
+procedure TRGBAImage.SetRGBAColor(x, y: integer; AValue: TRGBAColor);
+begin
+  FData[x + y * Width]:= AValue;
+end;
+
+function TRGBAImage.GetDataSize: Integer;
+begin
+  Result := SizeOf(TRGBAColor) * Width* Height;
+end;
+
+procedure TRGBAImage.CopyPixels(ASource: TRGBAImage);
+begin
+  SetSize(ASource.Width, ASource.Height);
+  System.Move(ASource.FData^, FData^, GetDataSize);
+end;
+
+function TRGBAImage.AlphaBlend(const color1, color2: TRGBAColor): TRGBAColor;
+var
+  factor1, factor2: single;
+  //factor1, factor2: Integer;
+begin
+  if color2.A = $ff then
+    Result := color2
+  else
+  if color2.A = 0 then
+    Result := color1
+  else
+  if color1.A = 0 then
+    Result := color2
+  else
+  begin
+    factor1 := (color1.A / $ff) * (1 - color2.A / $ff);
+    factor2 := color2.A / $ff;
+    //factor1 := color1.A * ($ff - color2.A) div $ff;
+    //factor2 := color2.A div $ff;
+
+    Result.R := Round(color1.R * factor1 + color2.R * factor2);
+    Result.G := Round(color1.G * factor1 + color2.G * factor2);
+    Result.B := Round(color1.B * factor1 + color2.B * factor2);
+    Result.A := Round(factor1 * $ff + color2.A);
+  end;
+end;
+
+constructor TRGBAImage.CreateCompatible(AImage: TRGBAImage; AWidth, AHeight: integer);
+begin
+  Inherited Create(AWidth, AHeight);
+end;
+
+procedure TRGBAImage.ScalePixels(Source: TRGBAImage; ScaleBy: Integer; WithAlphaBlend: Boolean);
+var
+  x, y: Integer;
+  sx, sy: Integer;
+  dx, dy: integer;
+begin
+  //BeginUpdate;
+  try
+    //TODO check if source greater than self
+    x := 0;
+    sx := 0;
+    while sx < Source.Width do
+    begin
+      dx := 0;
+      while dx < ScaleBy do
+      begin
+        y := 0;
+        sy := 0;
+        while sy < Source.Height do
+        begin
+          dy := 0;
+          while dy < ScaleBy do
+          begin
+            if WithAlphaBlend then
+              RGBAColors[x, y] := AlphaBlend(RGBAColors[x,y], Source.RGBAColors[sx, sy])
+            else
+              RGBAColors[x, y] := Source.RGBAColors[sx, sy];
+            inc(y);
+            inc(dy);
+          end;
+          inc(sy);
+        end;
+        inc(x);
+        inc(dx);
+      end;
+      inc(sx);
+    end;
+  finally
+    //EndUpdate;
+  end;
+end;
+
+procedure TRGBAImage.FillPixels(const Color: TFPColor);
+var
+  x, y: Integer;
+begin
+  for y:=0 to Height-1 do
+    for x:=0 to Width-1 do
+      SetInternalColor(x,y,Color);
+end;
+
+procedure TRGBAImage.FillPixels(const Color: TRGBAColor);
+var
+  x, y: Integer;
+begin
+  for y:=0 to Height-1 do
+    for x:=0 to Width-1 do
+      RGBAColors[x, y] := Color;
+end;
+
 { TLazIntfImageHelper }
 
 procedure TLazIntfImageHelper.ScalePixels(Source: TLazIntfImage; ScaleBy: Integer; WithAlphaBlend: Boolean);
@@ -313,34 +455,39 @@ var
   sx, sy: Integer;
   dx, dy: integer;
 begin
-  //TODO check if source greater than self
-  x := 0;
-  sx := 0;
-  while sx < Source.Width do
-  begin
-    dx := 0;
-    while dx < ScaleBy do
+  //BeginUpdate;
+  try
+    //TODO check if source greater than self
+    x := 0;
+    sx := 0;
+    while sx < Source.Width do
     begin
-      y := 0;
-      sy := 0;
-      while sy < Source.Height do
+      dx := 0;
+      while dx < ScaleBy do
       begin
-        dy := 0;
-        while dy < ScaleBy do
+        y := 0;
+        sy := 0;
+        while sy < Source.Height do
         begin
-          if WithAlphaBlend then
-            Colors[x, y] := FPImage.AlphaBlend(Colors[x,y], Source.Colors[sx, sy])
-          else
-            Colors[x, y] := Source.Colors[sx, sy];
-          inc(y);
-          inc(dy);
+          dy := 0;
+          while dy < ScaleBy do
+          begin
+            if WithAlphaBlend then
+              Colors[x, y] := FPImage.AlphaBlend(Colors[x,y], Source.Colors[sx, sy])
+            else
+              Colors[x, y] := Source.Colors[sx, sy];
+            inc(y);
+            inc(dy);
+          end;
+          inc(sy);
         end;
-        inc(sy);
+        inc(x);
+        inc(dx);
       end;
-      inc(x);
-      inc(dx);
+      inc(sx);
     end;
-    inc(sx);
+  finally
+    //EndUpdate;
   end;
 end;
 
@@ -436,7 +583,7 @@ end;
 
 { TntvHistoryObject }
 
-constructor TntvHistoryObject.Create(AImage: TLazIntfImage);
+constructor TntvHistoryObject.Create(AImage: TDisplayImage);
 begin
   inherited Create;
   Image := AImage;
@@ -660,25 +807,37 @@ end;
 procedure TntvDisplayDots.Paint(vCanvas: TCanvas; vRect: TRect; PaintTool: TntvPaintTool);
 var
   Img: TBitmap;
+  tt, t, td: int64;
+  procedure printdiff(s: string);
+  begin
+    tt := GetTickCount64;
+    td := tt - t;
+    t := tt;
+    WriteLn(s + ': ' , td);
+  end;
 begin
+  t := GetTickCount64;
   if IsChanged then
   begin
     IsChanged := False;
 
     ScaledImage.CopyPixels(BackgroundImage);
+    printdiff('copy');
     //ScaledCanvas.DrawingMode := dmAlphaBlend;
     //ScaledCanvas.Interpolation := TFPBoxInterpolation.Create; moved to after create ScaledCanvas
     //ScaledCanvas.Draw(0, 0, ScrachImage); for testing
     //ScaledCanvas.StretchDraw(0, 0, ScaledImage.Width, ScaledImage.Height, ScrachImage);
     ScaledImage.ScalePixels(ScrachImage, DotSize, True); //still slow
+    printdiff('scale');
   end;
 
   //(vCanvas as TFPCustomCanvas).Draw(0, 0, ScaledImage); //very slow than loading it into bmp
 
-  Img := TBitmap.Create; //maybe make it as cache
+  Img := CreateBitmapFromFPImage(ScaledImage); //maybe make it as cache
+  printdiff('bitmap');
   try
-    Img.LoadFromIntfImage(ScaledImage);
     vCanvas.Draw(0, 0, Img);
+    printdiff('draw');
   finally
     Img.Free;
   end;
@@ -744,7 +903,7 @@ end;
 
 procedure TntvDisplayDots.DrawText(x, y: Integer; AText: string; AColor: TColor);
 begin
-  FDrawer.DrawText(AText, FFont, x, y, TColorToFPColor(AColor));
+  //FDrawer.DrawText(AText, FFont, x, y, TColorToFPColor(AColor));
   Changed;
 end;
 
@@ -760,10 +919,8 @@ var
 begin
   png := TPortableNetworkGraphic.Create;
   try
-    png.LoadFromIntfImage(FImage);
+    //png.LoadFromIntfImage(FImage);
     png.Transparent := True;
-    //png.TransparentColor := clFuchsia;
-    //png.PixelFormat := pf32bit;
     png.SaveToFile(FileName);
   finally
     png.Free;
@@ -777,7 +934,7 @@ begin
   png := TPortableNetworkGraphic.Create;
   try
     png.LoadFromFile(FileName);
-    FImage.LoadFromBitmap(png.Handle, png.MaskHandle);
+    //FImage.LoadFromBitmap(png.Handle, png.MaskHandle);
     UpdateSize;
   finally
     png.Free;
@@ -864,9 +1021,10 @@ end;
 
 procedure TntvDisplayDots.PushHistory;
 var
-  AImage: TLazIntfImage;
+  AImage: TDisplayImage;
 begin
-  AImage := TLazIntfImage.CreateCompatible(FImage, FImage.Width, FImage.Height);
+  //AImage := TLazIntfImage.CreateCompatible(FImage, FImage.Width, FImage.Height);
+  AImage := TDisplayImage.CreateCompatible(FImage, FImage.Width, FImage.Height);
   AImage.CopyPixels(FImage);
   FHistory.Add(TntvHistoryObject.Create(AImage));
   if FHistory.Count > 20 then
@@ -875,7 +1033,7 @@ end;
 
 procedure TntvDisplayDots.PopHistory;
 var
-  AImage: TLazIntfImage;
+  AImage: TDisplayImage;
 begin
   if FHistory.Count > 0 then
   begin
@@ -924,7 +1082,7 @@ end;
 
 function TntvDisplayDots.GetPixel(x, y: integer): TColor;
 begin
-  Result := Image.TColors[x, y];
+  Result := FPColorToTColor(Image.Colors[x, y]);
 end;
 
 function TntvDisplayDots.GetWidth: Integer;
@@ -960,7 +1118,7 @@ end;
 
 procedure TntvDisplayDots.SetPixel(x, y: integer; const AValue: TColor);
 begin
-  Image.TColors[x, y] := AValue;
+  Image.Colors[x, y] := TColorToFPColor(AValue);
   Changed;
 end;
 
@@ -979,9 +1137,10 @@ begin
   Matrix.DotSize := cDotSize;
   Matrix.DotPadding := cDotPadding;
 
-  FImage := TLazIntfImage.Create(cDefaultWidth, cDefaultHeight, [riqfRGB, riqfAlpha]);
+  FImage := TDisplayImage.Create(cDefaultWidth, cDefaultHeight{, [riqfRGB, riqfAlpha]});
+
   FCanvas := TFPImageCanvas.Create(FImage);
-  FDrawer := TIntfFreeTypeDrawer.Create(FImage);
+  //FDrawer := TIntfFreeTypeDrawer.Create(FImage);
   FFont := TFreeTypeFont.Create;
   FFont.Name := 'c:\Windows\fonts\Arial.ttf';
   FFont.SizeInPixels := 9;
@@ -989,14 +1148,14 @@ begin
   FFont.ClearType := False;
   FFont.Quality := grqLowQuality;
 
-  FScrachImage := TLazIntfImage.CreateCompatible(FImage, cDefaultWidth, cDefaultHeight);
+  FScrachImage := TDisplayImage.CreateCompatible(FImage, cDefaultWidth, cDefaultHeight);
   FScrachCanvas := TFPImageCanvas.Create(FScrachImage);
 
-  ScaledImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
+  ScaledImage := TDisplayImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
   //ScaledCanvas := TFPImageCanvas.Create(ScaledImage);
   //ScaledCanvas.Interpolation := TFPBoxInterpolation.Create;
 
-  BackgroundImage := TLazIntfImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
+  BackgroundImage := TDisplayImage.CreateCompatible(ScrachImage, ScrachImage.Width * DotSize, ScrachImage.Height * DotSize);
   BackgroundCanvas := TFPImageCanvas.Create(BackgroundImage);
 
   FHistory := TntvHistory.Create;
@@ -1030,7 +1189,7 @@ begin
   FreeAndNil(FHistory);
   FreeAndNil(FCanvas);
   FreeAndNil(FScrachCanvas);
-  FreeAndNil(FDrawer);
+  //FreeAndNil(FDrawer);
   FreeAndNil(FFont);
   FreeAndNil(FImage);
   FreeAndNil(FScrachImage);

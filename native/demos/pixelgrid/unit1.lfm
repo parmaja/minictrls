@@ -195,7 +195,7 @@ object Form1: TForm1
   object OpenDialog1: TOpenDialog
     DefaultExt = '.png'
     FileName = '*.png'
-    Filter = 'png|*.png'
+    Filter = 'png|*.png|icon|*.ico'
     Left = 123
     Top = 90
   end

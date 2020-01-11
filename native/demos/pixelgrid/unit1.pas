@@ -84,7 +84,6 @@ end;
 
 procedure TForm1.MenuItem2Click(Sender: TObject);
 begin
-  //Grid.Dots.LoadFromFile(Application.Location + 'richard-say.png');
   if OpenDialog1.Execute then
     Grid.Dots.LoadFromFile(OpenDialog1.FileName);
 end;
