@@ -12,6 +12,8 @@ unit ntvTabSets;
 {
   You must apply the patch in this bug tracker
   http://bugs.freepascal.org/view.php?id=18458
+
+  TODO: AutoSize
 }
 
 {$mode objfpc}{$H+}
@@ -603,6 +605,8 @@ end;
 procedure TntvCustomTabSet.FontChanged(Sender: TObject);
 begin
   inherited FontChanged(Sender);
+  UpdateHeaderRect;
+  Items.Changed;
   Invalidate;
 end;
 

@@ -179,6 +179,7 @@ type
     function GetTabRect(const vTabsRect: TRect; Index: Integer; out vTabRect: TRect; vFlags: TntvFlags): Boolean; overload; virtual;
     function GetTabOffset(Index: Integer): Integer;
 
+    procedure Changed;
     //Items
     property Items[Index: Integer]: TntvTabItem read GetItem write SetItem stored False; default;
     //Properites
@@ -823,6 +824,11 @@ begin
   Result := 0;
   for i := Index - 1 downto TopIndex do
     Result := Result + FVisibles[index].Width;
+end;
+
+procedure TntvTabs.Changed;
+begin
+  Update(nil);
 end;
 
 function TntvTabs.ShowTab(Canvas: TCanvas; const vRect:TRect; Index: Integer; vFlags: TntvFlags): Boolean;
