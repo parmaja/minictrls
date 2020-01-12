@@ -718,7 +718,7 @@ procedure TntvPixelGrid.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
   RealPoint: TPoint;
 begin
-  inherited MouseMove(Shift, X, Y);
+  inherited;
   if FCurrentTool <> nil then
     if Dots.VisualToReal(Point(X, Y), RealPoint) then
     begin
@@ -736,13 +736,13 @@ end;
 
 procedure TntvPixelGrid.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-  inherited MouseUp(Button, Shift, X, Y);
+  inherited;
   EndTool(False);
 end;
 
 procedure TntvPixelGrid.KeyDown(var Key: Word; Shift: TShiftState);
 begin
-  inherited KeyDown(Key, Shift);
+  inherited;
   if Shift = [] then
   begin
     case Key of
@@ -761,7 +761,7 @@ procedure TntvPixelGrid.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y
 var
   RealPoint: TPoint;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited;
   SetFocus;
   if Dots.VisualToReal(Point(X, Y), RealPoint) then
   begin

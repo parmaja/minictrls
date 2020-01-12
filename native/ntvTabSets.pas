@@ -84,6 +84,7 @@ type
     procedure SetShowTabs(const Value: Boolean);
     procedure SetImageList(const Value: TImageList);
   protected
+    procedure CalculatePreferredSize(var PreferredWidth, PreferredHeight: integer; WithThemeSpace: Boolean); override;
     function ChildKey(var Message: TLMKey): boolean; override;
     procedure FontChanged(Sender: TObject); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
@@ -179,6 +180,7 @@ type
 
   TntvTabSet = class(TntvCustomTabSet)
   published
+    property AutoSize;
     property StoreIndex;
     property ChildSizing;
     property BorderSpacing;
@@ -787,6 +789,13 @@ begin
   begin
     Items.Images := Value;
   end;
+end;
+
+procedure TntvCustomTabSet.CalculatePreferredSize(var PreferredWidth, PreferredHeight: integer; WithThemeSpace: Boolean);
+begin
+  inherited CalculatePreferredSize(PreferredWidth, PreferredHeight, WithThemeSpace);
+  //UpdateHeaderRect;
+  PreferredHeight  := FInternalHeaderHeight;
 end;
 
 class function TntvCustomTabSet.GetControlClassDefaultSize: TSize;
