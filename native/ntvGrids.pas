@@ -28,6 +28,7 @@ const
   sGridVersion = 'NativeGrid=v1.0';
 
   sColWidth = 80;
+  sColMinWidth = 1;
   sCellMargin = 3;
   sGutterWidth = 40;
   sFringeWidth = 40;
@@ -5260,29 +5261,34 @@ constructor TntvColumn.Create(vGrid: TntvCustomGrid; vTitle: String; vName: Stri
 begin
   inherited Create;
   FGrid := vGrid;
-  if vName = '' then
-    FName := Copy(ClassName, 2, MaxInt)
-  else
-    FName := vName;
-  Info.Title := vTitle;
+  Grid.BeginUpdate;
+  try
+    if vName = '' then
+      FName := Copy(ClassName, 2, MaxInt)
+    else
+      FName := vName;
+    Info.Title := vTitle;
 
-  FImageIndex := -1;
-  FParentBiDiMode := True;
-  FEnabled := vEnabled;
+    FImageIndex := -1;
+    FParentBiDiMode := True;
+    FEnabled := vEnabled;
 
-  Info.Visible := True;
-  Info.ID := vID;
-  Info.Width := sColWidth;
+    Info.Visible := True;
+    Info.ID := vID;
+    Info.Width := sColWidth;
 
-  FVisibleIndex := -1;
+    FVisibleIndex := -1;
 
-  if vGrid <> nil then
-  begin
-    FIndex := vGrid.Columns.Count;
-    FOrderIndex := FIndex;
-    vGrid.Columns.Add(Self);
-    vGrid.OrderColumns.Add(Self);
-  end;
+    if vGrid <> nil then
+    begin
+      FIndex := vGrid.Columns.Count;
+      FOrderIndex := FIndex;
+      vGrid.Columns.Add(Self);
+      vGrid.OrderColumns.Add(Self);
+    end;
+  finally
+    Grid.EndUpdate;
+  end
 end;
 
 procedure TntvColumn.ShowEdit;
@@ -5884,6 +5890,9 @@ begin
         for i :=  0 to aColumns.Count -1 do
           aColumns[i].Info.Width := r;
       end;
+      for i := 0 to FVisibleColumns.Count -1 do
+        if FVisibleColumns[i].Info.Width <=0 then
+          FVisibleColumns[i].Info.Width := sColMinWidth;
     finally
       FreeAndNil(aColumns);
     end;

@@ -795,7 +795,7 @@ procedure TntvCustomTabSet.CalculatePreferredSize(var PreferredWidth, PreferredH
 begin
   inherited CalculatePreferredSize(PreferredWidth, PreferredHeight, WithThemeSpace);
   //UpdateHeaderRect;
-  PreferredHeight  := FInternalHeaderHeight;
+  PreferredHeight  := FInternalHeaderHeight + cHeaderHeightMargin;
 end;
 
 class function TntvCustomTabSet.GetControlClassDefaultSize: TSize;
