@@ -143,7 +143,7 @@ procedure TntvThemePainter.DrawText(Canvas: TCanvas; Text: string; Rect: TRect; 
 var
   TS: TTextStyle;
 begin
-  Finalize(TS);
+  Initialize(TS);
   with TS do
   begin
     Alignment := BidiFlipAlignment(Alignment, UseRightToLeft);
@@ -165,7 +165,7 @@ begin
   with Canvas do
   begin
     Brush.Style := bsClear;
-    Finalize(TS);
+    Initialize(TS);
     with TS do
     begin
       if ImageWidth = 0 then

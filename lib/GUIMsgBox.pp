@@ -350,12 +350,10 @@ begin
 end;
 
 function TMsgForm.ShowNow(vCancelChoiceIndex: Integer): Integer;
-var
-  mr: Integer;
 begin
   Position := poMainFormCenter;
   ChoiceIndex := vCancelChoiceIndex;
-  mr := ShowModal;
+  ShowModal;
   Result := ChoiceIndex;
 end;
 

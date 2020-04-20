@@ -19,7 +19,7 @@ interface
 
 uses
   SysUtils, Variants, Messages, Classes, Graphics, Controls,
-  LCLType, LCLIntf, fgl,
+  LCLType, LCLIntf, fgl, mnDebugs,
   StdCtrls, Dialogs, Math, Menus, Forms, ImgList, Contnrs,
   ColorUtils, mnClasses, UniDates, mnFields,
   ntvCtrls, ntvThemes;
@@ -3619,11 +3619,13 @@ end;
 
 function TntvCustomGrid.GetTextStyle(vCentered: Boolean): TTextStyle;
 begin
-  Finalize(Result);
+  Initialize(Result);
+  //FillByte(Result, SizeOf(Result), 0);
   Result.RightToLeft := UseRightToLeftReading;
   Result.Layout := tlCenter;
   Result.SingleLine := True;
   Result.Opaque := True;
+  Result.SystemFont := False;
 
   if vCentered then
     Result.Alignment := taCenter
@@ -6516,7 +6518,7 @@ end;
 procedure TntvCustomGrid.DrawString(vCanvas: TCanvas; vText: String; vRect: TRect; vFormat: TTextStyle; vClipping: Boolean = False);
 begin
   vFormat.Clipping := vClipping;
-  vCanvas.TextRect(vRect, vRect.Left, vRect.Top, vText, vFormat);
+  Canvas.TextRect(vRect, vRect.Left, vRect.Top, vText, vFormat);
 end;
 
 procedure TntvCustomGrid.MoveCurrentRowCol(out vRow, vCol: Integer);

@@ -599,7 +599,7 @@ end;
 
 procedure TntvPixel.Paint(Canvas: TFPImageCanvas);
 begin
-  //Canvas.DrawPixel(CurrentPoint.x, CurrentPoint.y, ToFPColor(Control.CurrentColor, Control.CurrentAlpha));
+  Canvas.Colors[CurrentPoint.x, CurrentPoint.y] := ToFPColor(Control.CurrentColor, Control.CurrentAlpha);
 end;
 
 procedure TntvPixel.Created;

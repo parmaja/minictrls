@@ -325,7 +325,7 @@ var
   var
     points: TMyPoints;
   begin
-    Finalize(points);
+    Initialize(points);
     points.Reset;
     with Canvas do
     begin
@@ -360,7 +360,7 @@ var
 var
   points: TMyPoints;
 begin
-  Finalize(points);
+  Initialize(points);
   points.Reset;
   mw := (vRect.Bottom - vRect.Top) div cGapSize;
   with Canvas do

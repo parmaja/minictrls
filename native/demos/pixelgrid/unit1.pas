@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  ColorBox, ComCtrls, Menus, FPimage, FPCanvas, ntvPixelGrids, ntvDotMatrix;
+  ColorBox, ComCtrls, Menus, Interfaces, FPimage, FPCanvas, ntvPixelGrids,
+  ntvDotMatrix;
 
 type
 

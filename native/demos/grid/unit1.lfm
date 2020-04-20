@@ -38,6 +38,15 @@ object Form1: TForm1
     OnClick = Button2Click
     TabOrder = 2
   end
+  object ComboBox1: TComboBox
+    Left = 76
+    Height = 23
+    Top = 65
+    Width = 255
+    ItemHeight = 15
+    TabOrder = 3
+    Text = 'ComboBox1'
+  end
   object PopupMenu1: TPopupMenu
     Left = 307
     Top = 193

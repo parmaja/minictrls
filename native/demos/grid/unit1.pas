@@ -16,6 +16,7 @@ type
     Button1: TButton;
     Button2: TButton;
     CloseBtn: TButton;
+    ComboBox1: TComboBox;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
