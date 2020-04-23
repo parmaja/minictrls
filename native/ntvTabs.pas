@@ -148,6 +148,7 @@ type
     FUpdateItems: Boolean;
     procedure SetImages(const AValue: TImageList);
   protected
+
     function GetItem(Index: Integer): TntvTabItem;
     procedure SetItem(Index: Integer; Value: TntvTabItem);
     procedure Update(Item: TCollectionItem); override;
@@ -615,18 +616,27 @@ end;
 procedure TntvTabs.UpdateItems(vCanvas: TCanvas);
 var
   i, w: Integer;
+  TmpCanvas: TCanvas;
 begin
-  for i := 0 to Count - 1 do
-    if Items[I].AutoWidth then
-    begin
-      w := vCanvas.TextWidth(Items[i].Caption) + cTextMargin * 2;
-      if (Images <> nil) and (Items[I].ImageIndex > -1) then
-        w := w + Images.Width - cImageMargin;
-      if w < cMinTabWidth then
-        w := cMinTabWidth;
-      Items[i].FWidth := w;
-    end;
-  FUpdateItems := False;
+  TmpCanvas := TCanvas.Create;
+  try
+    TmpCanvas.Handle := GetDC(0);
+    TmpCanvas.Font.Assign(vCanvas.Font);
+    for i := 0 to Count - 1 do
+      if Items[I].AutoWidth then
+      begin
+        w := tmpCanvas.TextWidth(Items[i].Caption) + cTextMargin * 2;
+        if (Images <> nil) and (Items[I].ImageIndex > -1) then
+          w := w + Images.Width - cImageMargin;
+        if w < cMinTabWidth then
+          w := cMinTabWidth;
+        Items[i].FWidth := w;
+      end;
+    FUpdateItems := False;
+  finally
+    ReleaseDC(0, TmpCanvas.Handle);
+    TmpCanvas.Free;
+  end;
 end;
 
 procedure TntvTabs.VisibleChanged;

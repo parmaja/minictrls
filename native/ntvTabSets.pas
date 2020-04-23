@@ -122,7 +122,7 @@ type
     procedure Last;
     procedure Clear;
   //to published
-    property StoreIndex: Boolean read FStoreIndex write FStoreIndex;
+    property StoreIndex: Boolean read FStoreIndex write FStoreIndex default False;
     property ShowButtons: Boolean read GetShowButtons write SetShowButtons default True;
     property ShowTabs: Boolean read FShowTabs write SetShowTabs default True;
     property AlignTabs: TAlignTabs read FAlignTabs write SetAlignTabs default talTop;
@@ -269,6 +269,7 @@ begin
   Items.NormalColor := sNormalColor;
   UpdateHeaderRect;
   FShowTabs := True;
+  FShowBorder := True;
   FAlignTabs := talTop;
   SetInitialBounds(0, 0, GetControlClassDefaultSize.cx, GetControlClassDefaultSize.cy);
 end;
@@ -353,9 +354,11 @@ begin
 
         if ShowBorder then
         begin
+          LineTo(ClientRect.Right - 1, aTabsRect.Bottom - 1);
+          LineTo(ClientRect.Right - 1, ClientRect.Bottom - 1);
           LineTo(ClientRect.Left, ClientRect.Bottom - 1);
-          LineTo(ClientRect.Right, ClientRect.Bottom - 1);
-          LineTo(ClientRect.Right, aTabsRect.Bottom - 1);
+          LineTo(ClientRect.Left, aTabsRect.Bottom - 1);
+          //LineTo(ClientRect.Right, aTabsRect.Bottom - 1);
         end;
       end;
     end;

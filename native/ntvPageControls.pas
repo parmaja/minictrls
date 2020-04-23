@@ -74,6 +74,7 @@ type
     procedure SetItems(Value: TntvPages);
     function GetPageItem(vControl: TControl): TntvPageItem;
   protected
+    procedure Loaded; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure CreateParams(var Params: TCreateParams); override;
     function CreateTabs: TntvTabs; override;
@@ -249,7 +250,8 @@ begin
         Align := alClient;
       if not (csLoading in ComponentState) and (vSetFocus) and (not Self.Focused) and (vControl is TWinControl) then
       begin
-        ActivateControl;
+        if not (csDesigning in ComponentState) then
+          ActivateControl;
       end;
     end;
 end;
@@ -401,6 +403,11 @@ begin
       Result := Items[i];
       Break;
     end;
+end;
+
+procedure TntvPageControl.Loaded;
+begin
+  inherited Loaded;
 end;
 
 function TntvPageControl.GetItems: TntvPages;
