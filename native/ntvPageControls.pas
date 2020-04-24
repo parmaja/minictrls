@@ -81,7 +81,6 @@ type
     procedure ShowControl(AControl: TControl); override;
     procedure AlignControls(AControl: TControl; var Rect: TRect); override;
 
-    function GetInnerRect: TRect; virtual;
     function GetPageRect: TRect; virtual;
 
     procedure BringControl(vControl: TControl; vSetFocus: Boolean);
@@ -113,6 +112,8 @@ type
     property Items: TntvPages read GetItems write SetItems;
     property OnTabSelected;
     property OnTabSelect;
+    property TabStyle;
+    property TabPosition;
 
     property Align;
     property Anchors;
@@ -274,13 +275,6 @@ begin
   BringControl((Items.Visibles[Index] as TntvPageItem).Control, vSetfocus);
 end;
 
-function TntvPageControl.GetInnerRect: TRect;
-begin
-  Result := ClientRect;
-  if ShowTabs then
-    Inc(Result.Top, GetHeaderHeight);
-end;
-
 procedure TntvPageControl.Notification(AComponent: TComponent;
   Operation: TOperation);
 begin
@@ -321,7 +315,12 @@ function TntvPageControl.GetPageRect: TRect;
 begin
   Result := ClientRect;
   if ShowTabs then
-    Inc(Result.Top, GetHeaderHeight);
+  begin
+    case TabPosition of
+      tbpTop: Inc(Result.Top, GetHeaderHeight);
+      tbpBottom: Dec(Result.Bottom, GetHeaderHeight);
+    end;
+  end;
   InflateRect(Result, -FMargin, -FMargin);
 end;
 

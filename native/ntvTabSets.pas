@@ -34,8 +34,6 @@ type
   TOnTabSelect = procedure(Sender: TObject; OldTab, NewTab: TntvTabItem; var CanSelect: boolean) of object;
   TOnTabSelected = procedure(Sender: TObject; OldTab, NewTab: TntvTabItem) of object;
 
-  TAlignTabs = (talTop, talBottom);
-
   { TntvTabSetItems }
 
   TntvTabSetItems = class(TntvTabs)
@@ -49,11 +47,12 @@ type
 
   TOnGetColor = procedure(Sender: TObject; var Color: TColor) of object;
 
+  TntvTabStyle = (tbsCart, tbsSheet);
+
   { TntvCustomTabSet }
 
   TntvCustomTabSet = class(TCustomControl)
   private
-    FAlignTabs: TAlignTabs;
     FItems: TntvTabs;
     FHeaderHeight: Integer;
     FInternalHeaderHeight: Integer;
@@ -63,16 +62,19 @@ type
     FShowBorder: Boolean;
     FStoreIndex: Boolean;
     FShowTabs: Boolean;
+    FTabStyle: TntvTabStyle;
     function GetActiveColor: TColor;
     function GetImageList: TImageList;
     function GetNormalColor: TColor;
     function GetShowButtons: Boolean;
+    function GetTabPosition: TntvTabPosition;
     function GetTopIndex: Integer;
     procedure SetActiveColor(AValue: TColor);
-    procedure SetAlignTabs(AValue: TAlignTabs);
     procedure SetItemIndex(Value: Integer);
     procedure SetNormalColor(AValue: TColor);
     procedure SetShowBorder(const AValue: Boolean);
+    procedure SetTabPosition(AValue: TntvTabPosition);
+    procedure SetTabStyle(AValue: TntvTabStyle);
     procedure SetTopIndex(const Value: Integer);
     function GetItemIndex: Integer;
     procedure WMGetDlgCode(var message: TWMGetDlgCode); message WM_GETDLGCODE;
@@ -125,8 +127,7 @@ type
     property StoreIndex: Boolean read FStoreIndex write FStoreIndex default False;
     property ShowButtons: Boolean read GetShowButtons write SetShowButtons default True;
     property ShowTabs: Boolean read FShowTabs write SetShowTabs default True;
-    property AlignTabs: TAlignTabs read FAlignTabs write SetAlignTabs default talTop;
-    property ShowBorder: Boolean read FShowBorder write SetShowBorder default True;
+    property ShowBorder: Boolean read FShowBorder write SetShowBorder default False;
     property HeaderHeight: Integer read FHeaderHeight write FHeaderHeight;
     property ItemIndex: Integer read GetItemIndex write SetItemIndex stored FStoreIndex default 0;
     property ImageList: TImageList read GetImageList write SetImageList;
@@ -137,6 +138,9 @@ type
     property OnTabSelected: TOnTabSelected read FOnTabSelected write FOnTabSelected;
     property OnTabSelect: TOnTabSelect read FOnTabSelect write FOnTabSelect;
     property OnGetColor: TOnGetColor read FOnGetColor write FOnGetColor; //TODO
+
+    property TabStyle: TntvTabStyle read FTabStyle write SetTabStyle default tbsCart;
+    property TabPosition: TntvTabPosition read GetTabPosition  write SetTabPosition default tbpTop;
 
     property Align;
     property Anchors;
@@ -187,7 +191,6 @@ type
     property ShowButtons;
     property ShowBorder;
     property ShowTabs;
-    property AlignTabs;
     property ItemIndex;
     property ImageList;
 
@@ -269,8 +272,7 @@ begin
   Items.NormalColor := sNormalColor;
   UpdateHeaderRect;
   FShowTabs := True;
-  FShowBorder := True;
-  FAlignTabs := talTop;
+  FShowBorder := False;
   SetInitialBounds(0, 0, GetControlClassDefaultSize.cx, GetControlClassDefaultSize.cy);
 end;
 
@@ -305,6 +307,29 @@ begin
   if FShowBorder =AValue then exit;
   FShowBorder :=AValue;
   Invalidate;
+end;
+
+procedure TntvCustomTabSet.SetTabPosition(AValue: TntvTabPosition);
+begin
+  if Items.Position <> AValue then
+  begin
+    Items.Position := AValue;
+    Realign;
+    Invalidate;
+  end;
+end;
+
+procedure TntvCustomTabSet.SetTabStyle(AValue: TntvTabStyle);
+begin
+  if FTabStyle <> AValue then
+  begin
+    FTabStyle := AValue;
+    case TabStyle of
+      tbsCart: Items.TabDrawClass := TntvTabDrawCart;
+      tbsSheet: Items.TabDrawClass := TntvTabDrawSheet;
+    end;
+    Invalidate;
+  end;
 end;
 
 procedure TntvCustomTabSet.Paint;
@@ -346,19 +371,13 @@ begin
         Pen.Style := psSolid;
         Pen.Color := clDkGray;
 
-        {MoveTo(ClientRect.Left, aTabsRect.Bottom);
-        LineTo(R.Left, aTabsRect.Bottom);
-
-        MoveTo(R.Right, aTabsRect.Bottom);
-        LineTo(ClientRect.Right, aTabsRect.Bottom);}
-
         if ShowBorder then
         begin
+          MoveTo(aTabsRect.Right, aTabsRect.Bottom - 1);
           LineTo(ClientRect.Right - 1, aTabsRect.Bottom - 1);
           LineTo(ClientRect.Right - 1, ClientRect.Bottom - 1);
           LineTo(ClientRect.Left, ClientRect.Bottom - 1);
           LineTo(ClientRect.Left, aTabsRect.Bottom - 1);
-          //LineTo(ClientRect.Right, aTabsRect.Bottom - 1);
         end;
       end;
     end;
@@ -434,7 +453,7 @@ begin
   else
   begin
     Result := ClientRect;
-    if AlignTabs = talTop then
+    if TabPosition = tbpTop then
       Result.Bottom := Result.Top + GetHeaderHeight
     else
       Result.Top := Result.Bottom - GetHeaderHeight;
@@ -665,16 +684,6 @@ begin
   end;
 end;
 
-procedure TntvCustomTabSet.SetAlignTabs(AValue: TAlignTabs);
-begin
-  if FAlignTabs <>  AValue then
-  begin
-    FAlignTabs :=AValue;
-    Realign;
-    Invalidate;
-  end;
-end;
-
 function TntvCustomTabSet.GetImageList: TImageList;
 begin
     Result := Items.Images;
@@ -693,6 +702,11 @@ end;
 function TntvCustomTabSet.GetShowButtons: Boolean;
 begin
   Result := Items.ShowButtons;
+end;
+
+function TntvCustomTabSet.GetTabPosition: TntvTabPosition;
+begin
+  Result := Items.Position;
 end;
 
 procedure TntvCustomTabSet.Next;

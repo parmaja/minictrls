@@ -34,7 +34,7 @@ type
   TntvFlag = (tbfFocused, tbfRightToLeft);
   TntvFlags = set of TntvFlag;
 
-  TntvTabPosition = (tpTop, tpBottom{, tpLeft, tpRight});
+  TntvTabPosition = (tbpTop, tbpBottom{, tpLeft, tpRight});
 
   TntvTabItem = class;
 
@@ -51,7 +51,7 @@ type
 
   { TntvTabDraw }
 
-  TntvTabDraw = class(TObject)
+  TntvTabDraw = class abstract(TObject)
   public
     ActiveColor: TColor;
     NormalColor: TColor;
@@ -65,17 +65,19 @@ type
     procedure Paint(vItem: TntvTabItem; Canvas:TCanvas; vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags);
   end;
 
-  { TntvTabDrawSheet }
+  TntvTabDrawClass = class of TntvTabDraw;
 
-  TntvTabDrawSheet = class(TntvTabDraw)
+  { TntvTabDrawCart }
+
+  TntvTabDrawCart = class(TntvTabDraw)
   public
     function GetWidth(State: TTabDrawStates; vTabsRect: TRect; Width: Integer): Integer; override;
     procedure DoPaint(vItem: TntvTabItem; Canvas: TCanvas; var vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags); override;
   end;
 
-  { TntvTabDrawCart }
+  { TntvTabDrawSheet }
 
-  TntvTabDrawCart = class(TntvTabDraw)
+  TntvTabDrawSheet = class(TntvTabDraw)
   public
     function GetWidth(State: TTabDrawStates; vTabsRect: TRect; Width: Integer): Integer; override;
     procedure DoPaint(vItem: TntvTabItem; Canvas: TCanvas; var vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags); override;
@@ -143,12 +145,13 @@ type
     FPosition: TntvTabPosition;
     FShowAll: Boolean;
     FShowButtons: Boolean;
+    FTabDrawClass: TntvTabDrawClass;
     FTopIndex: Integer;
     FVisibles: TntvTabList;
     FUpdateItems: Boolean;
     procedure SetImages(const AValue: TImageList);
+    procedure SetTabDrawClass(AValue: TntvTabDrawClass);
   protected
-
     function GetItem(Index: Integer): TntvTabItem;
     procedure SetItem(Index: Integer; Value: TntvTabItem);
     procedure Update(Item: TCollectionItem); override;
@@ -157,7 +160,7 @@ type
     procedure VisibleChanged;
     procedure Invalidate; virtual;
     function IndexToState(Index: Integer): TTabDrawStates;
-    function DoCreateTabDraw: TntvTabDraw; virtual;
+    //function DoCreateTabDraw: TntvTabDraw; virtual;
     function CreateTabDraw: TntvTabDraw; virtual;
 
     procedure DrawButtons(Canvas: TCanvas; var vRect: TRect; vFlags: TntvFlags); //TODO
@@ -192,6 +195,7 @@ type
     property Position: TntvTabPosition read FPosition write FPosition;
     property ActiveColor: TColor read FActiveColor write FActiveColor;
     property NormalColor: TColor read FNormalColor write FNormalColor;
+    property TabDrawClass: TntvTabDrawClass read FTabDrawClass write SetTabDrawClass;
   published
   end;
 
@@ -202,17 +206,11 @@ uses
 
 //It draw last pixle
 
-procedure MyPolyline(Canvas:TCanvas; Points: PPoint; Count: Integer);
+procedure MyPolyline(Canvas: TCanvas; Points: PPoint; Count: Integer);
 var
   i: Integer;
   P: TPoint;
 begin
-{  Canvas.Polyline(Points^, 0, Count);
-  P := Points[Count-1];
-  Canvas.MoveTo(P);
-  Inc(P.x);
-  Canvas.LineTo(P);
-  exit;}
   P := Points^;
   Canvas.MoveTo(P);
   Inc(Points);
@@ -294,7 +292,7 @@ type
     Count: Integer;
     Last: TPoint;
     P: array[0..10] of TPoint;
-    procedure Add(Point:TPoint);
+    procedure Add(Point: TPoint);
     procedure Reset;
   end;
 
@@ -317,6 +315,19 @@ procedure TntvTabDrawCart.DoPaint(vItem: TntvTabItem; Canvas: TCanvas; var vRect
 var
   aTextRect: TRect;
   mw: Integer;
+
+  procedure FlipPoints(var Points: TMyPoints);
+  var
+    P: TPoint;
+    i: Integer;
+  begin
+    for i := 0 to Points.Count -1 do
+    begin
+      if vPosition = tbpBottom then
+        Points.P[i].Y := vRect.Bottom - (Points.P[i].Y - vRect.Top) - 1;
+     end;
+  end;
+
   function GetEdgeColor: TColor;
   begin
     Result := MixColors(Canvas.Font.Color, NormalColor, 100);
@@ -348,6 +359,7 @@ var
         points.Add(Point(vRect.Left + mw - 1, vRect.Bottom - 1));
         points.Add(Point(vRect.Left, vRect.Bottom - 1));
       end;
+      FlipPoints(points);
 
       Brush.Style := bsSolid;
       Pen.Style := psSolid;
@@ -403,29 +415,30 @@ begin
 
     if tbfRightToLeft in vFlags then
     begin
-      points.Add(Point(vRect.Right, vRect.Bottom - 1));
-      points.Add(Point(vRect.Right - mw + 1, vRect.Top));
+      Points.Add(Point(vRect.Right, vRect.Bottom - 1));
+      Points.Add(Point(vRect.Right - mw + 1, vRect.Top));
       if (tdsLast in vState) then
-        points.Add(Point(vRect.Left + mw - 1 , vRect.Top))
+        Points.Add(Point(vRect.Left + mw - 1 , vRect.Top))
       else
-        points.Add(Point(vRect.Left, vRect.Top));
-      points.Add(Point(vRect.Left, vRect.Bottom - 1));
+        Points.Add(Point(vRect.Left, vRect.Top));
+      Points.Add(Point(vRect.Left, vRect.Bottom - 1));
     end
     else
     begin
-      points.Add(Point(vRect.Left, vRect.Bottom - 1));
-      points.Add(Point(vRect.Left + mw - 1 - cRound, vRect.Top + cRound));
-      points.Add(Point(points.last.x + cRound, points.last.y - cRound));
+      Points.Add(Point(vRect.Left, vRect.Bottom - 1));
+      Points.Add(Point(vRect.Left + mw - 1 - cRound, vRect.Top + cRound));
+      Points.Add(Point(points.last.x + cRound, points.last.y - cRound));
 
       if (tdsLast in vState) then //Add right corner
       begin
-        points.Add(Point(vRect.Right - mw + 1, vRect.Top));
-        points.Add(Point(points.last.x + cRound, points.last.y + cRound));
+        Points.Add(Point(vRect.Right - mw + 1, vRect.Top));
+        Points.Add(Point(points.last.x + cRound, points.last.y + cRound));
       end
       else
-        points.Add(Point(vRect.Right, vRect.Top));
-      points.Add(Point(vRect.Right, vRect.Bottom - 1)) ;
+        Points.Add(Point(vRect.Right, vRect.Top));
+      Points.Add(Point(vRect.Right, vRect.Bottom - 1)) ;
     end;
+    FlipPoints(points);
 
     //Draw /-\
     Pen.Color := Brush.Color;
@@ -584,6 +597,12 @@ begin
   end;
 end;
 
+procedure TntvTabs.SetTabDrawClass(AValue: TntvTabDrawClass);
+begin
+  if FTabDrawClass =AValue then Exit;
+  FTabDrawClass :=AValue;
+end;
+
 function TntvTabs.GetItem(Index: Integer): TntvTabItem;
 begin
   Result := (inherited GetItem(Index) as TntvTabItem);
@@ -677,14 +696,14 @@ begin
     Result := Result + [tdsLast];
 end;
 
-function TntvTabs.DoCreateTabDraw: TntvTabDraw;
+{function TntvTabs.DoCreateTabDraw: TntvTabDraw;
 begin
   Result := TntvTabDrawCart.Create;
-end;
+end;}
 
 function TntvTabs.CreateTabDraw: TntvTabDraw;
 begin
-  Result := DoCreateTabDraw;
+  Result := TabDrawClass.Create;
   Result.ActiveColor := ActiveColor;
   Result.NormalColor := NormalColor;
 end;
@@ -692,6 +711,7 @@ end;
 constructor TntvTabs.Create(AItemClass: TCollectionItemClass);
 begin
   inherited Create(AItemClass);
+  TabDrawClass:= TntvTabDrawCart;
   FVisibles := TntvTabList.create(False);
   FUpdateItems := True;
 end;
@@ -918,7 +938,7 @@ begin
 
     Pen.Style := psSolid;
     Pen.Color := clDkGray;
-    if vPosition = tpTop then
+    if vPosition = tbpTop then
     begin
       if tbfRightToLeft in vFlags then
       begin
@@ -943,7 +963,7 @@ begin
         end;
       end;
     end
-    else if vPosition = tpBottom then
+    else if vPosition = tbpBottom then
     begin
       if tbfRightToLeft in vFlags then
       begin
