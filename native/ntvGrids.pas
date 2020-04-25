@@ -48,7 +48,7 @@ type
     keyaReturn, keyaTab, keyaEscape, keyaCopy, keyaPaste, keyaCut, keyaFindFirst, keyaFindNext,
     keyaHelp, keyaDelete, keyaInsert, keyaInsertLine, keyaDeleteLine, keyaEdit, keyaBrowse,
     keyaNew, keyaProperty, keyaWordLeft, keyaWordRight, keyaScrollUp, keyaScrollDown,
-    keyaSave, keyaTopPage, keyaBottomPage, keyaTop, keyaBottom, keyaSelectLeft, keyaSelectRight,
+    keyaSave, keyaTop, keyaBottom, keyaSelectLeft, keyaSelectRight,
     keyaSelectUp, keyaSelectDown, keyaSelectPageUp, keyaSelectPageDown, keyaDropDown,
     keyaDropUp, keyaSaveAll, keyaFindPrior, keyaSelectHome, keyaSelectEnd, keyaBack, keyaForward,
     keyaComplete, keyaHiComplete, keyaLoComplete, keyaSelectTop, keyaSelectBottom,
@@ -1191,14 +1191,14 @@ begin
       VK_Right: Result := keyaRight;
       VK_Up: Result := keyaUp;
       VK_Down: Result := keyaDown;
+      VK_Home: Result := keyaHome;
+      VK_End: Result := keyaEnd;
       VK_Prior: Result := keyaPageUp;
       VK_Next: Result := keyaPageDown;
       VK_Insert: Result := keyaInsert;
       VK_Delete: Result := keyaDelete;
       VK_F2: Result := keyaEdit;
       VK_F3: Result := keyaFindNext;
-      VK_Home: Result := keyaHome;
-      VK_End: Result := keyaEnd;
       VK_F5: Result := keyaFunction;
       VK_F4: Result := keyaBrowse;
     end
@@ -1210,16 +1210,14 @@ begin
       VK_Right: Result := keyaWordRight;
       VK_Up: Result := keyaScrollUp;
       VK_Down: Result := keyaScrollDown;
-      VK_Prior: Result := keyaTopPage;
-      VK_Next: Result := keyaBottomPage;
+      VK_Home: Result := keyaTop;
+      VK_End: Result := keyaBottom;
       VK_Delete, Ord('X'): Result := keyaCut;
       VK_Insert, Ord('C'): Result := keyaCopy;
       Ord('V'): Result := keyaPaste;
       Ord('G'): Result := keyaGoTo;
       VK_F2: Result := keyaSave;
       VK_F3: Result := keyaFindFirst;
-      VK_Home: Result := keyaTop;
-      VK_End: Result := keyaBottom;
       VK_Space: Result := keyaLoComplete;
       VK_F5: Result := keyaViewer;
       VK_F12: Result := keyaExecute;
@@ -5522,8 +5520,8 @@ begin
       Current.SetCol(FVisibleColumns.Count - 1, vKeyAction = keyaSelectEnd);
     keyaDeleteLine: TryDeleteRow(Current.Row);
     keyaInsertLine: TryInsertRow(Current.Row);
-    keyaTop, keyaSelectTop, keyaTopPage: Current.SetRow(0, vKeyAction = keyaSelectTop);
-    keyaBottom, keyaSelectBottom, keyaBottomPage: Current.SetRow(RowsCount - 1, vKeyAction = keyaSelectBottom);
+    keyaTop, keyaSelectTop: Current.SetRow(0, vKeyAction = keyaSelectTop);
+    keyaBottom, keyaSelectBottom: Current.SetRow(RowsCount - 1, vKeyAction = keyaSelectBottom);
     keyaScrollDown:
     begin
       MoveDown;

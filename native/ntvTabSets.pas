@@ -22,7 +22,7 @@ interface
 
 uses
   Classes, Messages, Controls, SysUtils, Graphics, Forms, Types,
-  LMessages, LCLType, LCLIntf, LCLProc,
+  LMessages, LCLType, LCLIntf, LCLProc, 
   ntvTabs, ntvUtils, ntvThemes;
 
 const
@@ -598,7 +598,7 @@ function TntvCustomTabSet.ChildKey(var Message: TLMKey): boolean;
 var
   ShiftState: TShiftState;
 begin
-  if not (csDesigning in ComponentState) and (Message.CharCode in [VK_PRIOR, VK_NEXT]) then
+  if not (csDesigning in ComponentState) and (Message.CharCode <> VK_CONTROL) then
   begin
     ShiftState :=  KeyDataToShiftState(Message.KeyData);
     if (ShiftState = [ssCtrl]) then
@@ -610,7 +610,7 @@ begin
         else
           SelectTab(0);
       end
-      else
+      else if Message.CharCode = VK_PRIOR then
       begin
         if ItemIndex = 0 then
           SelectTab(Items.Visibles.Count - 1)
