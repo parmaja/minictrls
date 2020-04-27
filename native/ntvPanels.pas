@@ -323,7 +323,7 @@ begin
       alLeft: P.x := P.x + SplitterSize;
       //alRight: P.x := P.x + SplitterSize;
       alTop: P.y := P.y + SplitterSize;
-//      alBottom: P.y := P.y + SplitterSize;
+      //alBottom: P.y := P.y - SplitterSize;
     end;
     FSplitterStartPoint := ClientToParent(P);
     if ResizeStyle in [nrsLine] then

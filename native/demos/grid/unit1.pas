@@ -15,6 +15,8 @@ type
   TForm1 = class(TForm)
     Button1: TButton;
     Button2: TButton;
+    Button3: TButton;
+    Button4: TButton;
     CloseBtn: TButton;
     ComboBox1: TComboBox;
     MenuItem1: TMenuItem;
@@ -23,6 +25,8 @@ type
     PopupMenu1: TPopupMenu;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
+    procedure Button4Click(Sender: TObject);
     procedure CloseBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure ntvGrid1Click(Sender: TObject);
@@ -72,7 +76,7 @@ begin
     BiDiMode := bdLeftToRight
 end;
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TForm1.Button3Click(Sender: TObject);
 begin
   Grid := TntvGrid.Create(Self);
   Grid.Parent := Self;
@@ -103,11 +107,32 @@ begin
   NameCol.AsString := 'zaher';
   AddressCol.AsString := 'syria';
 
-  MobileCol.OrderIndex := PhoneCol.OrderIndex;
+  MobileCol.OrderIndex := 0;
   EmailCol.Visible := False;
 
   Grid.Visible := True;
   ActiveControl := Grid;
+end;
+
+procedure TForm1.Button4Click(Sender: TObject);
+begin
+  Grid := TntvGrid.Create(Self);
+  Grid.Parent := Self;
+  Grid.SetBounds(10, 10 ,ClientWidth - 20, CloseBtn.Top - 10);
+  Grid.Anchors := [akLeft, akRight, akTop, akBottom];
+  Grid.Capacity := 3;
+  Grid.OnColClick := @OnColClick;
+  Grid.Footer := True;
+  Grid.Fringe := True;
+  Grid.PopupMenu := PopupMenu1;
+  Grid.FullHeader := true;
+  Grid.SettledCols := 1;
+  Grid.BorderStyle := bsSingle;
+  Grid.ColumnsCount := 3;
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
 end;
 
 procedure TForm1.ntvGrid1Click(Sender: TObject);

@@ -458,7 +458,11 @@ type
 
   TntvColumnClass = class of TntvColumn;
 
+  { TntvColumnList }
+
   TntvColumnList = class(TmnNamedObjectList<TntvColumn>)
+  public
+    procedure SortByOrder;
   end;
 
   { TntvColumns }
@@ -600,7 +604,6 @@ type
     FFringeWidth: Integer;
     FGutterWidth: Integer;
     FVisibleColumns: TntvColumnList;
-    FOrderColumns: TntvColumnList;
     FScrollTimer: Cardinal;
     FSettledColor: TColor;
     FSolid: Boolean;
@@ -871,7 +874,6 @@ type
     property ColumnsCount: integer read GetColumnsCount write SetColumnsCount;
     property RowsCount: Integer read GetRowsCount write SetRowsCount stored False default 0;
     property VisibleColumns: TntvColumnList read FVisibleColumns;
-    property OrderColumns: TntvColumnList read FOrderColumns;
     property CurrentColumn: TntvColumn read GetCurrentColumn;
     property Updating: Boolean read GetUpdating write SetUpdating;
     property Modified: Boolean read FModified write SetModified;
@@ -1354,6 +1356,30 @@ begin
     L := H;
   end;
   Result := True;
+end;
+
+{ TntvColumnList }
+
+function SortByOrderCompare(Item1, Item2: Pointer): Integer;
+begin
+  if TntvColumn(Item1).OrderIndex > TntvColumn(Item2).OrderIndex then
+    Result := 1
+  else if TntvColumn(Item1).OrderIndex < TntvColumn(Item2).OrderIndex then
+    Result := -1
+  else
+  begin
+    if TntvColumn(Item1).Index > TntvColumn(Item2).Index then
+      Result := 1
+    else if TntvColumn(Item1).Index < TntvColumn(Item2).Index then
+      Result := -1
+    else
+      Result := 0;
+  end;
+end;
+
+procedure TntvColumnList.SortByOrder;
+begin
+  Sort(SortByOrderCompare);
 end;
 
 { TntvGridCurrent }
@@ -2162,7 +2188,6 @@ begin
   FRows := CreateRows;
   FColumns := TntvColumns.Create(Self);
   FVisibleColumns := TntvColumnList.Create(False);
-  FOrderColumns := TntvColumnList.Create(False);
   FSelected := TntvGridSelected.Create(Self);
   FCurrent := TntvGridCurrent.Create(Self);
   FDesignColumns := True;
@@ -2207,7 +2232,6 @@ begin
   FreeAndNil(FSelected);
   FreeAndNil(FCurrent);
   FreeAndNil(FVisibleColumns);
-  FreeAndNil(FOrderColumns);
   FreeAndNil(FImageChangeLink);
   FreeAndNil(FRows);
   inherited;
@@ -2535,24 +2559,29 @@ procedure TntvCustomGrid.ColumnsChanged;
 var
   i: Integer;
 begin
-  if Updating or (csLoading in ComponentState) then
+  if Columns <> nil then //when destroy column we have notification
   begin
-    FUpdateStates := FUpdateStates + [gsColumnsChanged];
-    exit;
-  end;
+    if Updating or (csLoading in ComponentState) then
+    begin
+      FUpdateStates := FUpdateStates + [gsColumnsChanged];
+      exit;
+    end;
 
-  FVisibleColumns.Clear;
-  for i := 0 to OrderColumns.Count - 1 do
-  begin
-    if OrderColumns[i].Visible and OrderColumns[i].Enabled then
-      OrderColumns[i].FVisibleIndex := FVisibleColumns.Add(OrderColumns[i])
-    else
-      OrderColumns[i].FVisibleIndex := -1;
-  end;
+    FVisibleColumns.Clear;
+    for i := 0 to Columns.Count - 1 do
+    begin
+      if Columns[i].Visible and Columns[i].Enabled then
+        FVisibleColumns.Add(Columns[i])
+    end;
 
-  ColumnsWidthsChanged;
-  ScrollBarChanged;
-  Invalidate;
+    VisibleColumns.SortByOrder;
+    for i := 0 to VisibleColumns.Count - 1 do
+      VisibleColumns[i].FVisibleIndex := i;
+
+    ColumnsWidthsChanged;
+    ScrollBarChanged;
+    Invalidate;
+  end;
 end;
 
 procedure TntvCustomGrid.ColsScroll(vCols: Integer);
@@ -4442,7 +4471,7 @@ begin
     Columns.Count := AValue
   else
   begin
-    for i := Columns.Count to AValue do
+    for i := Columns.Count to AValue - 1 do
       AddColumn;
   end;
 end;
@@ -5284,7 +5313,6 @@ begin
       FIndex := vGrid.Columns.Count;
       FOrderIndex := FIndex;
       vGrid.Columns.Add(Self);
-      vGrid.OrderColumns.Add(Self);
     end;
   finally
     Grid.EndUpdate;
@@ -5336,7 +5364,7 @@ procedure TntvColumn.SetOrderIndex(AValue: Integer);
 begin
   if FOrderIndex = AValue then
     Exit;
-  Grid.OrderColumns.Move(FOrderIndex, AValue);
+
   FOrderIndex := AValue;
   Grid.ColumnsChanged;
 end;
