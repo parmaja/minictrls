@@ -371,8 +371,6 @@ begin
         Offset := (MousePos.X - FSplitterPoint.X) - (Self.Left - FSplitterStartPoint.X);
       akTop, akBottom:
         Offset := (MousePos.Y - FSplitterPoint.Y) - (Self.Top - FSplitterStartPoint.Y);
-      else
-        Offset := 0;
     end;
 
     FSplitDragging := False;

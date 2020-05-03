@@ -459,7 +459,7 @@ begin
         Control := vControl;
 //        Collection := Self; //Add to Pages list; Or when Create(Self) the page
         Control.FreeNotification(PageControl);
-        if Control is TWinControl and (Control.Parent = PageControl) then
+        if (Control is TWinControl) and (Control.Parent = PageControl) then
           Control.Align := alClient;
         if not (csDesigning in Control.ComponentState) then
         begin

@@ -125,6 +125,8 @@ var
     case Align of
       alLeft, alRight: Result := Parent.ClientWidth;
       alTop, alBottom: Result := Parent.ClientHeight;
+      else
+        Result := 0;
     end;
   end;
 
@@ -153,6 +155,8 @@ var
     case Align of
       alLeft, alRight: Result := Constraints.EffectiveMinWidth;
       alTop, alBottom: Result := Constraints.EffectiveMinHeight;
+      else
+        Result := 0;
     end;
   end;
 
@@ -161,6 +165,8 @@ var
     case Align of
       alLeft, alRight: Result := Constraints.EffectiveMaxWidth;
       alTop, alBottom: Result := Constraints.EffectiveMaxHeight;
+      else
+        Result := 0;
     end;
   end;
 
@@ -178,6 +184,8 @@ var
         NewBounds.Bottom := NewBounds.Top + NewSize;
       alBottom:
         NewBounds.Top := NewBounds.Bottom - NewSize;
+      else
+        ;
     end;
     BoundsRect := NewBounds;
   end;
@@ -203,6 +211,8 @@ var
         OffsetRect(NewRect, 0, NewSize - OldSize);
       alBottom:
         OffsetRect(NewRect, 0, OldSize - NewSize);
+      else
+        ;
     end;
     SetRubberBandRect(FSplitterWindow, NewRect);
   end;
@@ -221,6 +231,8 @@ var
         Dec(NewSize, Offset);
       alBottom:
         Dec(NewSize, Offset);
+      else
+        ;
     end;
 
     if NewSize > EndSize then
@@ -250,9 +262,11 @@ begin
     // calculate maximum size
     case Align of
       alLeft, alTop:
-        aMaxSize := GetControlSize - GetControlMinPos + GetParentClientSize - GetControlSize;
+        aMaxSize := GetControlSize - GetControlMinPos + (GetParentClientSize - GetControlSize);
       alRight, alBottom:
-        aMaxSize := GetControlSize + GetControlMinPos;
+        aMaxSize := GetControlSize + GetControlMinPos + (GetParentClientSize - GetControlSize);
+      else
+        ;
     end;
     aMaxSize := Max(GetControlConstraintsMaxSize, aMaxSize);
 
@@ -272,13 +286,6 @@ procedure TntvCustomPanel.AlignControls(AControl: TControl; var Rect: TRect);
 begin
   if FResizeStyle > nrsNone then
     case Align of
-      alTop, alBottom:
-      begin
-        if Align = alTop then
-          Rect.Bottom := Rect.Bottom - SplitterSize
-        else
-          Rect.Top := Rect.Top + SplitterSize;
-      end;
       alLeft, alRight:
       begin
         if Align = alLeft then
@@ -286,6 +293,15 @@ begin
         else
           Rect.Left := Rect.Left + SplitterSize;
       end;
+      alTop, alBottom:
+      begin
+        if Align = alTop then
+          Rect.Bottom := Rect.Bottom - SplitterSize
+        else
+          Rect.Top := Rect.Top + SplitterSize;
+      end;
+      else
+        ;
     end;
   inherited AlignControls(AControl, Rect);
 end;
@@ -324,6 +340,8 @@ begin
       //alRight: P.x := P.x + SplitterSize;
       alTop: P.y := P.y + SplitterSize;
       //alBottom: P.y := P.y - SplitterSize;
+      else
+        ;
     end;
     FSplitterStartPoint := ClientToParent(P);
     if ResizeStyle in [nrsLine] then
@@ -360,14 +378,14 @@ function TntvCustomPanel.GetSplitterRect: TRect;
 begin
   Result := ClientRect;
   case Align of
-    alTop:
-      Result.Top := Result.Bottom - SplitterSize;
-    alBottom:
-      Result.Bottom := Result.Top + SplitterSize;
     alLeft:
       Result.Left := Result.Right - SplitterSize;
     alRight:
       Result.Right := Result.Left + SplitterSize;
+    alTop:
+      Result.Top := Result.Bottom - SplitterSize;
+    alBottom:
+      Result.Bottom := Result.Top + SplitterSize;
     else
       Result := Rect(0, 0, 0, 0);
   end;
@@ -460,7 +478,7 @@ begin
     alRight:
       Result := (MousePos.X - FSplitterPoint.X) - (BoundsRect.Left - FSplitterStartPoint.X);
     alTop:
-      Result := (MousePos.Y - FSplitterPoint.Y) + (BoundsRect.Bottom - FSplitterStartPoint.Y);
+      Result := (MousePos.Y - FSplitterPoint.Y) - (BoundsRect.Bottom - FSplitterStartPoint.Y);
     alBottom:
       Result := (MousePos.Y - FSplitterPoint.Y) - (BoundsRect.Top - FSplitterStartPoint.Y);
     else
@@ -532,6 +550,8 @@ begin
           MoveTo(p + 1, Top);
           LineTo(p + 1, Bottom - 1);
         end;
+        else
+          ;
       end;
    end;
 end;

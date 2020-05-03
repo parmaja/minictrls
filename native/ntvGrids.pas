@@ -717,7 +717,7 @@ type
     procedure Loaded; override;
     procedure Paint; override;
 
-    function GetDefaultRowHeight: integer; virtual;
+    function CalcRowHeight: integer; virtual;
     function GetTextStyle(vCentered: Boolean = False): TTextStyle; virtual;
     function CanEdit(const Row, Col: Integer): Boolean; virtual;
     function GetReadOnly: Boolean; virtual;
@@ -729,6 +729,7 @@ type
     function DoMouseWheelDown(Shift: TShiftState; MousePos: TPoint): Boolean; override;
     function DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Boolean; override;
 
+    procedure FontChanged(Sender: TObject); override;
     procedure Validate(AColumn: TntvColumn); virtual;
     procedure ColumnsWidthsChanged;
     procedure ScrollBarChanged;
@@ -2221,7 +2222,7 @@ begin
   FGutterWidth := sGutterWidth;
   FFringeWidth := sFringeWidth;
   FFixedColor := clBtnFace;
-  FRowHeight := GetDefaultRowHeight;
+  CalcRowHeight;
   BorderStyle := bsSingle;
 end;
 
@@ -2770,6 +2771,12 @@ function TntvCustomGrid.DoMouseWheelUp(Shift: TShiftState; MousePos: TPoint): Bo
 begin
   Result := True;
   TopRow := TopRow - 3;
+end;
+
+procedure TntvCustomGrid.FontChanged(Sender: TObject);
+begin
+  inherited FontChanged(Sender);
+  CalcRowHeight;
 end;
 
 procedure TntvCustomGrid.Draw(Canvas: TCanvas; wndRect, pntRect: TRect);
@@ -3632,16 +3639,17 @@ begin
 end;
 
 //Ported from Lazarus Grid
-function TntvCustomGrid.GetDefaultRowHeight: integer;
+function TntvCustomGrid.CalcRowHeight: integer;
 var
   TmpCanvas: TCanvas;
 begin
   tmpCanvas := GetWorkingCanvas(Canvas);
   tmpCanvas.Font := Font;
   tmpCanvas.Font.PixelsPerInch := Font.PixelsPerInch;
-  result := tmpCanvas.TextHeight('Fj')+7;
+  Result := tmpCanvas.TextHeight('Fj')+7;
   if tmpCanvas <> Canvas then
     FreeWorkingCanvas(tmpCanvas);
+  RowHeight := Result;
 end;
 
 function TntvCustomGrid.GetTextStyle(vCentered: Boolean): TTextStyle;
