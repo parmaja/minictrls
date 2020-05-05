@@ -871,6 +871,9 @@ type
     function FindText(Column: TntvColumn; From: Integer; S: String): Boolean;
     procedure PasteText(vText: String; SpecialFormat: Boolean);
 
+    procedure AddItem(AValue: string); overload;
+    procedure AddItem(AValues: array of string); overload;
+
     property Columns: TntvColumns read FColumns;
     property ColumnsCount: integer read GetColumnsCount write SetColumnsCount;
     property RowsCount: Integer read GetRowsCount write SetRowsCount stored False default 0;
@@ -4135,6 +4138,21 @@ begin
     end;
   end;
   DoChanged;
+end;
+
+procedure TntvCustomGrid.AddItem(AValue: string);
+begin
+  RowsCount := RowsCount + 1;
+  Values[FixedCols, RowsCount - 1] := AValue;
+end;
+
+procedure TntvCustomGrid.AddItem(AValues: array of string);
+var
+  i: Integer;
+begin
+  RowsCount := RowsCount + 1;
+  for i := 0 to Length(AValues) -1 do
+    Values[FixedCols + i, RowsCount - 1] := AValues[i];
 end;
 
 procedure TntvCustomGrid.SetSideCol(vCol: Integer);
