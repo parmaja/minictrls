@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Grids, Menus,
-  DBGrids, ntvGrids;
+  DBGrids, ValEdit, ntvGrids, ntvPanels;
 
 type
 
@@ -19,9 +19,11 @@ type
     Button4: TButton;
     CloseBtn: TButton;
     ComboBox1: TComboBox;
+    Label1: TLabel;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
+    ntvGrid1: TntvGrid;
     PopupMenu1: TPopupMenu;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
@@ -108,6 +110,9 @@ begin
   AddressCol.AsString := 'syria';
 
   MobileCol.OrderIndex := 0;
+  MobileCol.Width := 100;
+  MobileCol.AutoFit := True;
+
   EmailCol.Visible := False;
 
   Grid.Visible := True;

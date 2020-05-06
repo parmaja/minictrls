@@ -12,9 +12,9 @@ unit ntvGrids;
  *}
 
 {TODO:
-  bug: AutoSize
   bug: When Click corner of Fringe or Gutter
 }
+
 interface
 
 uses
@@ -93,8 +93,6 @@ type
     function GetUpdating: Boolean;
   protected
     procedure Notify(Ptr: Pointer; Action: TListNotification); override;
-    function CreateItem: _Object_; virtual; abstract;
-    function Require(Index: Integer): _Object_; override;
     procedure Changed; virtual;
     procedure CountChanged; virtual;
     procedure Update;
@@ -160,8 +158,8 @@ type
   public
     constructor Create(Grid: TntvCustomGrid);
     procedure DeleteColumn(ACol: Integer);
-    function SafeGet(vRow: Integer): TntvRow; overload;
-    function SafeGet(vRow, vCol: Integer): TntvCell; overload;
+    function Peek(vRow, vCol: Integer): TntvCell; overload;
+    function Require(vRow, vCol: Integer): TntvCell; overload;
     function CheckEmpty(vRow: Integer): Boolean;
     function CopyLine(vFromRow, vToRow: Integer): Boolean;
   end;
@@ -178,7 +176,8 @@ type
     csdCurrent,
     csdFixed,
     csdRightToLeft,
-    csdHeaderFooter,
+    csdHeader,
+    csdFooter,
     csdFirstCell,
     csdLastCell,
     csdFirstOpened,
@@ -269,9 +268,8 @@ type
     Total: Currency;
     ReadOnly: Boolean;
     Visible: Boolean;
-    AutoSize: Boolean;
+    AutoFit: Boolean;
     ShowImage: Boolean;
-    OrignalWidth: Integer;
     ID: Integer;
     EmptyZero: Boolean;
   end;
@@ -301,7 +299,7 @@ type
 
     procedure BiDiModeChanged(vInvalidate: Boolean);
     procedure ParentBiDiModeChanged;
-    procedure SetAutoSize(AValue: Boolean);
+    procedure SetAutoFit(AValue: Boolean);
     procedure SetBiDiMode(const Value: TBiDiMode);
     procedure SetOrderIndex(AValue: Integer);
     procedure SetParentBiDiMode(const Value: Boolean);
@@ -319,6 +317,8 @@ type
   protected
     Info: TntvColumnInfo;
     FEditControl: TControl;
+
+    function GetIsEmpty: Boolean; override;
 
     procedure SetIsNull(const AValue: Boolean); override;
     function GetIsNull: Boolean; override;
@@ -430,7 +430,7 @@ type
     constructor Create(vGrid: TntvCustomGrid; vTitle: String = ''; vName: String = ''; vID: Integer = 0; vEnabled: Boolean = True); virtual;
     destructor Destroy; override;
     procedure Invalidate;
-    procedure Assign(vField: TmnCustomField); override;
+    procedure Assign(Source: TPersistent); override;
 
     property AsFloat: Double read GetAsFloat write SetAsFloat;
     property Total: Currency read GetTotal write SetTotal;
@@ -457,7 +457,7 @@ type
     property Visible: Boolean read Info.Visible write SetVisible default True;
     property Width: Integer read Info.Width write SetWidth default sColWidth;
     property ID: Integer read Info.ID write Info.ID default 0;
-    property AutoSize: Boolean read Info.AutoSize write SetAutoSize default False;
+    property AutoFit: Boolean read Info.AutoFit write SetAutoFit default False;
     property ShowImage: Boolean read Info.ShowImage write Info.ShowImage default False;
     property Enabled: Boolean read FEnabled write SetEnabled default True;
     property CurrencyCustomFormat: String read FCurrencyFormat write FCurrencyFormat;
@@ -478,8 +478,11 @@ type
   private
     FColumn: TntvColumn;
     FWidth: Integer;
+    function GetColumn: TntvColumn;
+    procedure SetColumn(AValue: TntvColumn);
   public
-    property Column: TntvColumn read FColumn write FColumn;
+    constructor Create(AColumn: TntvColumn);
+    property Column: TntvColumn read GetColumn write SetColumn;
     property Width: Integer read FWidth write FWidth;
   end;
 
@@ -488,8 +491,9 @@ type
   TntvVisibleColumns = class(TmnObjectList<TntvVisibleColumn>)
   public
     procedure SortByOrder;
+    function Find(const Name: String): TntvColumn;
+    function Add(AColumn: TntvColumn): Integer;
   end;
-
 
   { TntvColumns }
 
@@ -497,7 +501,6 @@ type
   private
     FGrid: TntvCustomGrid;
   protected
-    //function Require(Index: Integer): TntvColumn; override; //i dont like it
     procedure Notify(Ptr: Pointer; Action: TListNotification); override;
   public
     constructor Create(vGrid: TntvCustomGrid); virtual;
@@ -628,7 +631,7 @@ type
     FFringe: Boolean;
     FFringeWidth: Integer;
     FGutterWidth: Integer;
-    FVisibleColumns: TntvColumnList;
+    FVisibleColumns: TntvVisibleColumns;
     FScrollTimer: Cardinal;
     FSettledColor: TColor;
     FSolid: Boolean;
@@ -677,7 +680,6 @@ type
     function GetVisibleCol(vVirtCol: Integer; out vRealCol: Integer): Boolean;
     function GetCompletedCols(vWidth: Integer): Integer;
     function InColsWidth(X: Integer; var vCol: Integer): Boolean;
-    function GetVisibleColumn(vCol: Integer): TntvColumn;
     procedure RowsScroll(vRows: Integer);
     procedure SetColumnEdit(const Value: TntvColumn);
     procedure SetColWidth(Value: Integer);
@@ -901,7 +903,7 @@ type
 
     property Columns: TntvColumns read FColumns;
     property ColumnsCount: integer read GetColumnsCount write SetColumnsCount;
-    property VisibleColumns: TntvColumnList read FVisibleColumns;
+    property VisibleColumns: TntvVisibleColumns read FVisibleColumns;
     property Rows: TntvRows read FRows;
     property RowsCount: Integer read GetRowsCount write SetRowsCount stored False default 0;
 
@@ -1421,11 +1423,58 @@ begin
   end;
 end;
 
+{ TntvVisibleColumn }
+
+function TntvVisibleColumn.GetColumn: TntvColumn;
+begin
+  Result := FColumn;
+  if Result = nil then
+    raise Exception.Create('WHY!');
+end;
+
+procedure TntvVisibleColumn.SetColumn(AValue: TntvColumn);
+begin
+  FColumn := AValue;
+  if FColumn = nil then
+    raise Exception.Create('WHY!');
+end;
+
+constructor TntvVisibleColumn.Create(AColumn: TntvColumn);
+begin
+  inherited Create;
+  FColumn := AColumn;
+end;
+
 { TntvVisibleColumns }
 
 procedure TntvVisibleColumns.SortByOrder;
 begin
   Sort(SortByOrderCompare);
+end;
+
+function TntvVisibleColumns.Find(const Name: String): TntvColumn;
+var
+  i: Integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if SameText(Items[i].Column.Name, Name) then
+    begin
+      Result := Items[i].Column;
+      break;
+    end;
+  end;
+end;
+
+function TntvVisibleColumns.Add(AColumn: TntvColumn): Integer;
+var
+  AVisibleColumn: TntvVisibleColumn;
+begin
+  AVisibleColumn := TntvVisibleColumn.Create(AColumn);
+  AVisibleColumn.Width := AColumn.Width;
+  //AVisibleColumn.Index := AColumn.OrderIndex;
+  Result := inherited Add(AVisibleColumn);
 end;
 
 procedure TntvColumnList.SortByOrder;
@@ -1614,48 +1663,31 @@ begin
   end;
 end;
 
-function TntvList<_Object_>.Require(Index: Integer): _Object_;
-begin
-  if Count <= Index then
-  begin
-    Count := Index + 1;
-    Result := nil;
-  end
-  else
-    Result := inherited Require(Index);
-  if Result = nil then
-  begin
-    Result := CreateItem;
-    Put(Index, Result);
-  end;
-  //Put(Index, Result);//move with create item
-end;
-
-function TntvRows.SafeGet(vRow: Integer): TntvRow;
-begin
-  if (vRow < Count) then
-    Result := Items[vRow]
-  else
-    Result := nil;
-end;
-
 function TntvRow.SafeGet(Index: Integer): TntvCell;
 begin
   if (Index < Count) then
-    Result := TntvCell(inherited Items[Index])
+    Result := Items[Index]
   else
     Result := nil;
 end;
 
-function TntvRows.SafeGet(vRow, vCol: Integer): TntvCell;
+function TntvRows.Peek(vRow, vCol: Integer): TntvCell;
 var
   aRow: TntvRow;
 begin
-  aRow := SafeGet(vRow);
+  aRow := Peek(vRow);
   if (aRow <> nil) and (vRow <= Count) then
-    Result := aRow.SafeGet(vCol)
+    Result := aRow.Peek(vCol)
   else
     Result := nil;
+end;
+
+function TntvRows.Require(vRow, vCol: Integer): TntvCell;
+var
+  aRow: TntvRow;
+begin
+  aRow := Require(vRow);
+  Result := aRow.Require(vCol)
 end;
 
 procedure TntvList<_Object_>.BeginUpdate;
@@ -1698,14 +1730,14 @@ begin
   inherited;
 end;
 
-procedure TntvColumn.Assign(vField: TmnCustomField);
+procedure TntvColumn.Assign(Source: TPersistent);
 begin
-  if vField is TntvColumn then
+  if Source is TntvColumn then
   begin
-    Info := TntvColumn(vField).Info;
+    Info := TntvColumn(Source).Info;
   end
-{  else
-    inherited Assign(Source);}
+  else
+    inherited Assign(Source);
 end;
 
 procedure TntvColumn.Validate;
@@ -2032,7 +2064,7 @@ end;
 
 function TntvColumn.GetTotal: Currency;
 begin
-  Result := Total;
+  Result := Info.Total;
 end;
 
 function TntvColumn.GetCaption: String;
@@ -2056,7 +2088,7 @@ end;
 function TntvColumn.GetCell(vRow: Integer): TntvCell;
 begin
   with Grid do
-    Result := FRows.SafeGet(vRow, Index);
+    Result := FRows.Peek(vRow, Index);
 end;
 
 function TntvColumn.GetAsString: String;
@@ -2120,7 +2152,7 @@ begin
   try
     with Grid do
     begin
-      aCell := FRows[vRow][Index];
+      aCell := FRows.Require(vRow, Index);
       if swcText in vSetCell then
         aCell.Text := vText;
       if swcData in vSetCell then
@@ -2189,7 +2221,7 @@ end;
 
 procedure TntvColumn.SetTotal(const Value: Currency);
 begin
-  Total := Value;
+  Info.Total := Value;
   Complete(False);
 end;
 
@@ -2213,23 +2245,6 @@ begin
   end;
 end;
 
-{function TntvColumns.Require(Index: Integer): TntvColumn;
-begin
-  if Count <= Index then
-  begin
-    Count := Index + 1;
-    Result := nil;
-  end
-  else
-    Result := inherited Require(Index);
-  if Result = nil then
-  begin
-    Result := TntvStandardColumn.Create(nil); //nil we dont need to add it, we are in adding mode
-    Result.FColumns := Self;
-    Put(Index, Result);
-  end;
-end;}
-
 procedure TntvColumns.Notify(Ptr: Pointer; Action: TListNotification);
 begin
   inherited;
@@ -2251,7 +2266,7 @@ begin
   FImageChangeLink.OnChange := ImageListChange;
   FRows := CreateRows;
   FColumns := TntvColumns.Create(Self);
-  FVisibleColumns := TntvColumnList.Create(False);
+  FVisibleColumns := TntvVisibleColumns.Create;
   FSelected := TntvGridSelected.Create(Self);
   FCurrent := TntvGridCurrent.Create(Self);
   FScrollBars := ssBoth;
@@ -2285,7 +2300,6 @@ begin
   FFringeWidth := sFringeWidth;
   FFixedColor := clBtnFace;
   CalcRowHeight;
-  BorderStyle := bsSingle;
 end;
 
 destructor TntvCustomGrid.Destroy;
@@ -2329,12 +2343,12 @@ end;
 procedure TntvCustomGrid.CalcNewWidth(X: Smallint);
 begin
   if UseRightToLeftAlignment then
-    X := FVisibleColumns[FClkCol].Width - X
+    X := VisibleColumns[FClkCol].Column.Width - X
   else
-    X := FVisibleColumns[FClkCol].Width + X;
+    X := VisibleColumns[FClkCol].Column.Width + X;
   if X < 10 then
     X := 10;
-  FVisibleColumns[FClkCol].Width := X;
+  VisibleColumns[FClkCol].Column.Width := X;
 end;
 
 procedure TntvCustomGrid.BeginCapture(X, Y: Integer);
@@ -2418,7 +2432,7 @@ var
 begin
   Result := '';
   Screen.Cursor := crHourGlass;
-  aColumns := TntvColumnList.Create;
+  aColumns := TntvColumnList.Create(False);
   try
     if SpecialFormat then
     begin
@@ -2428,7 +2442,7 @@ begin
     else
     begin
       for i := 0 to VisibleColumns.Count - 1 do
-        aColumns.Add(VisibleColumns[i]);
+        aColumns.Add(VisibleColumns[i].Column);
     end;
     isR := False;
     if vEndRow >= RowsCount then
@@ -2550,7 +2564,7 @@ var
       else
       if c < VisibleColumns.Count then
       begin
-        AColumn := VisibleColumns[c];
+        AColumn := VisibleColumns[c].Column;
         if (not AColumn.GetReadOnly) then
         begin
           AColumn.SetValueText(R, S, 0, [swcText, swcData] + sCheckOrValidate[vCheckData]);
@@ -2622,7 +2636,7 @@ procedure TntvCustomGrid.ColumnsChanged;
 var
   i: Integer;
 begin
-  if Columns <> nil then //when destroy column we have notification
+  if Columns <> nil then //when destroy columns we have notification
   begin
     if Updating or (csLoading in ComponentState) then
     begin
@@ -2630,16 +2644,20 @@ begin
       exit;
     end;
 
-    FVisibleColumns.Clear;
+    VisibleColumns.Clear;
     for i := 0 to Columns.Count - 1 do
     begin
+      Columns[i].FVisibleIndex := -1;
       if Columns[i].Visible and Columns[i].Enabled then
-        FVisibleColumns.Add(Columns[i])
+        VisibleColumns.Add(Columns[i])
     end;
 
     VisibleColumns.SortByOrder;
+
     for i := 0 to VisibleColumns.Count - 1 do
-      VisibleColumns[i].FVisibleIndex := i;
+    begin
+      VisibleColumns[i].Column.FVisibleIndex := i;
+    end;
 
     ColumnsWidthsChanged;
     ScrollBarChanged;
@@ -2668,7 +2686,7 @@ begin
   c := 0;
   while (c < aCols) and (X < W) do
   begin
-    X := X + FVisibleColumns[aCol].Width;
+    X := X + VisibleColumns[aCol].Width;
     aCol := aCol + Sign;
     c := c + 1;
   end;
@@ -2718,7 +2736,7 @@ begin
   if not Updating then
   begin
     if Assigned(FOnCurChanged) then
-      FOnCurChanged(Self, FVisibleColumns[vCol], vRow);
+      FOnCurChanged(Self, VisibleColumns[vCol].Column, vRow);
   end;
 end;
 
@@ -2754,13 +2772,13 @@ begin
   case vArea of
     garNormal:
       if Assigned(FOnCellClick) and (vRow >= 0) then
-        FOnCellClick(Self, FVisibleColumns[vCol], vRow);
+        FOnCellClick(Self, VisibleColumns[vCol].Column, vRow);
     garGutter:
       if Assigned(FOnRowClick) and (vCol >= 0) then
         FOnRowClick(Self, vRow);
     garHeader:
       if Assigned(FOnColClick) and (vCol >= 0) then
-        FOnColClick(Self, FVisibleColumns[vCol]);
+        FOnColClick(Self, VisibleColumns[vCol].Column);
     else
     begin
     end;
@@ -2941,6 +2959,10 @@ begin
         s := '';
         Canvas.Font.Color := FixedFontColor;
       end;
+      if vArea = garHeader then
+        aDrawState := aDrawState + [csdHeader];
+      if vArea = garFooter then
+        aDrawState := aDrawState + [csdFooter];
       tmpRect := FlipRect(cliRect, tmpRect);
       Canvas.FillRect(tmpRect);
       DrawFixed(Canvas, tmpRect, s, aDrawState);
@@ -2964,6 +2986,10 @@ begin
         if FStateBtn then
           aDrawState := aDrawState + [csdDown];
       end;
+      if vArea = garHeader then
+        aDrawState := aDrawState + [csdHeader];
+      if vArea = garFooter then
+        aDrawState := aDrawState + [csdFooter];
       Canvas.FillRect(tmpRect);
       DrawFixed(Canvas, tmpRect, '', aDrawState);
       ExcludeClipRect(Canvas.Handle, TmpRect.Left, tmpRect.Top, tmpRect.Right, tmpRect.Bottom);
@@ -2971,13 +2997,13 @@ begin
   end;
 
   aCol := 0;
-  aColumnsCount := FVisibleColumns.Count;
+  aColumnsCount := VisibleColumns.Count;
   while (X < pntRect.Right) do
   begin
     vrtCol := GetVirtualCol(aCol);
     if vrtCol >= aColumnsCount then
       break;
-    W := FVisibleColumns[vrtCol].Width;
+    W := VisibleColumns[vrtCol].Width;
     aRect := Rect(X, vRect.Top, X + W, vRect.Bottom);
     aRect := FlipRect(cliRect, aRect);
     aDrawState := [];
@@ -2987,7 +3013,11 @@ begin
       aDrawState := aDrawState + [csdFirstCell];
     if Gutter then
       aDrawState := aDrawState + [csdFirstOpened];
-    FVisibleColumns[vrtCol].Draw(Canvas, aDrawState, vRow, aRect, vArea);
+    if vArea = garHeader then
+      aDrawState := aDrawState + [csdHeader];
+    if vArea = garFooter then
+      aDrawState := aDrawState + [csdFooter];
+    VisibleColumns[vrtCol].Column.Draw(Canvas, aDrawState, vRow, aRect, vArea);
     Inc(aCol);
     X := X + W;
   end;
@@ -3151,15 +3181,15 @@ var
 begin
   vrtRect := MovingRect;
   w := vrtRect.Right - vrtRect.Left;
-  Result := FVisibleColumns.Count - 1;
+  Result := VisibleColumns.Count - 1;
   i := Result;
   if i >= 0 then
   begin
-    r := FVisibleColumns[i].Width;
+    r := VisibleColumns[i].Width;
     while i > SettledCols do
     begin
       Dec(i);
-      r := r + FVisibleColumns[i].Width;
+      r := r + VisibleColumns[i].Width;
       if r > w then
       begin
         break;
@@ -3191,8 +3221,8 @@ end;
 
 function TntvCustomGrid.GetCurrentColumn: TntvColumn;
 begin
-  if (FVisibleColumns.Count > 0) and (Current.Col < FVisibleColumns.Count) then
-    Result := FVisibleColumns[Current.Col]
+  if (VisibleColumns.Count > 0) and (Current.Col < VisibleColumns.Count) then
+    Result := VisibleColumns[Current.Col].Column
   else
     Result := nil;
 end;
@@ -3217,7 +3247,7 @@ end;
 
 function TntvCustomGrid.GetMaxCols: Integer;
 begin
-  Result := FVisibleColumns.Count;
+  Result := VisibleColumns.Count;
 end;
 
 function TntvCustomGrid.GetRowRect(vRow: Integer; out vRect: TRect): Boolean;
@@ -3249,7 +3279,7 @@ begin
     Result := GetTextRange(Selected.StartRow, Selected.EndRow, SpecialFormat)
   else
   begin
-    aCell := FVisibleColumns[Current.Col].GetCell(Current.Row);
+    aCell := VisibleColumns[Current.Col].Column.GetCell(Current.Row);
     if aCell <> nil then
     begin
       Result := aCell.Text;
@@ -3261,7 +3291,7 @@ begin
       aData := 0;
     end;
     if SpecialFormat and (Result <> '') then
-      Result := Result + cntv_X_DATA + IntToStr(aData) + cntv_X_DATA + IntToStr(FVisibleColumns[Current.Col].Id);
+      Result := Result + cntv_X_DATA + IntToStr(aData) + cntv_X_DATA + IntToStr(VisibleColumns[Current.Col].Column.ID);
   end;
   if SpecialFormat then
     Result := 'NaticeGrid=v1.0' + cntv_X_EOL + Result;
@@ -3292,7 +3322,7 @@ begin
     begin
       vRealCol := fCol;
       vCol := GetVirtualCol(fCol);
-      W := FVisibleColumns[vCol].Width;
+      W := VisibleColumns[vCol].Width;
       R := R + W;
       fCol := fCol + 1;
     end
@@ -3325,9 +3355,9 @@ begin
     begin
       Result := aCols;
       vrtCol := GetVirtualCol(aCols);
-      if vrtCol >= FVisibleColumns.Count then
+      if vrtCol >= VisibleColumns.Count then
         break;
-      W := FVisibleColumns[vrtCol].Width;
+      W := VisibleColumns[vrtCol].Width;
       R := R + W;
       aCols := aCols + 1;
     end
@@ -3382,7 +3412,7 @@ begin
   vrtCol := GetVirtualCol(aCol);
   while vrtCol < FVisibleColumns.Count do
   begin
-    R := R + FVisibleColumns[vrtCol].Width;
+    R := R + VisibleColumns[vrtCol].Width;
     if Abs(X - R) <= 3 then
     begin
       vCol := vrtCol;
@@ -3482,7 +3512,7 @@ end;
 
 function TntvCustomGrid.IsValidCell(vRow: Integer; vCol: Integer): Boolean;
 begin
-  if (vRow < Capacity) and (vRow >= 0) and (vCol < FVisibleColumns.Count) and (vCol >= 0) then
+  if (vRow < Capacity) and (vRow >= 0) and (vCol < VisibleColumns.Count) and (vCol >= 0) then
     Result := True
   else
     Result := False;
@@ -3780,10 +3810,10 @@ begin
   else
   begin
     vCol := GetVirtualCol(GetCompletedCols(X));
-    Result := Result and (vCol < FVisibleColumns.Count);
-    if (vCol >= FVisibleColumns.Count) then
+    Result := Result and (vCol < VisibleColumns.Count);
+    if (vCol >= VisibleColumns.Count) then
     begin
-      vCol := FVisibleColumns.Count - 1;
+      vCol := VisibleColumns.Count - 1;
       if not vCorrect then
         vArea := garNone;
     end;
@@ -3903,8 +3933,8 @@ begin
     vRow := Capacity - 1;
   if (vRow < 0) then
     vRow := 0;
-  if (vCol > (FVisibleColumns.Count - 1)) then
-    vCol := FVisibleColumns.Count - 1;
+  if (vCol > (VisibleColumns.Count - 1)) then
+    vCol := VisibleColumns.Count - 1;
   if (vCol < FFixedCols) then
     vCol := FFixedCols;
   FOldRow := Current.Row;
@@ -3954,7 +3984,7 @@ begin
 
   if OldCol <> vCol then
   begin
-    ColumnChanged(GetVisibleColumn(OldCol), GetVisibleColumn(vCol));
+    ColumnChanged(VisibleColumns[OldCol].Column, VisibleColumns[vCol].Column);
     ShowCol(vCol);
   end;
 
@@ -3973,7 +4003,7 @@ begin
   if IsRowChanged then
   begin
     if (VisibleColumns.Count > 0) then
-      VisibleColumns[Current.Col].CurRowChanged;
+      VisibleColumns[Current.Col].Column.CurRowChanged;
     if not (CtrlSelecting and MultiSelect and RowSelect) then
       DoCurRowChanged;
   end;
@@ -4179,11 +4209,11 @@ begin
     PasteRange(vText, SpecialFormat, aCheckData)
   else
   begin
-    if not FVisibleColumns[Current.Col].GetReadOnly then
+    if not VisibleColumns[Current.Col].Column.GetReadOnly then
     begin
       vText := GetPartStr(vText, ntvEOL, 0, #0);
       ActiveRow := Current.Row;
-      aColumn := FVisibleColumns[Current.Col];
+      aColumn := VisibleColumns[Current.Col].Column;
       if SpecialFormat then
       begin
         aText := GetPartStr(vText, cntv_X_DATA, 0, #0);
@@ -4284,17 +4314,17 @@ begin
       AWidth := VirtualClient.Right;
       while (AWidth > VirtualClient.Left) and (aCol < FSettledCols) do //zaher
       begin
-        AWidth := AWidth - FVisibleColumns[aCol].Width;
+        AWidth := AWidth - VisibleColumns[aCol].Width;
         aCol := aCol + 1;
       end;
       aCol := vCol;
       aVrtCol := aCol;
-      AWidth := AWidth - FVisibleColumns[aCol].Width;
+      AWidth := AWidth - VisibleColumns[aCol].Width;
       while (AWidth > VirtualClient.Left) do
       begin
         aVrtCol := aCol;
         aCol := aCol - 1;
-        AWidth := AWidth - FVisibleColumns[aCol].Width;
+        AWidth := AWidth - VisibleColumns[aCol].Width;
       end;
       SetSideCol(aVrtCol);
     end;
@@ -4440,7 +4470,7 @@ begin
     end;
     SB_BOTTOM:
     begin
-      SetSideCol(FVisibleColumns.Count - 1);
+      SetSideCol(VisibleColumns.Count - 1);
     end;
     SB_THUMBTRACK:
     begin
@@ -4823,6 +4853,7 @@ end;
 
 destructor TntvEdit.Destroy;
 begin
+  Master := nil;
   inherited Destroy;
 end;
 
@@ -4981,9 +5012,9 @@ begin
   w := 0;
   for i := 0 to SettledCols - 1 do
   begin
-    if i >= FVisibleColumns.Count then
+    if i >= VisibleColumns.Count then
       break;
-    w := w + FVisibleColumns[i].Width;
+    w := w + VisibleColumns[i].Width;
   end;
   Result := VirtualClient;
   Result.Left := Result.Left + w;
@@ -5053,7 +5084,7 @@ begin
   Canvas.Pen.Color := LinesColor;
   Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
   Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
-  if csdHeaderFooter in vDrawState then
+  if csdHeader in vDrawState then
   begin
     Canvas.MoveTo(vRect.Left, vRect.Top);
     Canvas.LineTo(vRect.Right, vRect.Top);
@@ -5128,19 +5159,19 @@ var
   X: Integer;
   aWidth, aCol, fCol: Integer;
 begin
-  if (vCol >= 0) and (vCol < FVisibleColumns.Count) then
+  if (vCol >= 0) and (vCol < VisibleColumns.Count) then
   begin
     vRect := ClientRect;
     fCol := 0;
     X := VirtualClient.Left;
     aCol := GetVirtualCol(0);
-    aWidth := FVisibleColumns[aCol].Width;
+    aWidth := VisibleColumns[aCol].Width;
     while (X < VirtualClient.Right) and (aCol < vCol) do
     begin
       X := X + aWidth;
       fCol := fCol + 1;
       aCol := GetVirtualCol(fCol);
-      aWidth := FVisibleColumns[aCol].Width;
+      aWidth := VisibleColumns[aCol].Width;
     end;
     vRect.Left := X;
     vRect.Right := vRect.Left + aWidth;
@@ -5265,7 +5296,7 @@ begin
   Result := -1;
   for i := vStartRow to RowsCount - 1 do
   begin
-    aCell := FRows.SafeGet(i, vInCol);
+    aCell := FRows.Peek(i, vInCol);
     if (aCell <> nil) and (Pos(vText, aCell.Text) > 0) then
     begin
       Result := i;
@@ -5489,11 +5520,11 @@ begin
   end;
 end;
 
-procedure TntvColumn.SetAutoSize(AValue: Boolean);
+procedure TntvColumn.SetAutoFit(AValue: Boolean);
 begin
-  if Info.AutoSize <> AValue then
+  if Info.AutoFit <> AValue then
   begin
-    Info.AutoSize := AValue;
+    Info.AutoFit := AValue;
     if Grid <> nil then
     begin
       Grid.ColumnsChanged;
@@ -5521,7 +5552,6 @@ begin
   if Info.Width <> Value then
   begin
     Info.Width := Value;
-    Info.OrignalWidth := Value;
     if Grid <> nil then
     begin
       Grid.ColumnsWidthsChanged;
@@ -5568,7 +5598,7 @@ var
     if not ReadOnly then
       if Current.Row > 0 then
       begin
-        AColumn := FVisibleColumns[Current.Col];
+        AColumn := VisibleColumns[Current.Col].Column;
         aCell := AColumn.GetCell(Current.Row - 1);
         if aCell <> nil then
           AColumn.SetValueText(Current.Row, aCell.Text, aCell.Data, sDefaultSetCell);
@@ -5595,10 +5625,10 @@ begin
     end;
     keyaDelete:
     begin
-      if (FVisibleColumns[Current.Col].GetCellText(Current.Row) <> '') or (FVisibleColumns[Current.Col].GetCellData(Current.Row) <> 0) then
+      if (VisibleColumns[Current.Col].Column.GetCellText(Current.Row) <> '') or (VisibleColumns[Current.Col].Column.GetCellData(Current.Row) <> 0) then
       begin
-        FVisibleColumns[Current.Col].SetValueText(Current.Row, '', 0);
-        AfterEdit(FVisibleColumns[Current.Col], Current.Row);
+        VisibleColumns[Current.Col].Column.SetValueText(Current.Row, '', 0);
+        AfterEdit(VisibleColumns[Current.Col].Column, Current.Row);
       end;
     end;
     keyaPaste:
@@ -5630,7 +5660,7 @@ begin
     keyaHome, keyaSelectHome:
       Current.SetCol(FFixedCols, vKeyAction = keyaSelectHome);
     keyaEnd, keyaSelectEnd:
-      Current.SetCol(FVisibleColumns.Count - 1, vKeyAction = keyaSelectEnd);
+      Current.SetCol(VisibleColumns.Count - 1, vKeyAction = keyaSelectEnd);
     keyaDeleteLine: TryDeleteRow(Current.Row);
     keyaInsertLine: TryInsertRow(Current.Row);
     keyaTop, keyaSelectTop: Current.SetRow(0, vKeyAction = keyaSelectTop);
@@ -5985,39 +6015,48 @@ end;
 
 procedure TntvCustomGrid.ColumnsWidthsChanged;
 var
-  aColumns: TntvColumnList;
+  aAutoColumns: TmnObjectList<TntvVisibleColumn>;
   i, w, r: Integer;
   vrtRect: TRect;
 begin
   vrtRect := MovingRect;
   w := vrtRect.Right - vrtRect.Left;
-  i := FVisibleColumns.Count;
+  i := VisibleColumns.Count;
   if i > 0 then
   begin
-    aColumns := TntvColumnList.Create(False);
+    aAutoColumns := TmnObjectList<TntvVisibleColumn>.Create(False);
     try
       r := w;
       while i > SettledCols do
       begin
         Dec(i);
-        if (r - FVisibleColumns[i].Info.OrignalWidth) < 0 then
+        VisibleColumns[i].Width := VisibleColumns[i].Column.Width;
+
+        if (r - VisibleColumns[i].Width) < 0 then
           break;
-        if FVisibleColumns[i].Info.AutoSize then
-          aColumns.Add(FVisibleColumns[i])
+        if VisibleColumns[i].Column.Info.AutoFit then
+          aAutoColumns.Add(VisibleColumns[i])
         else
-          r := r - FVisibleColumns[i].Info.OrignalWidth;
+          r := r - VisibleColumns[i].Width;
       end;
-      if aColumns.Count > 0 then
+
+      if (aAutoColumns.Count > 0) and (r > 0) then
       begin
-        r := r div aColumns.Count;
-        for i :=  0 to aColumns.Count -1 do
-          aColumns[i].Info.Width := r;
+        r := r div aAutoColumns.Count;
+        if r < 0 then
+          r := 0;
+        for i :=  0 to aAutoColumns.Count -1 do
+        begin
+          //if r > aAutoColumns[i].Column.Width then //no what if there is more than one column
+            aAutoColumns[i].Width := r;
+        end;
       end;
-      for i := 0 to FVisibleColumns.Count -1 do
-        if FVisibleColumns[i].Info.Width <=0 then
-          FVisibleColumns[i].Info.Width := sColMinWidth;
+
+      for i := 0 to VisibleColumns.Count -1 do
+        if VisibleColumns[i].Width <=0 then
+          VisibleColumns[i].Width := sColMinWidth;
     finally
-      FreeAndNil(aColumns);
+      FreeAndNil(aAutoColumns);
     end;
   end
 end;
@@ -6478,14 +6517,6 @@ procedure TntvCustomGrid.ColumnChanged(OldCol, NewCol: TntvColumn);
 begin
 end;
 
-function TntvCustomGrid.GetVisibleColumn(vCol: Integer): TntvColumn;
-begin
-  if (vCol < FVisibleColumns.Count) and (FVisibleColumns.Count > 0) then
-    Result := FVisibleColumns[vCol]
-  else
-    Result := nil;
-end;
-
 function TntvColumns.Find(ID: Integer): TntvColumn;
 var
   i: Integer;
@@ -6493,7 +6524,7 @@ begin
   Result := nil;
   for i := 0 to Count - 1 do
   begin
-    if Items[i].Id = ID then
+    if Items[i].ID = ID then
     begin
       Result := Items[i];
       break;
@@ -6547,6 +6578,17 @@ begin
     if FEnabled then
       Visible := False;
   end;
+end;
+
+function TntvColumn.GetIsEmpty: Boolean;
+var
+  aCell: TntvCell;
+begin
+  aCell := GetCell(ActiveRow);
+  if aCell <> nil then
+    Result := aCell.Text = ''
+  else
+    Result := True;
 end;
 
 procedure TntvColumn.CurRowChanged;
@@ -6646,9 +6688,9 @@ var
     i: Integer;
   begin
     Result := 0;
-    for i := 0 to FVisibleColumns.Count - 1 do
+    for i := 0 to VisibleColumns.Count - 1 do
     begin
-      if not FVisibleColumns[i].ReadOnly and FVisibleColumns[i].Enabled then
+      if not VisibleColumns[i].Column.ReadOnly and VisibleColumns[i].Column.Enabled then
       begin
         Result := i;
         break;
@@ -6666,7 +6708,7 @@ begin
     begin
       vCol := vCol + 1;
       vRow := 0;
-      if (vCol >= FVisibleColumns.Count) then
+      if (vCol >= VisibleColumns.Count) then
       begin
         vCol := 0;
       end;
@@ -6674,7 +6716,7 @@ begin
   end
   else
   begin
-    aReturnColumns := FVisibleColumns.Count;
+    aReturnColumns := VisibleColumns.Count;
     if (aReturnColumns > ReturnColumns) and (ReturnColumns <> 0) then
       aReturnColumns := ReturnColumns;
     if (Current.Col = aReturnColumns - 1) and (vRow < (Capacity - 1)) then

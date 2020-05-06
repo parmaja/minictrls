@@ -1,5 +1,5 @@
 object Form1: TForm1
-  Left = 238
+  Left = 436
   Height = 386
   Top = 223
   Width = 560
@@ -15,6 +15,7 @@ object Form1: TForm1
     Width = 77
     Anchors = [akRight, akBottom]
     Caption = 'Close'
+    Default = True
     OnClick = CloseBtnClick
     TabOrder = 0
   end
@@ -66,6 +67,29 @@ object Form1: TForm1
     Caption = 'Create 2'
     OnClick = Button4Click
     TabOrder = 5
+  end
+  object Label1: TLabel
+    Left = 299
+    Height = 22
+    Top = 11
+    Width = 46
+    AutoSize = False
+    Caption = 'Label1'
+    Font.Height = 22
+    ParentColor = False
+    ParentFont = False
+    OptimalFill = True
+  end
+  object ntvGrid1: TntvGrid
+    Left = 27
+    Height = 157
+    Top = 67
+    Width = 224
+    ColWidth = 80
+    FixedFontColor = clBlack
+    RowHeight = 22
+    Selected.TextColor = clHighlightText
+    TabOrder = 6
   end
   object PopupMenu1: TPopupMenu
     Left = 307
