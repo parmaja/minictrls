@@ -39,9 +39,9 @@ object Form1: TForm1
     TabOrder = 2
   end
   object ComboBox1: TComboBox
-    Left = 26
+    Left = 20
     Height = 23
-    Top = 17
+    Top = 11
     Width = 255
     ItemHeight = 15
     TabOrder = 3

@@ -52,7 +52,7 @@ type
     keyaSelectUp, keyaSelectDown, keyaSelectPageUp, keyaSelectPageDown, keyaDropDown,
     keyaDropUp, keyaSaveAll, keyaFindPrior, keyaSelectHome, keyaSelectEnd, keyaBack, keyaForward,
     keyaComplete, keyaHiComplete, keyaLoComplete, keyaSelectTop, keyaSelectBottom,
-    keyaExecute, keyaViewer, keyaFit, keyaFunction, keyaRepeat, keyaGoTo
+    keyaExecute, keyaViewer, keyaFunction, keyaRepeat, keyaGoTo
   );
 
   TntvMasterAction = (
@@ -278,7 +278,7 @@ type
 
   { TntvColumn }
 
-  TntvColumn = class(TInterfacedPersistent, IMaster)
+  TntvColumn = class(TmnCustomField, IField, IMaster)
   private
     FGrid: TntvCustomGrid;
     FMasterActionLock: Boolean;
@@ -293,6 +293,12 @@ type
     FAlignment : TAlignment;
     FCurrencyFormat: String;
     FEnabled: Boolean;
+
+    procedure SetTotal(const Value: Currency);
+    function GetTotal: Currency;
+    procedure SetData(const Value: Integer);
+    function GetData: Integer; overload;
+
     procedure BiDiModeChanged(vInvalidate: Boolean);
     procedure ParentBiDiModeChanged;
     procedure SetAutoSize(AValue: Boolean);
@@ -301,32 +307,7 @@ type
     procedure SetParentBiDiMode(const Value: Boolean);
     procedure SetTitle(AValue: String);
     procedure SetWidth(const Value: Integer);
-
-    function GetData: Integer; overload;
-
-    function GetIsNull: Boolean;
-    function GetAsCurrency: Currency;
-    function GetAsFloat: Double;
-    function GetAsVariant: Variant;
-    function GetAsDate: TDateTime;
-    function GetAsDateTime: TDateTime;
-    function GetAsInteger: Integer;
-    function GetAsTime: TDateTime;
-    function GetAsTotal: Currency;
     procedure SetAlignment(AValue: TAlignment);
-    procedure SetAsCurrency(const Value: Currency);
-    procedure SetAsFloat(const Value: Double);
-    procedure SetAsDate(const Value: TDateTime);
-    procedure SetAsDateTime(const Value: TDateTime);
-    procedure SetAsInteger(const Value: Integer);
-    procedure SetAsVariant(const Value: Variant);
-    function GetAsString: String;
-    procedure SetAsString(const Value: String);
-    procedure SetAsTime(Value: TDateTime);
-    procedure SetAsTotal(const Value: Currency);
-    procedure SetData(const Value: Integer);
-    function GetAsBoolean: Boolean;
-    procedure SetAsBoolean(const Value: Boolean);
 
     procedure SetVisible(const Value: Boolean);
     function IsBiDiModeStored: Boolean;
@@ -338,6 +319,40 @@ type
   protected
     Info: TntvColumnInfo;
     FEditControl: TControl;
+
+    procedure SetIsNull(const AValue: Boolean); override;
+    function GetIsNull: Boolean; override;
+
+    procedure SetAsDate(const Value: TDateTime); override;
+    function GetAsDate: TDateTime; override;
+
+    procedure SetAsDateTime(const Value: TDateTime); override;
+    function GetAsDateTime: TDateTime; override;
+
+    procedure SetAsInteger(const Value: Integer); override;
+    function GetAsInteger: Integer; override;
+
+    function GetAsInt64: Int64; override;
+    procedure SetAsInt64(const AValue: Int64); override;
+
+    function GetAsTime: TDateTime; override;
+    procedure SetAsTime(const Value: TDateTime); override;
+
+    procedure SetAsCurrency(const Value: Currency); override;
+    function GetAsCurrency: Currency; override;
+
+    function GetAsString: String; override;
+    procedure SetAsString(const Value: String); override;
+
+    function GetAsBoolean: Boolean; override;
+    procedure SetAsBoolean(const Value: Boolean); override;
+
+    function GetValue: Variant; override;
+    procedure SetValue(const AValue: Variant); override;
+
+    procedure SetAsFloat(const Value: Double);
+    function GetAsFloat: Double;
+
     function GetCaption: String;
     function GetDisplayName: String;
 
@@ -364,7 +379,7 @@ type
 
     procedure SetCellValue(vRow: Integer; vText: String; vData: Integer = 0; vSetCell: TntvSetCells = [swcText, swcData, swcInvalidate, swcComplete, swcCorrectValue]; vForce: Boolean = False);
     //SetValue called by user
-    function SetValue(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells = [swcText, swcData, swcInvalidate, swcComplete]): Boolean;
+    function SetValueText(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells = [swcText, swcData, swcInvalidate, swcComplete]): Boolean;
 
     procedure CorrectValue(var Text: String; var Data: Integer); virtual;
     procedure ValidateValue(var Text: String; var Data: Integer); virtual;
@@ -415,20 +430,12 @@ type
     constructor Create(vGrid: TntvCustomGrid; vTitle: String = ''; vName: String = ''; vID: Integer = 0; vEnabled: Boolean = True); virtual;
     destructor Destroy; override;
     procedure Invalidate;
-    procedure Assign(Source: TPersistent); override;
+    procedure Assign(vField: TmnCustomField); override;
 
-    property AsCurrency: Currency read GetAsCurrency write SetAsCurrency;
     property AsFloat: Double read GetAsFloat write SetAsFloat;
-    property AsDouble: Double read GetAsFloat write SetAsFloat;
-    property AsDate: TDateTime read GetAsDate write SetAsDate;
-    property AsInteger: Integer read GetAsInteger write SetAsInteger;
-    property AsBoolean: Boolean read GetAsBoolean write SetAsBoolean;
-    property AsString: String read GetAsString write SetAsString;
-    property AsTime: TDateTime read GetAsTime write SetAsTime;
-    property AsTotal: Currency read GetAsTotal write SetAsTotal;
+    property Total: Currency read GetTotal write SetTotal;
     property Data: Integer read GetData write SetData;
     property Kind: TntvColumnKind read Info.Kind write Info.Kind;
-    property Total: Currency read Info.Total write Info.Total;
     property EmptyZero: Boolean read Info.EmptyZero write Info.EmptyZero;
     property Items[Row: Integer]: TntvCell read GetItems; default;
     property ImageIndex: Integer read FImageIndex write SetImageIndex;
@@ -449,7 +456,7 @@ type
     property Caption: String read Info.Caption write Info.Caption;
     property Visible: Boolean read Info.Visible write SetVisible default True;
     property Width: Integer read Info.Width write SetWidth default sColWidth;
-    property Id: Integer read Info.Id write Info.Id default 0;
+    property ID: Integer read Info.ID write Info.ID default 0;
     property AutoSize: Boolean read Info.AutoSize write SetAutoSize default False;
     property ShowImage: Boolean read Info.ShowImage write Info.ShowImage default False;
     property Enabled: Boolean read FEnabled write SetEnabled default True;
@@ -464,6 +471,25 @@ type
   public
     procedure SortByOrder;
   end;
+
+  { TntvVisibleColumn }
+
+  TntvVisibleColumn = class
+  private
+    FColumn: TntvColumn;
+    FWidth: Integer;
+  public
+    property Column: TntvColumn read FColumn write FColumn;
+    property Width: Integer read FWidth write FWidth;
+  end;
+
+  { TntvVisibleColumns }
+
+  TntvVisibleColumns = class(TmnObjectList<TntvVisibleColumn>)
+  public
+    procedure SortByOrder;
+  end;
+
 
   { TntvColumns }
 
@@ -553,7 +579,6 @@ type
     FColumns: TntvColumns;
     FColWidth: Integer;
     FOldRow: Longint;
-    FDesignColumns: Boolean;
     FDragAfter: Integer;
     FDragAfterMode: TntvDragAfterMode;
     FDualColor: Boolean;
@@ -876,19 +901,21 @@ type
 
     property Columns: TntvColumns read FColumns;
     property ColumnsCount: integer read GetColumnsCount write SetColumnsCount;
-    property RowsCount: Integer read GetRowsCount write SetRowsCount stored False default 0;
     property VisibleColumns: TntvColumnList read FVisibleColumns;
-    property CurrentColumn: TntvColumn read GetCurrentColumn;
+    property Rows: TntvRows read FRows;
+    property RowsCount: Integer read GetRowsCount write SetRowsCount stored False default 0;
+
     property Updating: Boolean read GetUpdating write SetUpdating;
     property Modified: Boolean read FModified write SetModified;
+
     property CurCell: TntvCell read GetCurCell;
     property TopRow: Integer read FTopRow write SetTopRow;
-    property Rows: TntvRows read FRows;
+    property CurrentColumn: TntvColumn read GetCurrentColumn;
     property ActiveRow: Integer read FActiveRow write SetActiveRow;
     //for published
     property RowRefresh: Boolean read FRowRefresh write FRowRefresh default False;
     property HighlightFixed: Boolean read FHighlightFixed write SetHighlightFixed default False;
-    property DesignColumns: Boolean read FDesignColumns write FDesignColumns default True;
+
     property DragAfterMode: TntvDragAfterMode read FDragAfterMode write FDragAfterMode default damNone;
     property DualColor: Boolean read FDualColor write SetDualColor default True;
     property FixedCols: Integer read FFixedCols write SetFixedCols default 0;
@@ -940,8 +967,6 @@ type
     property FullHeader: Boolean read FFullHeader write SetFullHeader default False;
     property WantTab: Boolean read FWantTab write FWantTab default False;
     property WantReturn: Boolean read FWantReturn write FWantReturn default False;
-    property Font;
-
     property Items[Index: Integer]: TntvRow read GetItems;
     property Values[Col, Row: Integer]: string read GetValues write SetValues; default;
   end;
@@ -959,7 +984,6 @@ type
     property HighlightFixed;
     property Color;
     property ColWidth;
-    property DesignColumns;
     property DragAfterMode;
     property DragCursor;
     property DragMode;
@@ -1210,7 +1234,6 @@ begin
     end
   else if Shift = [ssCtrl] then
     case Key of
-      VK_Return: Result := keyaFit;
       VK_Escape: Result := keyaNone;
       VK_Left: Result := keyaWordLeft;
       VK_Right: Result := keyaWordRight;
@@ -1379,6 +1402,30 @@ begin
     else
       Result := 0;
   end;
+end;
+
+function SortByVisibleOrderCompare(Item1, Item2: Pointer): Integer;
+begin
+  if TntvVisibleColumn(Item1).Column.OrderIndex > TntvVisibleColumn(Item2).Column.OrderIndex then
+    Result := 1
+  else if TntvVisibleColumn(Item1).Column.OrderIndex < TntvVisibleColumn(Item2).Column.OrderIndex then
+    Result := -1
+  else
+  begin
+    if TntvVisibleColumn(Item1).Column.Index > TntvVisibleColumn(Item2).Column.Index then
+      Result := 1
+    else if TntvVisibleColumn(Item1).Column.Index < TntvVisibleColumn(Item2).Column.Index then
+      Result := -1
+    else
+      Result := 0;
+  end;
+end;
+
+{ TntvVisibleColumns }
+
+procedure TntvVisibleColumns.SortByOrder;
+begin
+  Sort(SortByOrderCompare);
 end;
 
 procedure TntvColumnList.SortByOrder;
@@ -1651,14 +1698,14 @@ begin
   inherited;
 end;
 
-procedure TntvColumn.Assign(Source: TPersistent);
+procedure TntvColumn.Assign(vField: TmnCustomField);
 begin
-  if Source is TntvColumn then
+  if vField is TntvColumn then
   begin
-    Info := TntvColumn(Source).Info;
+    Info := TntvColumn(vField).Info;
   end
-  else
-    inherited Assign(Source);
+{  else
+    inherited Assign(Source);}
 end;
 
 procedure TntvColumn.Validate;
@@ -1880,7 +1927,7 @@ begin
   try
     if Accept then
     begin
-      SetValue(ActiveRow, EditText, EditData, sDefaultSetCell);
+      SetValueText(ActiveRow, EditText, EditData, sDefaultSetCell);
     end;
   finally
     Grid.AfterEdit(Self, ActiveRow);
@@ -1959,6 +2006,19 @@ begin
   Result := StrToIntDef(AsString, 0);
 end;
 
+function TntvColumn.GetAsInt64: Int64;
+begin
+  Result := StrToInt64Def(AsString, 0);
+end;
+
+procedure TntvColumn.SetAsInt64(const AValue: Int64);
+begin
+  if (Value = 0) and EmptyZero then
+    AsString := ''
+  else
+    AsString := IntToStr(Value);
+end;
+
 function TntvColumn.GetAsTime: TDateTime;
 var
   s: String;
@@ -1970,7 +2030,7 @@ begin
     Result := StrToTime(AsString);
 end;
 
-function TntvColumn.GetAsTotal: Currency;
+function TntvColumn.GetTotal: Currency;
 begin
   Result := Total;
 end;
@@ -2119,7 +2179,7 @@ begin
   SetCellValue(ActiveRow, Value, 0, [swcText, swcInvalidate, swcComplete]);
 end;
 
-procedure TntvColumn.SetAsTime(Value: TDateTime);
+procedure TntvColumn.SetAsTime(const Value: TDateTime);
 begin
   if Value <> 0 then
     AsString := TimeToStr(Value)
@@ -2127,7 +2187,7 @@ begin
     AsString := '';
 end;
 
-procedure TntvColumn.SetAsTotal(const Value: Currency);
+procedure TntvColumn.SetTotal(const Value: Currency);
 begin
   Total := Value;
   Complete(False);
@@ -2194,7 +2254,6 @@ begin
   FVisibleColumns := TntvColumnList.Create(False);
   FSelected := TntvGridSelected.Create(Self);
   FCurrent := TntvGridCurrent.Create(Self);
-  FDesignColumns := True;
   FScrollBars := ssBoth;
   FOldRow := 0;
   FOldX := 0;
@@ -2482,7 +2541,7 @@ var
           AColumn := VisibleColumns.Find(aColName) as TntvColumn;
           if (AColumn <> nil) and (not AColumn.GetReadOnly) then
           begin
-            AColumn.SetValue(R, aText, aData, [swcText, swcData] + sCheckOrValidate[vCheckData]);
+            AColumn.SetValueText(R, aText, aData, [swcText, swcData] + sCheckOrValidate[vCheckData]);
             AfterPaste(AColumn, R);
             //            AfterEdit(AColumn, R);
           end;
@@ -2494,7 +2553,7 @@ var
         AColumn := VisibleColumns[c];
         if (not AColumn.GetReadOnly) then
         begin
-          AColumn.SetValue(R, S, 0, [swcText, swcData] + sCheckOrValidate[vCheckData]);
+          AColumn.SetValueText(R, S, 0, [swcText, swcData] + sCheckOrValidate[vCheckData]);
           AfterPaste(AColumn, R);
           //        AfterEdit(AColumn, R);
         end;
@@ -4129,10 +4188,10 @@ begin
       begin
         aText := GetPartStr(vText, cntv_X_DATA, 0, #0);
         aData := StrToIntDef(GetPartStr(vText, cntv_X_DATA, 1, #0), 0);
-        aColumn.SetValue(ActiveRow, aText, aData, sDefaultSetCell + sCheckOrValidate[aCheckData or (aData = 0)]);
+        aColumn.SetValueText(ActiveRow, aText, aData, sDefaultSetCell + sCheckOrValidate[aCheckData or (aData = 0)]);
       end
       else
-        aColumn.SetValue(ActiveRow, vText, 0, sDefaultSetCell + sCheckOrValidate[aCheckData]);
+        aColumn.SetValueText(ActiveRow, vText, 0, sDefaultSetCell + sCheckOrValidate[aCheckData]);
       AfterPaste(aColumn, ActiveRow);
       AfterEdit(aColumn, ActiveRow);
     end;
@@ -5512,7 +5571,7 @@ var
         AColumn := FVisibleColumns[Current.Col];
         aCell := AColumn.GetCell(Current.Row - 1);
         if aCell <> nil then
-          AColumn.SetValue(Current.Row, aCell.Text, aCell.Data, sDefaultSetCell);
+          AColumn.SetValueText(Current.Row, aCell.Text, aCell.Data, sDefaultSetCell);
         AfterEdit(AColumn, Current.Row);
         IncCurRow(False);
       end;
@@ -5538,7 +5597,7 @@ begin
     begin
       if (FVisibleColumns[Current.Col].GetCellText(Current.Row) <> '') or (FVisibleColumns[Current.Col].GetCellData(Current.Row) <> 0) then
       begin
-        FVisibleColumns[Current.Col].SetValue(Current.Row, '', 0);
+        FVisibleColumns[Current.Col].SetValueText(Current.Row, '', 0);
         AfterEdit(FVisibleColumns[Current.Col], Current.Row);
       end;
     end;
@@ -5655,7 +5714,7 @@ begin
   Accept := False;
 end;
 
-function TntvColumn.SetValue(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells): Boolean;
+function TntvColumn.SetValueText(vRow: Integer; vText: String; vData: Integer; vSetCellKind: TntvSetCells): Boolean;
 begin
   if not GetReadOnly then
   begin
@@ -5723,6 +5782,16 @@ end;
 procedure TntvColumn.SetAsBoolean(const Value: Boolean);
 begin
   AsInteger := Ord(Value);
+end;
+
+function TntvColumn.GetValue: Variant;
+begin
+  Result := AsString;
+end;
+
+procedure TntvColumn.SetValue(const AValue: Variant);
+begin
+  AsString := AValue;
 end;
 
 function TntvColumn.CanEdit: Boolean;
@@ -6049,9 +6118,9 @@ begin
   Result := StrToFloatDef(AsString, 0);
 end;
 
-function TntvColumn.GetAsVariant: Variant;
+procedure TntvColumn.SetIsNull(const AValue: Boolean);
 begin
-  Result := AsString;
+  //TODO
 end;
 
 function TntvColumn.GetIsNull: Boolean;
@@ -6075,11 +6144,6 @@ begin
     AsString := FloatToStr(Value);
   if IsTotal and Grid.LockAutoTotal then
     Info.Total := Info.Total + Value;
-end;
-
-procedure TntvColumn.SetAsVariant(const Value: Variant);
-begin
-  AsString := Value;
 end;
 
 procedure TntvCustomGrid.ValueChanged(AColumn: TntvColumn);
