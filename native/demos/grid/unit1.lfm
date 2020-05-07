@@ -80,17 +80,6 @@ object Form1: TForm1
     ParentFont = False
     OptimalFill = True
   end
-  object ntvGrid1: TntvGrid
-    Left = 27
-    Height = 157
-    Top = 67
-    Width = 224
-    ColWidth = 80
-    FixedFontColor = clBlack
-    RowHeight = 22
-    Selected.TextColor = clHighlightText
-    TabOrder = 6
-  end
   object PopupMenu1: TPopupMenu
     Left = 307
     Top = 193

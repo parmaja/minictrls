@@ -80,7 +80,7 @@ type
 function ntvTheme: TntvThemeEngine;
 
 function DrawStates(Enabled, Down, Focused: Boolean): TdrawStates;
-function DrawStates(ADrawStates:TdrawStates; Enabled, Down, Focused: Boolean): TdrawStates;
+function DrawStates(ADrawStates: TdrawStates; Enabled, Down, Focused: Boolean): TdrawStates;
 
 implementation
 

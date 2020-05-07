@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Grids, Menus,
-  DBGrids, ValEdit, ntvGrids, ntvPanels;
+  DBGrids, ntvGrids;
 
 type
 
@@ -23,7 +23,6 @@ type
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
-    ntvGrid1: TntvGrid;
     PopupMenu1: TPopupMenu;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
@@ -36,6 +35,7 @@ type
     procedure OnColClick(Sender: TntvCustomGrid; Column: TntvColumn);
   public
     Grid: TntvGrid;
+    IDCol: TntvColumn;
     NameCol: TntvColumn;
     PhoneCol: TntvColumn;
     EmailCol: TntvColumn;
@@ -92,8 +92,10 @@ begin
   Grid.FullHeader := true;
   Grid.SettledCols := 1;
   Grid.BorderStyle := bsSingle;
+  Grid.FixedCols := 1;
 
   //Grid.RowHeight := 47;
+  IDCol := TntvStandardColumn.Create(Grid, 'ID');
   NameCol := TntvStandardColumn.Create(Grid, 'Name');
   PhoneCol := TntvStandardColumn.Create(Grid, 'Phone');
   MobileCol := TntvStandardColumn.Create(Grid, 'Mobile');
@@ -106,6 +108,8 @@ begin
   Grid.TabOrder := 0;
 
   Grid.ActiveRow := 0;
+  IDCol.AsString := '101';
+
   NameCol.AsString := 'zaher';
   AddressCol.AsString := 'syria';
 

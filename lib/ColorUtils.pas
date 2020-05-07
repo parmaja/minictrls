@@ -8,10 +8,10 @@ uses
   Classes, SysUtils, Graphics;
 
 //Amount is 0..100 percent value
-function Lighten(Color: TColor; Amount: SmallInt): TColor;
+function Lighten(Color: TColor; Amount: SmallInt = 256 div 2): TColor;
 function Darken(Color: TColor; Amount: SmallInt): TColor;
 
-function MixColors(Color1, Color2: TColor; W1: Integer): TColor;
+function MixColors(Color1, Color2: TColor; W1: Integer = 256 div 2): TColor;
 function BlendColor(Color1, Color2: TColor; W1: Integer): TColor;
 function InverseColor(Color: TColor): TColor;
 
