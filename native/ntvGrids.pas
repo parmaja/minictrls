@@ -12,6 +12,7 @@ unit ntvGrids;
  *}
 
 {TODO:
+  bug: Anchors columns should added to Fixed columns not include it
   bug: When Click corner of Fringe or Gutter
 }
 
@@ -175,6 +176,7 @@ type
     csdSelected,
     csdFocused,
     csdNew,
+    //csdAnchor,
     csdFixed,
     csdRightToLeft,
     csdHeader,
@@ -222,8 +224,8 @@ type
 
   TntvGridProperty = class(TComponent)
   private
-    FSettledCols: Integer;
-    FSettledColor: TColor;
+    FAnchorCols: Integer;
+    FAnchorColor: TColor;
     FOddColor: TColor;
     FEvenColor: TColor;
     FReturnColumns: Integer;
@@ -252,8 +254,8 @@ type
     property LinesColor: TColor read FLinesColor write FLinesColor default clLtGray;
     property OddColor: TColor read FOddColor write FOddColor default clMoneyGreen;
     property EvenColor: TColor read FEvenColor write FEvenColor default clWhite;
-    property SettledColor: TColor read FSettledColor write FSettledColor default $00EAEAEA;
-    property SettledCols: Integer read FSettledCols write FSettledCols default 0;
+    property AnchorColor: TColor read FAnchorColor write FAnchorColor default $00EAEAEA;
+    property AnchorCols: Integer read FAnchorCols write FAnchorCols default 0;
   end;
 
   { TntvColumnInfo }
@@ -369,7 +371,6 @@ type
     procedure Draw(Canvas: TCanvas; vDrawState: TntvCellDrawState; vRow, vCol: Integer; vRect: TRect; vArea: TntvGridArea); virtual;
     procedure DrawHeader(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState); virtual;
     procedure DrawCell(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState; const vColor: TColor); virtual;
-    procedure DrawHint(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState; const vColor: TColor); virtual;
     procedure DrawFooter(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState); virtual;
 
     function GetCell(vRow: Integer): TntvCell;
@@ -625,14 +626,14 @@ type
     FRowSelect: Boolean;
     FSideCol: Integer;
     FTopRow: Integer;
-    FSettledCols: Integer;
+    FAnchorCols: Integer;
     FGutter: Boolean;
     FFringe: Boolean;
     FFringeWidth: Integer;
     FGutterWidth: Integer;
     FVisibleColumns: TntvVisibleColumns;
     FScrollTimer: Cardinal;
-    FSettledColor: TColor;
+    FAnchorColor: TColor;
     FSolid: Boolean;
     FActiveRow: Integer;
     FImageList: TImageList;
@@ -708,14 +709,14 @@ type
     procedure SetFixedFontColor(AValue: TColor);
     procedure SetMultiSelect(const Value: Boolean);
     property ColumnEdit: TntvColumn read FColumnEdit write SetColumnEdit;
-    procedure SetSettledCols(const Value: Integer);
+    procedure SetAnchorCols(const Value: Integer);
     procedure SetFooter(const Value: Boolean);
     procedure SetFringe(const Value: Boolean);
     procedure SetHeader(const Value: Boolean);
     procedure SetGutter(const Value: Boolean);
     function GetCurCell: TntvCell;
     function FlipRect(const cliRect, vRect: TRect): TRect;
-    procedure SetSettledColor(const Value: TColor);
+    procedure SetAnchorColor(const Value: TColor);
     procedure CopyClick(Sender: TObject);
     procedure CopyAllClick(Sender: TObject);
     procedure DeleteLineClick(Sender: TObject);
@@ -761,7 +762,8 @@ type
     procedure ScrollBarChanged;
     procedure ColumnsChanged; virtual;
     procedure DoModified; virtual;
-    procedure GetColor(Column: TntvColumn; vRow: Integer; out vColor: TColor);
+    procedure GetColor(vRow, vCol: Integer; out vColor: TColor); overload;
+    procedure GetColor(vDrawState: TntvCellDrawState; vRow, vCol: Integer; vArea: TntvGridArea; out vColor, vTextColor: TColor); overload;
     procedure DoGetColor(Column: TntvColumn; vRow: Integer; var vColor: TColor); virtual;
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
@@ -936,8 +938,8 @@ type
     property Color default clBtnFace;
     property OddColor: TColor read FOddColor write SetOddColor default clMoneyGreen;
     property EvenColor: TColor read FEvenColor write SetEvenColor default clWhite;
-    property SettledColor: TColor read FSettledColor write SetSettledColor default clCream;
-    property SettledCols: Integer read FSettledCols write SetSettledCols default 0;
+    property AnchorColor: TColor read FAnchorColor write SetAnchorColor default clCream;
+    property AnchorCols: Integer read FAnchorCols write SetAnchorCols default 0;
     property ReturnColumns: Integer read FReturnColumns write FReturnColumns default 0;
     property VerticalJump: Boolean read FVerticalJump write FVerticalJump default False;
     property OnAfterEdit: TNotifyEvent read FOnAfterEdit write FOnAfterEdit;
@@ -994,7 +996,7 @@ type
     property FixedCols;
     property FixedColor;
     property FixedFontColor;
-    property SettledCols;
+    property AnchorCols;
     property FollowDrag;
     property Font;
     property GridLines;
@@ -1012,7 +1014,7 @@ type
     property MultiSelect;
     property Solid;
     property OddColor;
-    property SettledColor;
+    property AnchorColor;
     property ReturnColumns;
     property VerticalJump;
     property ParentFont;
@@ -1727,60 +1729,17 @@ var
   aColor, aTextColor: TColor;
   txtRect: TRect;
 begin
-  if vArea = garNormal then
-    Grid.GetColor(Self, vRow, aColor); //zaher the Row
-
-  if not (csdSelected in vDrawState) and (vCol < Grid.SettledCols) and (Grid.SettledColor <> clNone) then
-    aColor := MixColors(aColor, Grid.SettledColor)
-  else if (csdFixed in vDrawState) or (vArea = garHeader) or (vArea = garFooter) then
-  begin
-    if Grid.HighlightFixed and ((Grid.Current.Col = vCol) and (vArea = garHeader)) then
-      aColor := MixColors(clBtnFace, Grid.Selected.Color)
-    else
-      aColor := Grid.FixedColor;
-    aTextColor := Grid.FixedFontColor;
-  end
-  else if csdSelected in vDrawState then
-  begin
-    if not Grid.Focused and (Grid.RowSelect or Grid.IsCurrent(vRow, vCol)) then
-    begin
-      aColor := MixColors(aColor, Grid.Selected.Color);
-      if csdNew in vDrawState then
-        aTextColor := Lighten(Grid.Font.Color)
-      else
-        aTextColor := Grid.Font.Color;
-    end
-    else
-    begin
-      aColor := Grid.Selected.Color;
-      if csdNew in vDrawState then
-        aTextColor := MixColors(Grid.Selected.TextColor, Grid.Selected.Color, 150)
-      else
-        aTextColor := Grid.Selected.TextColor;
-    end;
-  end
-  else
-  begin
-    if csdNew in vDrawState then
-      aTextColor := clBtnFace //ZAHER
-    else
-      aTextColor := Grid.Font.Color;
-  end;
+  Grid.GetColor(vDrawState, vRow, vCol, vArea, aColor, aTextColor);
 
   Canvas.Font.Color := aTextColor;
   Canvas.Brush.Color := aColor;
+
   txtRect := vRect;
   CorrectCellRect(txtRect);
   case vArea of
     garNormal:
     begin
-      if csdNew in vDrawState then
-        DrawHint(Canvas, vRow, txtRect, vDrawState, aColor)
-      else
-      if (vRow < Grid.RowsCount) then
-        DrawCell(Canvas, vRow, txtRect, vDrawState, aColor)
-      else
-        Canvas.FillRect(txtRect);
+      DrawCell(Canvas, vRow, txtRect, vDrawState, aColor)
     end;
     garHeader:
     begin
@@ -1795,39 +1754,32 @@ begin
     end;
   end;
 
-  if (csdFixed in vDrawState) then
+  if (Grid.FGridLines in [glHorizontal, glBoth]) then
   begin
-    Grid.DrawFixed(Canvas, vRect, '', vDrawState);
-  end
-  else
-  begin
-    if (Grid.FGridLines in [glHorizontal, glBoth]) then
+    Canvas.Pen.Color := Grid.LinesColor;
+    if Grid.UseRightToLeftAlignment then
     begin
-      Canvas.Pen.Color := Grid.LinesColor;
-      if Grid.UseRightToLeftAlignment then
-      begin
-        Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
-        Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
-      end
-      else
-      begin
-        Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
-        Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
-      end;
+      Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
+      Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
+    end
+    else
+    begin
+      Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
+      Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
     end;
-    if (Grid.GridLines in [glVertical, glBoth]) then
+  end;
+  if (Grid.GridLines in [glVertical, glBoth]) then
+  begin
+    Canvas.Pen.Color := Grid.LinesColor;
+    if Grid.UseRightToLeftAlignment then
     begin
-      Canvas.Pen.Color := Grid.LinesColor;
-      if Grid.UseRightToLeftAlignment then
-      begin
-        Canvas.MoveTo(vRect.Left, vRect.Top);
-        Canvas.LineTo(vRect.Left, vRect.Bottom);
-      end
-      else
-      begin
-        Canvas.MoveTo(vRect.Right - 1, vRect.Top);
-        Canvas.LineTo(vRect.Right - 1, vRect.Bottom);
-      end;
+      Canvas.MoveTo(vRect.Left, vRect.Top);
+      Canvas.LineTo(vRect.Left, vRect.Bottom);
+    end
+    else
+    begin
+      Canvas.MoveTo(vRect.Right - 1, vRect.Top);
+      Canvas.LineTo(vRect.Right - 1, vRect.Bottom);
     end;
   end;
 end;
@@ -1840,7 +1792,7 @@ var
   aImageRect: TRect;
 begin
   aCell := GetCell(vRow);
-  if (ImageList <> nil) and (ShowImage) then
+  if not (csdNew in State) and (ImageList <> nil) and ShowImage then
   begin
     if UseRightToLeftAlignment then
     begin
@@ -1855,9 +1807,14 @@ begin
     Canvas.Brush.Color := Grid.Color;
     Canvas.FillRect(aImageRect);
   end;
+
   Canvas.Brush.Color := vColor;
   Canvas.FillRect(vRect);
-  if aCell <> nil then
+  InflateRect(vRect, - sCellMargin, - sCellMargin);
+
+  if (csdNew in State) then
+    Grid.DrawString(Canvas, Hint, vRect, GetTextStyle, True)
+  else if aCell <> nil then
   begin
     if (ImageList <> nil) and (ShowImage) then
     begin
@@ -1870,8 +1827,6 @@ begin
         ImageList.Draw(Canvas, aImageRect.Left, aImageRect.Top + y, aImage);
       end;
     end;
-    InflateRect(vRect, - sCellMargin, - sCellMargin);
-    Canvas.Font.Color := Grid.Font.Color;
     Grid.DrawString(Canvas, aCell.Text, vRect, GetTextStyle, True);
   end;
 end;
@@ -2236,7 +2191,7 @@ begin
   TabStop := True;
   FOddColor := clMoneyGreen;
   FEvenColor := clWhite;
-  FSettledColor := clCream;
+  FAnchorColor := clCream;
   FFixedCols := 0;
   FTopRow := 0;
   FSideCol := 0;
@@ -2980,8 +2935,9 @@ begin
       Include(aDrawState, csdFooter);
     if IsSelected(vRow, vrtCol) then
       Include(aDrawState, csdSelected);
-    if (aCol < FixedCols) then
+    if (vrtCol < FixedCols) then
       Include(aDrawState, csdFixed);
+
     if (vRow = FClkRow) and (vrtCol = FClkCol) and (FStateBtn) and (FClkArea = vArea) then
       Include(aDrawState, csdDown);
 
@@ -3157,7 +3113,7 @@ begin
   if i >= 0 then
   begin
     r := VisibleColumns[i].Width;
-    while i > SettledCols do
+    while i > AnchorCols do
     begin
       Dec(i);
       r := r + VisibleColumns[i].Width;
@@ -3270,10 +3226,10 @@ end;
 
 function TntvCustomGrid.GetVirtualCol(vCol: Integer): Integer;
 begin
-  if (vCol < FSettledCols) then
+  if (vCol < FAnchorCols) then
     Result := vCol
   else
-    Result := vCol + (FSideCol - FSettledCols);
+    Result := vCol + (FSideCol - FAnchorCols);
 end;
 
 function TntvCustomGrid.GetVirtualRow(vRow: Integer): Integer;
@@ -3834,7 +3790,7 @@ procedure TntvCustomGrid.ResetPosition;
 begin
   Current.Reset;
   FTopRow := 0;
-  FSideCol := FSettledCols;
+  FSideCol := FAnchorCols;
   ScrollBarChanged;
 end;
 
@@ -4020,8 +3976,8 @@ begin
   if FFixedCols <> Value then
   begin
     FFixedCols := Value;
-    if FSettledCols < Value then
-      FSettledCols := Value;
+    if FAnchorCols < Value then
+      FAnchorCols := Value;
     ResetPosition;
     ScrollBarChanged;
     Invalidate;
@@ -4223,8 +4179,8 @@ begin
   begin
     CloseEdit;
   end;
-  if (vCol < FSettledCols) then
-    vCol := FSettledCols;
+  if (vCol < FAnchorCols) then
+    vCol := FAnchorCols;
   if (vCol > GetMaxSideCol) then
     vCol := GetMaxSideCol;
   OldSideCol := FSideCol;
@@ -4283,7 +4239,7 @@ begin
     begin
       aCol := 0;
       AWidth := VirtualClient.Right;
-      while (AWidth > VirtualClient.Left) and (aCol < FSettledCols) do //zaher
+      while (AWidth > VirtualClient.Left) and (aCol < FAnchorCols) do //zaher
       begin
         AWidth := AWidth - VisibleColumns[aCol].Width;
         aCol := aCol + 1;
@@ -4423,21 +4379,21 @@ begin
     end;
     SB_PAGEDOWN:
     begin
-      c := GetCompletedCols(VirtualWidth) - SettledCols;
+      c := GetCompletedCols(VirtualWidth) - AnchorCols;
       if c <= 0 then
         c := 1;
       SetSideCol(FSideCol - c * (Ord(UseRightToLeftAlignment) * 2 - 1));
     end;
     SB_PAGEUP:
     begin
-      c := GetCompletedCols(VirtualWidth) - SettledCols;
+      c := GetCompletedCols(VirtualWidth) - AnchorCols;
       if c <= 0 then
         c := 1;
       SetSideCol(FSideCol + c * (Ord(UseRightToLeftAlignment) * 2 - 1));
     end;
     SB_TOP:
     begin
-      SetSideCol(SettledCols);
+      SetSideCol(AnchorCols);
     end;
     SB_BOTTOM:
     begin
@@ -4445,11 +4401,11 @@ begin
     end;
     SB_THUMBTRACK:
     begin
-      c := GetMaxSideCol - SettledCols;
+      c := GetMaxSideCol - AnchorCols;
       if UseRightToLeftAlignment then
-        SetSideCol((c - Message.Pos) + SettledCols)
+        SetSideCol((c - Message.Pos) + AnchorCols)
       else
-        SetSideCol(Message.Pos + SettledCols);
+        SetSideCol(Message.Pos + AnchorCols);
     end;
   end;
   Message.Result := 0;
@@ -4664,7 +4620,6 @@ begin
   FSelectedRows := TntvSelectedRows.Create;
 end;
 
-
 function TntvColumn.CreateEdit: TControl;
 begin
   Result := nil;
@@ -4846,9 +4801,9 @@ procedure TntvStandardColumn.ShowEdit(SelectAll: Boolean);
 var
   aEdit: TntvEdit;
   aRect: TRect;
-  aColor: TColor;
+  aColor, aTextColor: TColor;
 begin
-  Grid.GetColor(Self, ActiveRow, aColor);
+  Grid.GetColor([], ActiveRow, VisibleIndex, garNormal, aColor, aTextColor);
   GetTextArea(ActiveRow, aRect);
   aEdit := (FEditControl as TntvEdit);
   aEdit.Color := aColor;
@@ -4940,14 +4895,14 @@ begin
   begin
     aScrollInfo.cbSize := SizeOf(aScrollInfo);
     aScrollInfo.fMask := SIF_RANGE or SIF_PAGE or SIF_POS or SIF_DISABLENOSCROLL;
-    aMax := GetMaxSideCol - SettledCols;
+    aMax := GetMaxSideCol - AnchorCols;
     aScrollInfo.nMin := 0;
     aScrollInfo.nMax := aMax;
     aScrollInfo.nPage := 1;
     if UseRightToLeftAlignment then
-      aScrollInfo.nPos := aMax - (SideCol - SettledCols)
+      aScrollInfo.nPos := aMax - (SideCol - AnchorCols)
     else
-      aScrollInfo.nPos := (SideCol - SettledCols);
+      aScrollInfo.nPos := (SideCol - AnchorCols);
     SetScrollInfo(Handle, SB_HORZ, aScrollInfo, True);
   end;
 
@@ -4979,7 +4934,7 @@ var
   i, w: Integer;
 begin
   w := 0;
-  for i := 0 to SettledCols - 1 do
+  for i := 0 to AnchorCols - 1 do
   begin
     if i >= VisibleColumns.Count then
       break;
@@ -4997,16 +4952,13 @@ begin
   Result := vrtRect.Right - vrtRect.Left;
 end;
 
-procedure TntvCustomGrid.SetSettledCols(const Value: Integer);
+procedure TntvCustomGrid.SetAnchorCols(const Value: Integer);
 begin
-  if FSettledCols <> Value then
+  if FAnchorCols <> Value then
   begin
-    if Value < FixedCols then
-      FSettledCols := FixedCols
-    else
-      FSettledCols := Value;
-    if FSideCol < SettledCols then
-      FSideCol := SettledCols;
+    FAnchorCols := Value;
+    if FSideCol < AnchorCols then
+      FSideCol := AnchorCols;
     ColumnsChanged;
   end;
 end;
@@ -5722,9 +5674,9 @@ begin
     Result := False;
 end;
 
-procedure TntvCustomGrid.SetSettledColor(const Value: TColor);
+procedure TntvCustomGrid.SetAnchorColor(const Value: TColor);
 begin
-  FSettledColor := Value;
+  FAnchorColor := Value;
 end;
 
 { TntvCheckColumn }
@@ -5994,7 +5946,7 @@ begin
     aAutoColumns := TmnObjectList<TntvVisibleColumn>.Create(False);
     try
       r := w;
-      while i > SettledCols do
+      while i > AnchorCols do
       begin
         Dec(i);
         VisibleColumns[i].Width := VisibleColumns[i].Column.Width;
@@ -6052,32 +6004,67 @@ begin
   Result := Rows[Index];
 end;
 
-procedure TntvColumn.DrawHint(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState; const vColor: TColor);
-begin
-  Canvas.Brush.Color := vColor;
-  //Canvas.Font.Color := Grid.FixedFontColor;
-  Canvas.FillRect(vRect);
-  InflateRect(vRect, -1, -1);
-  Grid.DrawString(Canvas, Hint, vRect, GetTextStyle, True);
-end;
-
 procedure TntvCustomGrid.DoGetColor(Column: TntvColumn; vRow: Integer; var vColor: TColor);
 begin
 end;
 
-procedure TntvCustomGrid.GetColor(Column: TntvColumn; vRow: Integer; out vColor: TColor);
+procedure TntvCustomGrid.GetColor(vRow, vCol: Integer; out vColor: TColor);
+begin
+  if vRow < RowsCount then
+  begin
+    DoGetColor(VisibleColumns[vCol].Column, vRow, vColor);
+    if Assigned(OnGetColor) then
+      OnGetColor(Self, VisibleColumns[vCol].Column, vRow, vColor);
+  end;
+end;
+
+procedure TntvCustomGrid.GetColor(vDrawState: TntvCellDrawState; vRow, vCol: Integer; vArea: TntvGridArea; out vColor, vTextColor: TColor);
 begin
   if Odd(vRow) and DualColor then
     vColor := OddColor
   else
     vColor := EvenColor;
-  if (Column.VisibleIndex < SettledCols) and (SettledColor <> clNone) then
-    vColor := MixColors(vColor, SettledColor, 200);
-  if vRow < RowsCount then
+
+  GetColor(vRow, vCol, vColor);
+
+  if (csdFixed in vDrawState) or (vArea = garHeader) or (vArea = garFooter) then
   begin
-    DoGetColor(Column, vRow, vColor);
-    if Assigned(OnGetColor) then
-      OnGetColor(Self, Column, vRow, vColor);
+    if HighlightFixed and ((Current.Col = vCol) and (vArea = garHeader)) then
+      vColor := MixColors(clBtnFace, Selected.Color)
+    else
+      vColor := FixedColor;
+    vTextColor := FixedFontColor;
+  end
+  else if csdSelected in vDrawState then
+  begin
+    if not Focused and (RowSelect or IsCurrent(vRow, vCol)) then
+    begin
+      vColor := MixColors(vColor, Selected.Color);
+      if csdNew in vDrawState then
+        vTextColor := Lighten(Font.Color)
+      else
+        vTextColor := Font.Color;
+    end
+    else
+    begin
+      vColor := Selected.Color;
+      if csdNew in vDrawState then
+        vTextColor := MixColors(Selected.TextColor, Selected.Color, 150)
+      else
+        vTextColor := Selected.TextColor;
+    end;
+  end
+  else if (vCol < AnchorCols) and (AnchorColor <> clNone) then
+  begin
+    vColor := MixColors(vColor, AnchorColor);
+    vTextColor := Font.Color;
+  end
+  else
+  begin
+    if csdNew in vDrawState then
+      vTextColor := clBtnFace //ZAHER
+    else
+      vTextColor := Font.Color;
   end;
 end;
 
@@ -6176,10 +6163,10 @@ begin
   Result.GridLines := GridLines;
   Result.LinesColor := LinesColor;
   Result.VerticalJump := VerticalJump;
-  Result.SettledColor := SettledColor;
+  Result.AnchorColor := AnchorColor;
   Result.OddColor := OddColor;
   Result.EvenColor := EvenColor;
-  Result.SettledCols := SettledCols;
+  Result.AnchorCols := AnchorCols;
   Result.FCurRow := Current.Row;
   Result.FCurCol := Current.Col;
 
@@ -6196,10 +6183,10 @@ var
   aProperty: TntvColumnProperty;
   aColumn: TntvColumn;
 begin
-  SettledColor := List.SettledColor;
+  AnchorColor := List.AnchorColor;
   OddColor := List.OddColor;
   EvenColor := List.EvenColor;
-  SettledCols := List.SettledCols;
+  AnchorCols := List.AnchorCols;
   ReturnColumns := List.ReturnColumns;
   Capacity := List.Capacity;
   VerticalJump := List.VerticalJump;
@@ -6228,7 +6215,7 @@ begin
   inherited;
   FOddColor := clWhite;
   FEvenColor := clWhite;
-  FSettledColor := $00EAEAEA;
+  FAnchorColor := $00EAEAEA;
   FCapacity := 10000;
   FCurRow := -1;
   FCurCol := -1;

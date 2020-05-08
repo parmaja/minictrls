@@ -90,7 +90,7 @@ begin
   Grid.Fringe := True;
   Grid.PopupMenu := PopupMenu1;
   Grid.FullHeader := true;
-  Grid.SettledCols := 1;
+  Grid.AnchorCols := 2;
   Grid.BorderStyle := bsSingle;
   Grid.FixedCols := 1;
 
@@ -113,7 +113,7 @@ begin
   NameCol.AsString := 'zaher';
   AddressCol.AsString := 'syria';
 
-  MobileCol.OrderIndex := 0;
+  MobileCol.OrderIndex := 3;
   MobileCol.Width := 100;
   MobileCol.AutoFit := True;
 
@@ -135,7 +135,7 @@ begin
   Grid.Fringe := True;
   Grid.PopupMenu := PopupMenu1;
   Grid.FullHeader := true;
-  Grid.SettledCols := 1;
+  Grid.AnchorCols := 1;
   Grid.BorderStyle := bsSingle;
   Grid.ColumnsCount := 3;
 end;
