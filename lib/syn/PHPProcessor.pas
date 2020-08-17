@@ -63,7 +63,6 @@ type
     procedure SymbolProc;
     procedure SymbolAssignProc;
     procedure VariableProc;
-    procedure UnknownProc;
     procedure SetLine(const NewValue: string; LineNumber: integer); override;
     procedure Next; override;
 
@@ -294,12 +293,6 @@ begin
     Inc(i);
   until not (IdentTable[Parent.FLine[i]]);
   Parent.Run := i;
-end;
-
-procedure TPHPProcessor.UnknownProc;
-begin
-  inc(Parent.Run);
-  Parent.FTokenID := tkUnknown;
 end;
 
 procedure TPHPProcessor.SetLine(const NewValue: string; LineNumber: integer);

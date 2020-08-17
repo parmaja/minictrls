@@ -66,6 +66,8 @@ type
     procedure ScanToEOL;
 
     procedure Created; virtual;
+
+    procedure UnknownProc;
   public
     IdentTable: TIdentifierTable;
     ProcTable: TProcTable;
@@ -121,7 +123,6 @@ type
     procedure StringDQProc;
     procedure StringBQProc;
 
-    procedure UnknownProc;
     procedure NullProc;
     procedure CRProc;
     procedure LFProc;
@@ -336,6 +337,15 @@ begin
 
 end;
 
+procedure TSynProcessor.UnknownProc;
+begin
+  inc(Parent.Run);
+  while (Parent.FLine[Parent.Run] in [#128..#191]) OR // continued utf8 subcode
+   ((Parent.FLine[Parent.Run] <> #0) and (ProcTable[Parent.FLine[Parent.Run]] = @UnknownProc)) do
+     inc(Parent.Run);
+  Parent.FTokenID := tkUnknown;
+end;
+
 function TSynProcessor.GetEndOfLineAttribute: TSynHighlighterAttributes;
 begin
   Result := nil;
@@ -511,12 +521,6 @@ begin
   SetRange(rscStringBQ);
   Inc(Parent.Run);
   StringProc;
-end;
-
-procedure TCommonSynProcessor.UnknownProc;
-begin
-  inc(Parent.Run);
-  Parent.FTokenID := tkUnknown;
 end;
 
 procedure TCommonSynProcessor.NullProc;

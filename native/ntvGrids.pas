@@ -20,7 +20,7 @@ interface
 
 uses
   SysUtils, Variants, Messages, Classes, Graphics, Controls,
-  LCLType, LCLIntf, fgl, mnDebugs,
+  LCLType, LCLIntf, fgl, mnLogs,
   StdCtrls, Dialogs, Math, Menus, Forms, ImgList, Contnrs,
   ColorUtils, mnClasses, UniDates, mnFields,
   ntvCtrls, ntvThemes;
@@ -169,7 +169,7 @@ type
   TntvDragAfterMode = (damNone, damScroll, damDrag);
   TntvState = (dgsNone, dgsDown, dgsDrag, dgsResizeCol);
 
-  TntvGridArea = (garNone, garNormal, garHeader, garFooter, garGutter, garFringe);
+  TntvGridArea = (garNone, garGutter, garHeader, garNormal, garFooter, garFringe);
 
   TntvCellDrawState = set of (
     csdDown,
@@ -642,8 +642,6 @@ type
     FAttemptCapture: Boolean;
     FVerticalJump: Boolean;
     FReturnColumns: Integer;
-    FWantTab: Boolean;
-    FWantReturn: Boolean;
     FLinesColor: TColor;
     FFixedColor: TColor;
 
@@ -774,9 +772,10 @@ type
     procedure DoCurrentChange(var vRow: Integer; var vCol: Integer);
     procedure DoCurRowChanging(vOldRow, vNewRow: Integer); virtual;
     procedure DoCurRowChanged; virtual;
-    procedure Draw(Canvas: TCanvas; wndRect, pntRect: TRect);
+    procedure DrawGridLines(Canvas: TCanvas; vRect: TRect);
     procedure DrawFixed(Canvas: TCanvas; vRect: TRect; S: String; vDrawState: TntvCellDrawState);
     procedure DrawRow(Canvas: TCanvas; vRow: Integer; vRect, pntRect: TRect; vArea: TntvGridArea);
+    procedure Draw(Canvas: TCanvas; wndRect, pntRect: TRect);
     procedure CountChanged;
     function GetMaxSideCol: Integer;
     function GetAllowedRows: Integer;
@@ -968,8 +967,6 @@ type
     property OnGetColor: TOnGetColor read FOnGetColor write FOnGetColor;
     //Show header at top full of width of the Grid
     property FullHeader: Boolean read FFullHeader write SetFullHeader default False;
-    property WantTab: Boolean read FWantTab write FWantTab default False;
-    property WantReturn: Boolean read FWantReturn write FWantReturn default False;
     property Items[Index: Integer]: TntvRow read GetItems;
     property Values[Col, Row: Integer]: string read GetValues write SetValues; default;
   end;
@@ -1035,7 +1032,6 @@ type
     property Width;
     property ImageList;
     property FullHeader;
-    property WantTab;
 
     property OnIsReadOnly;
     property OnGetColor;
@@ -1492,7 +1488,7 @@ end;
 procedure TntvGridCurrent.Reset;
 begin
   FRow := 0;
-  FCol := 0;
+  FCol := FGrid.FixedCols;
 end;
 
 constructor TntvCell.Create(ARow: TntvRow);
@@ -1737,13 +1733,13 @@ begin
   txtRect := vRect;
   CorrectCellRect(txtRect);
   case vArea of
-    garNormal:
-    begin
-      DrawCell(Canvas, vRow, txtRect, vDrawState, aColor)
-    end;
     garHeader:
     begin
       DrawHeader(Canvas, vRow, txtRect, vDrawState);
+    end;
+    garNormal:
+    begin
+      DrawCell(Canvas, vRow, txtRect, vDrawState, aColor)
     end;
     garFooter:
     begin
@@ -1751,35 +1747,6 @@ begin
     end;
     else
     begin
-    end;
-  end;
-
-  if (Grid.FGridLines in [glHorizontal, glBoth]) then
-  begin
-    Canvas.Pen.Color := Grid.LinesColor;
-    if Grid.UseRightToLeftAlignment then
-    begin
-      Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
-      Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
-    end
-    else
-    begin
-      Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
-      Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
-    end;
-  end;
-  if (Grid.GridLines in [glVertical, glBoth]) then
-  begin
-    Canvas.Pen.Color := Grid.LinesColor;
-    if Grid.UseRightToLeftAlignment then
-    begin
-      Canvas.MoveTo(vRect.Left, vRect.Top);
-      Canvas.LineTo(vRect.Left, vRect.Bottom);
-    end
-    else
-    begin
-      Canvas.MoveTo(vRect.Right - 1, vRect.Top);
-      Canvas.LineTo(vRect.Right - 1, vRect.Bottom);
     end;
   end;
 end;
@@ -1828,6 +1795,11 @@ begin
       end;
     end;
     Grid.DrawString(Canvas, aCell.Text, vRect, GetTextStyle, True);
+  end;
+  if csdFocused in State then
+  begin
+    InflateRect(vRect, sCellMargin, sCellMargin);
+    DrawFocusRect(Canvas.Handle, vRect);
   end;
 end;
 
@@ -2284,7 +2256,7 @@ end;
 
 function TntvCustomGrid.IsSelected(vRow: Integer; vCol: Integer): Boolean;
 begin
-  Debug.Write(vRow, vCol);
+  Log.Write(vRow, vCol);
   if MultiSelect and not ((FSelected.StartRow <= 0) and (FSelected.EndRow <= 0) and (FSelected.FSelectedRows.Count = 0)) then
     Result := FSelected.IsSelected(vRow)
   else
@@ -2709,6 +2681,39 @@ begin
     FOnCurRowChanged(Self, Current.Row);
 end;
 
+procedure TntvCustomGrid.DrawGridLines(Canvas: TCanvas; vRect: TRect);
+begin
+  if (GridLines in [glHorizontal, glBoth]) then
+  begin
+    Canvas.Pen.Color := LinesColor;
+    if UseRightToLeftAlignment then
+    begin
+      Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
+      Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
+    end
+    else
+    begin
+      Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
+      Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
+    end;
+  end;
+
+  if (GridLines in [glVertical, glBoth]) then
+  begin
+    Canvas.Pen.Color := LinesColor;
+    if UseRightToLeftAlignment then
+    begin
+      Canvas.MoveTo(vRect.Left, vRect.Top);
+      Canvas.LineTo(vRect.Left, vRect.Bottom);
+    end
+    else
+    begin
+      Canvas.MoveTo(vRect.Right - 1, vRect.Top);
+      Canvas.LineTo(vRect.Right - 1, vRect.Bottom);
+    end;
+  end;
+end;
+
 procedure TntvCustomGrid.DeleteRow(vRow: Integer);
 begin
   if vRow < RowsCount then
@@ -2945,6 +2950,9 @@ begin
       Include(aDrawState, csdFocused);
 
     VisibleColumns[vrtCol].Column.Draw(Canvas, aDrawState, vRow, vrtCol, aRect, vArea);
+    if vArea = garNormal then
+      DrawGridLines(Canvas, aRect);
+
     Inc(aCol);
     X := X + W;
   end;
@@ -4354,14 +4362,7 @@ procedure TntvCustomGrid.WMGetDlgCode(var Message: TWMGetDlgCode);
 begin
   inherited;
   Message.Result := DLGC_WANTARROWS or DLGC_WANTCHARS;
-  if WantTab and CanMoveCurrent then
-    Message.Result := Message.Result or DLGC_WANTTAB
-  else
-    Message.Result := Message.Result and not DLGC_WANTTAB;
-{  if WantReturn and CanMoveCurrent then
-     Message.Result := Message.Result or DLGC_WANTMESSAGE
-   else
-     Message.Result := Message.Result and not DLGC_WANTMESSAGE;}
+  Message.Result := Message.Result and not DLGC_WANTTAB;
 end;
 
 procedure TntvCustomGrid.WMHScroll(var Message: TWMHScroll);
@@ -5534,10 +5535,7 @@ begin
     keyaEdit:
       OpenEdit(goeReturn);
     keyaReturn:
-      if WantReturn then
-        Resumed := False
-      else
-        OpenEdit(goeReturn);
+      OpenEdit(goeReturn);
     keyaRepeat:
     begin
       CopyToDown;
