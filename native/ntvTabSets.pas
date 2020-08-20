@@ -194,6 +194,9 @@ type
     property ItemIndex;
     property ImageList;
 
+    property TabStyle;
+    property TabPosition;
+
     property Items;
     property OnTabSelect;
     property OnTabSelected;
