@@ -27,6 +27,7 @@ type
     ClientPnl: TPanel;
     PopupMenu1: TPopupMenu;
     ClearBtn: TButton;
+    SetCountBtn1: TButton;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
@@ -35,6 +36,7 @@ type
     procedure ClearBtnClick(Sender: TObject);
     procedure CloseBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure SetCountBtn1Click(Sender: TObject);
     procedure SetCountBtnClick(Sender: TObject);
   private
     procedure OnColClick(Sender: TntvCustomGrid; Column: TntvColumn);
@@ -144,7 +146,7 @@ begin
   Grid.Fringe := True;
   Grid.PopupMenu := PopupMenu1;
   Grid.FullHeader := true;
-  Grid.AnchorCols := 1;
+  //Grid.AnchorCols := 1;
   Grid.BorderStyle := bsSingle;
   //Grid.ColumnsCount := 3;
 
@@ -164,9 +166,19 @@ procedure TForm1.FormCreate(Sender: TObject);
 begin
 end;
 
+procedure TForm1.SetCountBtn1Click(Sender: TObject);
+begin
+  Grid.AnchorCols := 1;
+end;
+
 procedure TForm1.SetCountBtnClick(Sender: TObject);
 begin
-  Grid.Columns.Count := 3;
+  if Grid.Columns.Count > 3 then
+    Grid.Columns.Count := 3
+  else if Grid.Columns.Count > 0 then
+    Grid.Columns.Count := 5
+  else
+    Grid.Columns.Count := 3;
 end;
 
 procedure TForm1.OnColClick(Sender: TntvCustomGrid; Column: TntvColumn);

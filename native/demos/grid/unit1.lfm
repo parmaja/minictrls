@@ -83,7 +83,7 @@ object Form1: TForm1
     object ClearBtn: TButton
       Left = 0
       Height = 28
-      Top = 146
+      Top = 174
       Width = 93
       Align = alTop
       Caption = 'Clear'
@@ -93,12 +93,22 @@ object Form1: TForm1
     object ClearBtn1: TButton
       Left = 0
       Height = 28
-      Top = 174
+      Top = 202
       Width = 93
       Align = alTop
       Caption = 'Reset'
       OnClick = ClearBtn1Click
       TabOrder = 7
+    end
+    object SetCountBtn1: TButton
+      Left = 0
+      Height = 28
+      Top = 146
+      Width = 93
+      Align = alTop
+      Caption = 'Set Anchors'
+      OnClick = SetCountBtn1Click
+      TabOrder = 8
     end
   end
   object ClientPnl: TPanel
