@@ -134,7 +134,7 @@ type
     FRows: TntvRows;
   protected
     procedure Assign(Source: TntvRow);
-    function CreateItem: TntvCell; override;
+    function RequireItem: TntvCell; override;
   public
     constructor Create(ARows: TntvRows); virtual;
     procedure Changed; override;
@@ -155,7 +155,7 @@ type
   protected
     procedure Changed; override;
     procedure CountChanged; override;
-    function CreateItem: TntvRow; override;
+    function RequireItem: TntvRow; override;
   public
     constructor Create(Grid: TntvCustomGrid);
     procedure DeleteColumn(ACol: Integer);
@@ -468,6 +468,8 @@ type
   { TntvColumnList }
 
   TntvColumnList = class(TmnNamedObjectList<TntvColumn>)
+  private
+  protected
   public
     //procedure SortByOrder;
   end;
@@ -493,6 +495,7 @@ type
     procedure SortByOrder;
     function Find(const Name: String): TntvColumn;
     function Add(AColumn: TntvColumn): Integer;
+    property Count: Integer read GetCount; //male it Readonly but not tested
   end;
 
   { TntvColumns }
@@ -501,7 +504,9 @@ type
   private
     FGrid: TntvCustomGrid;
   protected
+    procedure SetCount(AValue: Integer); // override; <- someday maybe will have it
     procedure Notify(Ptr: Pointer; Action: TListNotification); override;
+    function CreateItem: TntvColumn; virtual;
   public
     constructor Create(vGrid: TntvCustomGrid); virtual;
     destructor Destroy; override;
@@ -509,6 +514,7 @@ type
     function Find(ID: Integer): TntvColumn; overload;
     function Find(const Name: String): TntvColumn; overload;
     property Grid: TntvCustomGrid read FGrid;
+    property Count: Integer read GetCount write SetCount;
   end;
 
   TntvSelectedRows = class(TFPGList<Integer>)
@@ -648,8 +654,6 @@ type
     function GetValues(Col, Row: Integer): string; //wrong setting value, we need to use column to set value
     procedure SetValues(Col, Row: Integer; AValue: string);
 
-    function GetColumnsCount: integer;
-    procedure SetColumnsCount(AValue: integer);
     procedure SetImageList(Value: TImageList);
     procedure ImageListChange(Sender: TObject);
     procedure CalcNewWidth(X: Smallint);
@@ -830,7 +834,6 @@ type
     property RowHeight: Integer read FRowHeight write SetRowHeight;
     property ColWidth: Integer read FColWidth write SetColWidth;
   public
-    ReportRow: Integer;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure AddTotals(vRow: Integer);
@@ -839,10 +842,14 @@ type
     procedure MoveUp;
     procedure MoveDown;
     procedure MoveBottom;
+    //Clear delete rows, but not columns
     procedure Clear; virtual;
+    //clear delete rows, and columns
     procedure Reset; virtual;
-    procedure StartUpdate;
+
     procedure BeginUpdate; virtual;
+    //Like BeginUpdate but clear data //TODO remove it
+    procedure StartUpdate; deprecated;
     procedure EndUpdate; virtual;
     function AddColumn: TntvColumn;
     procedure DeleteColumn(vColumn: Integer);
@@ -902,7 +909,6 @@ type
     procedure AddItem(AValues: array of string); overload;
 
     property Columns: TntvColumns read FColumns;
-    property ColumnsCount: integer read GetColumnsCount write SetColumnsCount;
     property VisibleColumns: TntvVisibleColumns read FVisibleColumns;
     property Rows: TntvRows read FRows;
     property RowsCount: Integer read GetRowsCount write SetRowsCount stored False default 0;
@@ -1517,7 +1523,7 @@ begin
   end;
 end;
 
-function TntvRow.CreateItem: TntvCell;
+function TntvRow.RequireItem: TntvCell;
 begin
   Result := TntvCell.Create(Self);
 end;
@@ -1560,7 +1566,7 @@ begin
   end;
 end;
 
-function TntvRows.CreateItem: TntvRow;
+function TntvRows.RequireItem: TntvRow;
 begin
   Result := TntvRow.Create(Self);
 end;
@@ -2133,6 +2139,31 @@ begin
     FGrid.ColumnsChanged;
 end;
 
+procedure TntvColumns.SetCount(AValue: Integer);
+var
+  i, OldCount: Integer;
+begin
+  OldCount := Count;
+  inherited;
+  if OldCount < Count then
+  begin
+    Grid.BeginUpdate;
+    try
+      for i := OldCount to Count -1 do
+      begin
+        Put(i, CreateItem);
+      end;
+    finally
+      Grid.EndUpdate;
+    end;
+  end;
+end;
+
+function TntvColumns.CreateItem: TntvColumn;
+begin
+  Result := TntvStandardColumn.Create(Grid);
+end;
+
 constructor TntvColumns.Create(vGrid: TntvCustomGrid);
 begin
   inherited Create;
@@ -2278,6 +2309,7 @@ procedure TntvCustomGrid.Reset;
 begin
   Updating := True;
   try
+    Columns.Clear;
     Clear;
     FModified := False;
   finally
@@ -3617,7 +3649,7 @@ begin
   Rows.BeginUpdate;
   Updating := True;
   LockAutoTotal := True;
-  Reset;
+  Clear;
   if aRP then
     ResetPosition;
 end;
@@ -4362,7 +4394,7 @@ procedure TntvCustomGrid.WMGetDlgCode(var Message: TWMGetDlgCode);
 begin
   inherited;
   Message.Result := DLGC_WANTARROWS or DLGC_WANTCHARS;
-  Message.Result := Message.Result and not DLGC_WANTTAB;
+  //Message.Result := Message.Result and not DLGC_WANTTAB; //no i don't like it
 end;
 
 procedure TntvCustomGrid.WMHScroll(var Message: TWMHScroll);
@@ -4499,24 +4531,6 @@ var
 begin
   aColumn := Columns[Col];
   Result := aColumn.GetCellText(Row);
-end;
-
-function TntvCustomGrid.GetColumnsCount: integer;
-begin
-  Result := Columns.Count;
-end;
-
-procedure TntvCustomGrid.SetColumnsCount(AValue: integer);
-var
-  i: Integer;
-begin
-  if AValue <= Columns.Count then
-    Columns.Count := AValue
-  else
-  begin
-    for i := Columns.Count to AValue - 1 do
-      AddColumn;
-  end;
 end;
 
 procedure TntvCustomGrid.SetFixedFontColor(AValue: TColor);
@@ -5530,8 +5544,8 @@ var
 begin
   Resumed := True;
   case vKeyAction of
-    keyaTab:
-      MoveCurrent;
+    {keyaTab:
+      MoveCurrent;}
     keyaEdit:
       OpenEdit(goeReturn);
     keyaReturn:

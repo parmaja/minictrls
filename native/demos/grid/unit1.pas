@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Grids, Menus,
-  DBGrids, ntvGrids;
+  DBGrids, ExtCtrls, ntvGrids;
 
 type
 
@@ -17,20 +17,25 @@ type
     Button2: TButton;
     Button3: TButton;
     Button4: TButton;
+    ClearBtn1: TButton;
+    SetCountBtn: TButton;
     CloseBtn: TButton;
-    ComboBox1: TComboBox;
-    Label1: TLabel;
     MenuItem1: TMenuItem;
     MenuItem2: TMenuItem;
     MenuItem3: TMenuItem;
+    Panel1: TPanel;
+    ClientPnl: TPanel;
     PopupMenu1: TPopupMenu;
+    ClearBtn: TButton;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
+    procedure ClearBtn1Click(Sender: TObject);
+    procedure ClearBtnClick(Sender: TObject);
     procedure CloseBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
-    procedure ntvGrid1Click(Sender: TObject);
+    procedure SetCountBtnClick(Sender: TObject);
   private
     procedure OnColClick(Sender: TntvCustomGrid; Column: TntvColumn);
   public
@@ -80,10 +85,12 @@ end;
 
 procedure TForm1.Button3Click(Sender: TObject);
 begin
+  FreeAndNil(Grid);
   Grid := TntvGrid.Create(Self);
-  Grid.Parent := Self;
-  Grid.SetBounds(10, 10 ,ClientWidth - 20, CloseBtn.Top - 10);
-  Grid.Anchors := [akLeft, akRight, akTop, akBottom];
+  Grid.Parent := ClientPnl;
+  //Grid.SetBounds(10, 10 ,ClientWidth - 20, CloseBtn.Top - 10);
+  //Grid.Anchors := [akLeft, akRight, akTop, akBottom];
+  Grid.Align := alClient;
   Grid.Capacity := 3;
   Grid.OnColClick := @OnColClick;
   Grid.Footer := True;
@@ -125,10 +132,12 @@ end;
 
 procedure TForm1.Button4Click(Sender: TObject);
 begin
+  FreeAndNil(Grid);
   Grid := TntvGrid.Create(Self);
-  Grid.Parent := Self;
-  Grid.SetBounds(10, 10 ,ClientWidth - 20, CloseBtn.Top - 10);
-  Grid.Anchors := [akLeft, akRight, akTop, akBottom];
+  Grid.Parent := ClientPnl;
+  //Grid.SetBounds(10, 10 ,ClientWidth - 20, CloseBtn.Top - 10);
+  //Grid.Anchors := [akLeft, akRight, akTop, akBottom];
+  Grid.Align := alClient;
   Grid.Capacity := 3;
   Grid.OnColClick := @OnColClick;
   Grid.Footer := True;
@@ -137,16 +146,27 @@ begin
   Grid.FullHeader := true;
   Grid.AnchorCols := 1;
   Grid.BorderStyle := bsSingle;
-  Grid.ColumnsCount := 3;
+  //Grid.ColumnsCount := 3;
+
+end;
+
+procedure TForm1.ClearBtn1Click(Sender: TObject);
+begin
+  Grid.Reset;
+end;
+
+procedure TForm1.ClearBtnClick(Sender: TObject);
+begin
+  Grid.Clear;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
 end;
 
-procedure TForm1.ntvGrid1Click(Sender: TObject);
+procedure TForm1.SetCountBtnClick(Sender: TObject);
 begin
-
+  Grid.Columns.Count := 3;
 end;
 
 procedure TForm1.OnColClick(Sender: TntvCustomGrid; Column: TntvColumn);

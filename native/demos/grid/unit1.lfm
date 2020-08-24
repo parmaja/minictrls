@@ -1,88 +1,118 @@
 object Form1: TForm1
   Left = 436
-  Height = 386
+  Height = 404
   Top = 223
-  Width = 560
+  Width = 664
   Caption = 'Form1'
-  ClientHeight = 386
-  ClientWidth = 560
+  ClientHeight = 404
+  ClientWidth = 664
   OnCreate = FormCreate
   LCLVersion = '2.1.0.0'
-  object CloseBtn: TButton
-    Left = 476
-    Height = 25
-    Top = 355
-    Width = 77
-    Anchors = [akRight, akBottom]
-    Caption = 'Close'
-    Default = True
-    OnClick = CloseBtnClick
+  object Panel1: TPanel
+    Left = 571
+    Height = 404
+    Top = 0
+    Width = 93
+    Align = alRight
+    BevelOuter = bvNone
+    ClientHeight = 404
+    ClientWidth = 93
     TabOrder = 0
+    object Button4: TButton
+      Left = 0
+      Height = 30
+      Top = 30
+      Width = 93
+      Align = alTop
+      Caption = 'Create 2'
+      OnClick = Button4Click
+      TabOrder = 0
+    end
+    object Button3: TButton
+      Left = 0
+      Height = 30
+      Top = 0
+      Width = 93
+      Align = alTop
+      Caption = 'Create 1'
+      OnClick = Button3Click
+      TabOrder = 1
+    end
+    object CloseBtn: TButton
+      Left = 0
+      Height = 25
+      Top = 379
+      Width = 93
+      Align = alBottom
+      Caption = 'Close'
+      Default = True
+      OnClick = CloseBtnClick
+      TabOrder = 2
+    end
+    object Button2: TButton
+      Left = 0
+      Height = 30
+      Top = 60
+      Width = 93
+      Align = alTop
+      Anchors = [akLeft, akBottom]
+      Caption = 'RTL'
+      OnClick = Button2Click
+      TabOrder = 3
+    end
+    object Button1: TButton
+      Left = 0
+      Height = 28
+      Top = 90
+      Width = 93
+      Align = alTop
+      Caption = 'Set Value'
+      OnClick = Button1Click
+      TabOrder = 4
+    end
+    object SetCountBtn: TButton
+      Left = 0
+      Height = 28
+      Top = 118
+      Width = 93
+      Align = alTop
+      Caption = 'Set Col Count'
+      OnClick = SetCountBtnClick
+      TabOrder = 5
+    end
+    object ClearBtn: TButton
+      Left = 0
+      Height = 28
+      Top = 146
+      Width = 93
+      Align = alTop
+      Caption = 'Clear'
+      OnClick = ClearBtnClick
+      TabOrder = 6
+    end
+    object ClearBtn1: TButton
+      Left = 0
+      Height = 28
+      Top = 174
+      Width = 93
+      Align = alTop
+      Caption = 'Reset'
+      OnClick = ClearBtn1Click
+      TabOrder = 7
+    end
   end
-  object Button1: TButton
-    Left = 4
-    Height = 25
-    Top = 355
-    Width = 75
-    Anchors = [akLeft, akBottom]
-    Caption = 'Set'
-    OnClick = Button1Click
+  object ClientPnl: TPanel
+    Left = 0
+    Height = 404
+    Top = 0
+    Width = 571
+    Align = alClient
+    BevelOuter = bvNone
     TabOrder = 1
   end
-  object Button2: TButton
-    Left = 87
-    Height = 25
-    Top = 355
-    Width = 75
-    Anchors = [akLeft, akBottom]
-    Caption = 'RTL'
-    OnClick = Button2Click
-    TabOrder = 2
-  end
-  object ComboBox1: TComboBox
-    Left = 20
-    Height = 23
-    Top = 11
-    Width = 255
-    ItemHeight = 15
-    TabOrder = 3
-    Text = 'ComboBox1'
-  end
-  object Button3: TButton
-    Left = 177
-    Height = 25
-    Top = 357
-    Width = 75
-    Anchors = [akLeft, akBottom]
-    Caption = 'Create'
-    OnClick = Button3Click
-    TabOrder = 4
-  end
-  object Button4: TButton
-    Left = 275
-    Height = 25
-    Top = 356
-    Width = 75
-    Anchors = [akLeft, akBottom]
-    Caption = 'Create 2'
-    OnClick = Button4Click
-    TabOrder = 5
-  end
-  object Label1: TLabel
-    Left = 299
-    Height = 22
-    Top = 11
-    Width = 46
-    AutoSize = False
-    Caption = 'Label1'
-    Font.Height = 22
-    ParentColor = False
-    ParentFont = False
-    OptimalFill = True
-  end
   object PopupMenu1: TPopupMenu
-    Left = 307
-    Top = 193
+    Left = 589
+    Top = 201
     object MenuItem1: TMenuItem
       Caption = 'MenuItem1'
     end
