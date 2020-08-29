@@ -1,15 +1,15 @@
 object Form1: TForm1
-  Left = 436
+  Left = 0
   Height = 404
-  Top = 223
-  Width = 664
+  Top = 7
+  Width = 624
   Caption = 'Form1'
   ClientHeight = 404
-  ClientWidth = 664
+  ClientWidth = 624
   OnCreate = FormCreate
   LCLVersion = '2.1.0.0'
   object Panel1: TPanel
-    Left = 571
+    Left = 531
     Height = 404
     Top = 0
     Width = 93
@@ -115,7 +115,7 @@ object Form1: TForm1
     Left = 0
     Height = 404
     Top = 0
-    Width = 571
+    Width = 531
     Align = alClient
     BevelOuter = bvNone
     TabOrder = 1

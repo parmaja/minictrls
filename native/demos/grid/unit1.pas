@@ -149,7 +149,6 @@ begin
   //Grid.AnchorCols := 1;
   Grid.BorderStyle := bsSingle;
   //Grid.ColumnsCount := 3;
-
 end;
 
 procedure TForm1.ClearBtn1Click(Sender: TObject);

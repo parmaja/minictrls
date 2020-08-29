@@ -158,7 +158,6 @@ type
     function RequireItem: TntvRow; override;
   public
     constructor Create(Grid: TntvCustomGrid);
-    procedure DeleteColumn(ACol: Integer);
     function Peek(vRow, vCol: Integer): TntvCell; overload;
     function Require(vRow, vCol: Integer): TntvCell; overload;
     function CheckEmpty(vRow: Integer): Boolean;
@@ -1560,17 +1559,6 @@ begin
   FGrid := Grid;
 end;
 
-procedure TntvRows.DeleteColumn(ACol: Integer);
-var
-  aRow: TntvRow;
-begin
-  for aRow in Self do
-  begin
-    if ACol < aRow.Count then
-      aRow.Delete(ACol);
-  end;
-end;
-
 function TntvRows.RequireItem: TntvRow;
 begin
   Result := TntvRow.Create(Self);
@@ -1706,9 +1694,23 @@ begin
 end;
 
 destructor TntvColumn.Destroy;
+var
+  aRow: TntvRow;
 begin
-  if Grid.Rows <> nil then
-    Grid.Rows.DeleteColumn(Index);
+  if (Grid.Rows <> nil) and (Grid.Rows.Count > 0) then
+  begin
+    FGrid.BeginUpdate;
+    try
+      for aRow in FGrid.Rows do
+      begin
+        if Index < aRow.Count then
+          aRow.Delete(Index);
+      end;
+      FGrid.ColumnsChanged;
+    finally
+      FGrid.EndUpdate;
+    end;
+  end;
   inherited;
 end;
 
@@ -2220,11 +2222,11 @@ end;
 
 destructor TntvCustomGrid.Destroy;
 begin
-  FRows.Clear; //clear it for column no need to remove cells belong to it
+  FRows.Clear; //clear it for free columns no need to remove cells belong to it
   FreeAndNil(FColumns);
+  FreeAndNil(FVisibleColumns);
   FreeAndNil(FSelected);
   FreeAndNil(FCurrent);
-  FreeAndNil(FVisibleColumns);
   FreeAndNil(FImageChangeLink);
   FreeAndNil(FRows);
   inherited;
