@@ -662,7 +662,8 @@ type
     procedure BeginCapture(X, Y: Integer);
     procedure EndCapture;
     function IsSelected(vRow: Integer; vCol: Integer): Boolean;
-    function IsCurrent(vRow: Integer; vCol: Integer): Boolean;
+    function IsCurrent(vRow: Integer; vCol: Integer): Boolean; overload;
+    function IsCurrent(vRow: Integer): Boolean; overload;
     function GetTextRange(vStartRow, vEndRow: Integer; SpecialFormat: Boolean): String;
     procedure ColsScroll(vCols: Integer);
     procedure DrawColSizeLine(X: Integer);
@@ -1812,7 +1813,7 @@ begin
   if csdFocused in State then
   begin
     InflateRect(vRect, sCellMargin, sCellMargin);
-    DrawFocusRect(Canvas.Handle, vRect);
+    Canvas.DrawFocusRect(vRect);
   end;
 end;
 
@@ -2969,7 +2970,7 @@ begin
     if (vRow = FClkRow) and (vrtCol = FClkCol) and (FStateBtn) and (FClkArea = vArea) then
       Include(aDrawState, csdDown);
 
-    if Focused and (RowSelect or IsCurrent(vRow, vrtCol)) then
+    if Focused and not RowSelect and IsCurrent(vRow, vrtCol) then
       Include(aDrawState, csdFocused);
 
     VisibleColumns[vrtCol].Column.Draw(Canvas, aDrawState, vRow, vrtCol, aRect, vArea);
@@ -2978,6 +2979,12 @@ begin
 
     Inc(aCol);
     X := X + W;
+  end;
+
+  if Focused and RowSelect and IsCurrent(vRow) then
+  begin
+    //Include(aDrawState, csdFocused);
+    Canvas.DrawFocusRect(vRect);
   end;
 
   //Draw Empty Cell after last cell, if it full header we will draw fixed cell header at top
@@ -5581,13 +5588,21 @@ begin
     keyaPageUp:
       Current.SetRow(Current.Row - GetCompletedRows, False);
     keyaHome, keyaSelectHome:
-      Current.SetCol(FFixedCols, vKeyAction = keyaSelectHome);
+      if RowSelect then
+        Current.SetRow(0, vKeyAction = keyaSelectTop)
+      else
+        Current.SetCol(FFixedCols, vKeyAction = keyaSelectHome);
     keyaEnd, keyaSelectEnd:
-      Current.SetCol(VisibleColumns.Count - 1, vKeyAction = keyaSelectEnd);
+      if RowSelect then
+        Current.SetRow(Rows.Count - 1, vKeyAction = keyaSelectBottom)
+      else
+        Current.SetCol(VisibleColumns.Count - 1, vKeyAction = keyaSelectEnd);
+    keyaTop, keyaSelectTop:
+      Current.SetRow(0, vKeyAction = keyaSelectTop);
+    keyaBottom, keyaSelectBottom:
+      Current.SetRow(Rows.Count - 1, vKeyAction = keyaSelectBottom);
     keyaDeleteLine: TryDeleteRow(Current.Row);
     keyaInsertLine: TryInsertRow(Current.Row);
-    keyaTop, keyaSelectTop: Current.SetRow(0, vKeyAction = keyaSelectTop);
-    keyaBottom, keyaSelectBottom: Current.SetRow(Rows.Count - 1, vKeyAction = keyaSelectBottom);
     keyaScrollDown:
     begin
       MoveDown;
@@ -5627,7 +5642,12 @@ end;
 
 function TntvCustomGrid.IsCurrent(vRow: Integer; vCol: Integer): Boolean;
 begin
-  Result := (vCol = Current.Col) and (vRow = Current.Row);
+  Result := (vRow = Current.Row) and (vCol = Current.Col);
+end;
+
+function TntvCustomGrid.IsCurrent(vRow: Integer): Boolean;
+begin
+  Result := (vRow = Current.Row);
 end;
 
 procedure TntvCustomGrid.DragOver(Source: TObject; X, Y: Integer; State: TDragState; var Accept: Boolean);
