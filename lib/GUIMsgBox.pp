@@ -10,7 +10,7 @@ interface
 
 uses
   Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, MsgBox, Clipbrd, Buttons,
+  Dialogs, StdCtrls, mnMsgBox, Clipbrd, Buttons,
   LCLType, LCLProc, LCLIntf,
   Contnrs,  ExtCtrls;
 
