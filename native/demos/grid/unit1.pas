@@ -17,6 +17,7 @@ type
     Button2: TButton;
     Button3: TButton;
     Button4: TButton;
+    CellsSelectChk: TCheckBox;
     ClearBtn1: TButton;
     SetCountBtn: TButton;
     CloseBtn: TButton;
@@ -28,15 +29,18 @@ type
     PopupMenu1: TPopupMenu;
     ClearBtn: TButton;
     SetCountBtn1: TButton;
+    SetCountBtn2: TButton;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
+    procedure CellsSelectChkChange(Sender: TObject);
     procedure ClearBtn1Click(Sender: TObject);
     procedure ClearBtnClick(Sender: TObject);
     procedure CloseBtnClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SetCountBtn1Click(Sender: TObject);
+    procedure SetCountBtn2Click(Sender: TObject);
     procedure SetCountBtnClick(Sender: TObject);
   private
     procedure OnColClick(Sender: TntvCustomGrid; Column: TntvColumn);
@@ -151,6 +155,14 @@ begin
   //Grid.ColumnsCount := 3;
 end;
 
+procedure TForm1.CellsSelectChkChange(Sender: TObject);
+begin
+  if CellsSelectChk.Checked then
+    Grid.Selected.Kind := gskCells
+  else
+    Grid.Selected.Kind := gskRows;
+end;
+
 procedure TForm1.ClearBtn1Click(Sender: TObject);
 begin
   Grid.Reset;
@@ -168,6 +180,11 @@ end;
 procedure TForm1.SetCountBtn1Click(Sender: TObject);
 begin
   Grid.AnchorCols := 1;
+end;
+
+procedure TForm1.SetCountBtn2Click(Sender: TObject);
+begin
+  Grid.Capacity := 10;
 end;
 
 procedure TForm1.SetCountBtnClick(Sender: TObject);

@@ -523,25 +523,32 @@ type
     function Found(const Row: Integer): Integer;
   end;
 
+  { TntvGridCoordinate }
+
+  TntvGridCoordinate = record
+    Row: Integer;
+    Col: Integer;
+  end;
+
+  TntvGridSelectKind =(gskRows, gskCells, gskNone);
+
+  { TntvGridSelected }
+
   TntvGridSelected = class(TPersistent)
   private
+    FKind: TntvGridSelectKind;
     FGrid: TntvCustomGrid;
-    FStartRow: Integer;
-    FEndRow: Integer;
-    FSelectedRows: TntvSelectedRows;
     FColor: TColor;
     FTextColor: TColor;
     procedure SetColor(const Value: TColor);
     procedure SetTextColor(const Value: TColor);
   public
+    Start: TntvGridCoordinate;
+    Stop: TntvGridCoordinate;
     constructor Create(AGrid: TntvCustomGrid);
     destructor Destroy; override;
-    procedure InternalSelect(Row: Integer);
-    procedure Select(vOldRow, vRow: Integer; Shift: TShiftState);
-    function IsSelected(vRow: Integer): Boolean;
-    property StartRow: Integer read FStartRow write FStartRow;
-    property EndRow: Integer read FEndRow write FEndRow;
-    property Rows: TntvSelectedRows read FSelectedRows;
+    function IsSelected(vRow, vCol: Integer): Boolean;
+    property Kind: TntvGridSelectKind read FKind write FKind;
   published
     property Color: TColor read FColor write SetColor default clHighlight;
     property TextColor: TColor read FTextColor write SetTextColor default clWhite;
@@ -588,6 +595,7 @@ type
     FColumns: TntvColumns;
     FColWidth: Integer;
     FOldRow: Longint;
+    FOldCol: Longint;
     FDragAfter: Integer;
     FDragAfterMode: TntvDragAfterMode;
     FDualColor: Boolean;
@@ -664,7 +672,7 @@ type
     function IsSelected(vRow: Integer; vCol: Integer): Boolean;
     function IsCurrent(vRow: Integer; vCol: Integer): Boolean; overload;
     function IsCurrent(vRow: Integer): Boolean; overload;
-    function GetTextRange(vStartRow, vEndRow: Integer; SpecialFormat: Boolean): String;
+    function GetTextRange(vStartRow, vStopRow: Integer; SpecialFormat: Boolean): String;
     procedure ColsScroll(vCols: Integer);
     procedure DrawColSizeLine(X: Integer);
     procedure SetLockAutoTotal(const Value: Boolean);
@@ -712,7 +720,6 @@ type
     procedure SetLinesColor(const Value: TColor);
     procedure SetFixedColor(const Value: TColor);
     procedure SetFixedFontColor(AValue: TColor);
-    procedure SetMultiSelect(const Value: Boolean);
     property ColumnEdit: TntvColumn read FColumnEdit write SetColumnEdit;
     procedure SetAnchorCols(const Value: Integer);
     procedure SetFooter(const Value: Boolean);
@@ -801,6 +808,8 @@ type
     function IsSelecting: Boolean;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SelectRows(vOldRow, vRow: Integer);
+    procedure SelectCols(vOldCol, vCol: Integer);
+    procedure SelectRowsCols(vOldRow, vRow, vOldCol, vCol: Integer);
     procedure SetRowsCount(Value: Integer);
     procedure SetCapacity(Value: Integer);
     procedure SetSideCol(vCol: Integer);
@@ -944,7 +953,6 @@ type
     property Fringe: Boolean read FFringe write SetFringe default False;
     property GutterWidth: Integer read FGutterWidth write SetGutterWidth default sGutterWidth;
     property FringeWidth: Integer read FFringeWidth write SetFringeWidth default sFringeWidth;
-    property MultiSelect: Boolean read FMultiSelect write SetMultiSelect default True;
     property Color default clBtnFace;
     property OddColor: TColor read FOddColor write SetOddColor default clMoneyGreen;
     property EvenColor: TColor read FEvenColor write SetEvenColor default clWhite;
@@ -1019,7 +1027,6 @@ type
     property Left;
     property ParentShowHint;
     property PopupMenu;
-    property MultiSelect;
     property Solid;
     property OddColor;
     property AnchorColor;
@@ -2190,10 +2197,11 @@ begin
   FCurrent := TntvGridCurrent.Create(Self);
   FScrollBars := ssBoth;
   FOldRow := 0;
+  FOldCol := 0;
   FOldX := 0;
   FOldY := 0;
   FCapacity := 5;
-  MultiSelect := True;
+  FMultiSelect := False;
   Height := 130;
   Width := 260;
   FRowNumbers := True;
@@ -2295,10 +2303,14 @@ end;
 function TntvCustomGrid.IsSelected(vRow: Integer; vCol: Integer): Boolean;
 begin
   Log.Write(vRow, vCol);
-  if MultiSelect and not ((FSelected.StartRow <= 0) and (FSelected.EndRow <= 0) and (FSelected.FSelectedRows.Count = 0)) then
-    Result := FSelected.IsSelected(vRow)
+  if Editing then
+    Result := False
   else
-    Result := ((((vCol = Current.Col) or (RowSelect)) and (vRow = Current.Row) and (not Editing)));
+  begin
+    Result := FSelected.IsSelected(vRow, vCol);
+    if not Result then
+      Result := ((((vCol = Current.Col) or (RowSelect)) and (vRow = Current.Row)));
+  end;
 end;
 
 procedure TntvCustomGrid.Clear;
@@ -2339,7 +2351,7 @@ begin
   end;
 end;
 
-function TntvCustomGrid.GetTextRange(vStartRow, vEndRow: Integer; SpecialFormat: Boolean): String;
+function TntvCustomGrid.GetTextRange(vStartRow, vStopRow: Integer; SpecialFormat: Boolean): String;
 var
   r: Integer;
   c: Integer;
@@ -2366,11 +2378,11 @@ begin
         aColumns.Add(VisibleColumns[i].Column);
     end;
     isR := False;
-    if vEndRow >= Rows.Count then
-      vEndRow := Rows.Count - 1;
+    if vStopRow >= Rows.Count then
+      vStopRow := Rows.Count - 1;
     if vStartRow < 0 then
       vStartRow := 0;
-    for r := vStartRow to vEndRow do
+    for r := vStartRow to vStopRow do
     begin
       if IsR then
       begin
@@ -3240,8 +3252,8 @@ begin
   if not vSelected then
     Result := GetTextRange(0, Rows.Count - 1, SpecialFormat)
   else
-  if Selected.StartRow > -1 then
-    Result := GetTextRange(Selected.StartRow, Selected.EndRow, SpecialFormat)
+  if Selected.Start.Row > -1 then
+    Result := GetTextRange(Selected.Start.Row, Selected.Stop.Row, SpecialFormat)
   else
   begin
     aCell := VisibleColumns[Current.Col].Column.GetCell(Current.Row);
@@ -3465,14 +3477,10 @@ end;
 
 function TntvCustomGrid.IsSelecting: Boolean;
 begin
-  if (FState = dgsDrag) and MultiSelect or (GetKeyShiftState = [ssShift]) then
-  begin
-    Result := True;
-  end
+  if (Selected.Kind <> gskNone) and (FState = dgsDrag) or (GetKeyShiftState = [ssShift]) then
+    Result := True
   else
-  begin
     Result := False;
-  end;
 end;
 
 function TntvCustomGrid.IsValidCell(vRow: Integer; vCol: Integer): Boolean;
@@ -3592,13 +3600,11 @@ begin
       garNormal:
         if not (csDesigning in ComponentState) then
         begin
-          if FSelected.IsSelected(FClkRow) then
+          if FSelected.IsSelected(FClkRow, FClkCol) then //TODO what the hell that <.<
           begin
             if FAttemptCapture then
               DoButtonNow;
-            if FMultiSelect and RowSelect then
-              FSelected.Select(FOldRow, FClkRow, Shift);
-            Exit;
+            exit;
           end;
           if aCol >= FixedCols then
           begin
@@ -3613,12 +3619,6 @@ begin
             begin
               SetFocus;
               SetCurCell(FClkRow, FClkCol, (ssShift in Shift), (ssCtrl in Shift));
-              if FMultiSelect and RowSelect then
-              begin
-                FSelected.Select(FOldRow, FClkRow, Shift);
-                if ssCtrl in Shift then
-                  DoCurRowChanged;
-              end;
               if ssDouble in Shift then
                 OpenEdit(goeMouse, #0)
               else
@@ -3842,32 +3842,66 @@ end;
 
 procedure TntvCustomGrid.SelectRows(vOldRow, vRow: Integer);
 var
-  OldBegin: Integer;
+  OldBeginRow: Integer;
 begin
-  OldBegin := Selected.StartRow;
+  OldBeginRow := Selected.Start.Row;
   if vRow = -1 then
   begin
-    if not ((Selected.StartRow < 0) and (Selected.EndRow < 0)) or (FSelected.FSelectedRows.Count > 0) then
+    if not ((Selected.Start.Row < 0) and (Selected.Stop.Row < 0)) then
     begin
-      FSelected.FSelectedRows.Clear;
-      Selected.StartRow := -1;
-      Selected.EndRow := -1;
+      Selected.Start.Row := -1;
+      Selected.Stop.Row := -1;
       Invalidate;
     end;
   end
   else
   begin
-    if OldBegin < 0 then
+    if OldBeginRow < 0 then
     begin
-      Selected.StartRow := vOldRow;
-      Selected.EndRow := vRow;
+      Selected.Start.Row := vOldRow;
+      Selected.Stop.Row := vRow;
     end
     else
     begin
-      Selected.EndRow := vRow;
+      Selected.Stop.Row := vRow;
     end;
     Invalidate;
   end;
+end;
+
+procedure TntvCustomGrid.SelectCols(vOldCol, vCol: Integer);
+var
+  OldBeginCol: Integer;
+begin
+  OldBeginCol := Selected.Start.Col;
+  if vCol = -1 then
+  begin
+    if not ((Selected.Start.Col < 0) and (Selected.Stop.Col < 0)) then
+    begin
+      Selected.Start.Col := -1;
+      Selected.Stop.Col := -1;
+      Invalidate;
+    end;
+  end
+  else
+  begin
+    if OldBeginCol < 0 then
+    begin
+      Selected.Start.Col := vOldCol;
+      Selected.Stop.Col := vCol;
+    end
+    else
+    begin
+      Selected.Stop.Col := vCol;
+    end;
+    Invalidate;
+  end;
+end;
+
+procedure TntvCustomGrid.SelectRowsCols(vOldRow, vRow, vOldCol, vCol: Integer);
+begin
+  SelectRows(vOldRow, vRow);
+  SelectCols(vOldCol, vCol);
 end;
 
 procedure TntvCustomGrid.SetLockAutoTotal(const Value: Boolean);
@@ -3887,7 +3921,6 @@ end;
 
 procedure TntvCustomGrid.SetCurCell(vRow: Integer; vCol: Integer; Selecting, CtrlSelecting: Boolean);
 var
-  OldCol: Integer;
   IsRowChanged: Boolean;
 begin
   if (Current.Row <> vRow) or (Current.Col <> vCol) then
@@ -3903,7 +3936,7 @@ begin
   if (vCol < FFixedCols) then
     vCol := FFixedCols;
   FOldRow := Current.Row;
-  OldCol := Current.Col;
+  FOldCol := Current.Col;
   DoCurrentChange(vRow, vCol);
 
   Current.FRow := vRow;
@@ -3911,32 +3944,32 @@ begin
 
   if FGutter and (FOldRow <> Current.Row) then
     InvalidateCell(FOldRow, -1, garGutter);
-  if FHeader and (OldCol <> Current.Col) then
-    InvalidateCell(-1, OldCol, garHeader);
+  if FHeader and (FOldCol <> Current.Col) then
+    InvalidateCell(-1, FOldCol, garHeader);
 
-  if (OldCol <> vCol) or (FOldRow <> vRow) then
+  if (FOldCol <> vCol) or (FOldRow <> vRow) then
   begin
-    if RowRefresh and ((OldCol <> vCol) and (FOldRow = vRow)) then
+    if RowRefresh and ((FOldCol <> vCol) and (FOldRow = vRow)) then
       //nothing
     else if RowSelect then
     begin
-      if not (CtrlSelecting and FMultiSelect) then
+      if not (CtrlSelecting and (Selected.Kind <> gskNone)) then
         InvalidateRow(FOldRow);
     end
     else
-      InvalidateCell(FOldRow, OldCol);
+      InvalidateCell(FOldRow, FOldCol);
 
-    if MultiSelect then
+    if (Selected.Kind <> gskNone) then
     begin
       if not (CtrlSelecting and FRowSelect) then
       begin
         if Selecting then
-          SelectRows(FOldRow, vRow)
+          SelectRowsCols(FOldRow, vRow, FOldCol, vCol)
         else
-          SelectRows(FOldRow, -1);
+          SelectRowsCols(FOldRow, -1, FOldCol, -1);
       end;
     end;
-    CurChanged(FOldRow, OldCol);
+    CurChanged(FOldRow, FOldCol);
   end;
 
   IsRowChanged := False;
@@ -3947,15 +3980,15 @@ begin
     IsRowChanged := True;
   end;
 
-  if OldCol <> vCol then
+  if FOldCol <> vCol then
   begin
-    ColumnChanged(VisibleColumns[OldCol].Column, VisibleColumns[vCol].Column);
+    ColumnChanged(VisibleColumns[FOldCol].Column, VisibleColumns[vCol].Column);
     ShowCol(vCol);
   end;
 
-  if (OldCol <> vCol) or (FOldRow <> vRow) then
+  if (FOldCol <> vCol) or (FOldRow <> vRow) then
   begin
-    if RowRefresh and ((OldCol <> vCol) and (FOldRow = vRow)) then
+    if RowRefresh and ((FOldCol <> vCol) and (FOldRow = vRow)) then
       InvalidateRow(vRow)
     else
       InvalidateCell(vRow, vCol);
@@ -3963,13 +3996,13 @@ begin
 
   if FGutter and (FOldRow <> Current.Row) then
     InvalidateCell(Current.Row, -1, garGutter);
-  if FHeader and (OldCol <> Current.Col) then
+  if FHeader and (FOldCol <> Current.Col) then
     InvalidateCell(0, Current.Col, garHeader);
   if IsRowChanged then
   begin
     if (VisibleColumns.Count > 0) then
       VisibleColumns[Current.Col].Column.CurRowChanged;
-    if not (CtrlSelecting and MultiSelect and RowSelect) then
+    if not (CtrlSelecting and (Selected.Kind <> gskNone) and RowSelect) then
       DoCurRowChanged;
   end;
   ShouldCurChange := False;
@@ -4083,21 +4116,6 @@ begin
         FModified := OldValue;
         raise;
       end;
-    end;
-  end;
-end;
-
-procedure TntvCustomGrid.SetMultiSelect(const Value: Boolean);
-begin
-  if FMultiSelect <> Value then
-  begin
-    FMultiSelect := Value;
-    if not Value then
-    begin
-      Selected.StartRow := -1;
-      Selected.EndRow := -1;
-      Selected.FSelectedRows.Clear;
-      Invalidate;
     end;
   end;
 end;
@@ -4636,11 +4654,12 @@ constructor TntvGridSelected.Create(AGrid: TntvCustomGrid);
 begin
   inherited Create;
   FGrid := AGrid;
-  FStartRow := -1;
-  FEndRow := -1;
+  Start.Row := -1;
+  Stop.Row := -1;
+  Start.Col := -1;
+  Stop.Col := -1;
   Color := clHighlight;
   FTextColor := clHighlightText;
-  FSelectedRows := TntvSelectedRows.Create;
 end;
 
 function TntvColumn.CreateEdit: TControl;
@@ -4688,88 +4707,24 @@ end;
 
 destructor TntvGridSelected.Destroy;
 begin
-  FreeAndNil(FSelectedRows);
   inherited;
 end;
 
-function TntvGridSelected.IsSelected(vRow: Integer): Boolean;
+function TntvGridSelected.IsSelected(vRow, vCol: Integer): Boolean;
 begin
-  Result := ((abs(vRow - FStartRow) + abs(vRow - FEndRow)) = abs(FStartRow - FEndRow));
-  if not Result then
-    Result := (FSelectedRows.Found(vRow) > -1);
-end;
-
-procedure TntvGridSelected.Select(vOldRow, vRow: Integer; Shift: TShiftState);
-begin
-  if (ssCtrl in Shift) then
-  begin
-    if (FStartRow = -1) and (FEndRow = -1) and (FSelectedRows.Count = 0) then
-      FSelectedRows.Add(vOldRow);
-    InternalSelect(vRow);
-  end
-  else
-  begin
-    FSelectedRows.Clear;
-    if not (ssShift in Shift) then
-    begin
-      FStartRow := -1;
-      FEndRow := -1;
-    end;
-  end;
-  FGrid.Invalidate;
-end;
-
-procedure TntvGridSelected.InternalSelect(Row: Integer);
-var
-  BCount, ACount: Integer;
-  Idx: Integer;
-begin
-  if ((abs(Row - FStartRow) + abs(Row - FEndRow)) = abs(FStartRow - FEndRow)) then
-  begin
-    if ABS(FEndRow - FStartRow) = 0 then
-    begin
-      FStartRow := -1;
-      FEndRow := -1;
-      if FSelectedRows.Count = 0 then
-        FGrid.Current.FRow := Row;
-    end
-    else
-    begin
-      BCount := ABS(Row - FStartRow);
-      ACount := ABS(FEndRow - Row);
-      if BCount >= ACount then
+  case Kind of
+    gskRows:
       begin
-        for Idx := Row + 1 to FEndRow do
-          FSelectedRows.Add(Idx);
-        FEndRow := Row - 1;
-        if Row = 0 then
-          FGrid.Current.FRow := Row
-        else
-          FGrid.Current.FRow := Row - 1;
-      end
-      else
-      begin
-        for Idx := FStartRow to Row - 1 do
-          FSelectedRows.Add(Idx);
-        FStartRow := Row + 1;
-        FGrid.Current.FRow := Row + 1;
+        Result := ((abs(vRow - Start.Row) + abs(vRow - Stop.Row)) = abs(Start.Row - Stop.Row));
       end;
-      if Assigned(FGrid.OnCurRowChanged) then
-        FGrid.OnCurRowChanged(FGrid, FGrid.Current.Row);
-    end;
-    Exit;
+    gskCells:
+      begin
+        Result := ((abs(vRow - Start.Row) + abs(vRow - Stop.Row)) = abs(Start.Row - Stop.Row));
+        Result := Result and ((abs(vCol - Start.Col) + abs(vCol - Stop.Col)) = abs(Start.Col - Stop.Col));
+      end;
+    else
+      ;
   end;
-  Idx := FSelectedRows.Found(Row);
-  if Idx > -1 then
-  begin
-    FSelectedRows.Delete(Idx);
-    if (FSelectedRows.Count = 0) and (FStartRow = -1) and (FEndRow = -1) then
-      FGrid.Current.FRow := Row;
-    if Assigned(FGrid.OnCurRowChanged) then
-      FGrid.OnCurRowChanged(FGrid, Row);
-  end
-  else
-    FSelectedRows.Add(Row);
 end;
 
 procedure TntvGridSelected.SetColor(const Value: TColor);
