@@ -530,7 +530,7 @@ type
     Col: Integer;
   end;
 
-  TntvGridSelectKind =(gskRows, gskCells, gskNone);
+  TntvGridSelectKind =(gskNone, gskRows, gskCells);
 
   { TntvGridSelected }
 
@@ -552,7 +552,7 @@ type
     property Kind: TntvGridSelectKind read FKind write FKind;
   published
     property Color: TColor read FColor write SetColor default clHighlight;
-    property TextColor: TColor read FTextColor write SetTextColor default clWhite;
+    property TextColor: TColor read FTextColor write SetTextColor default clHighlightText;
   end;
 
   { TGridCurrent }
@@ -4655,6 +4655,7 @@ constructor TntvGridSelected.Create(AGrid: TntvCustomGrid);
 begin
   inherited Create;
   FGrid := AGrid;
+  FKind := gskRows;
   Start.Row := -1;
   Stop.Row := -1;
   Start.Col := -1;
