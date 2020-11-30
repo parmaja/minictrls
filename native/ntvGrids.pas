@@ -548,6 +548,7 @@ type
     constructor Create(AGrid: TntvCustomGrid);
     destructor Destroy; override;
     function IsSelected(vRow, vCol: Integer): Boolean;
+    procedure Reset;
     property Kind: TntvGridSelectKind read FKind write FKind;
   published
     property Color: TColor read FColor write SetColor default clHighlight;
@@ -3608,7 +3609,7 @@ begin
           end;
           if aCol >= FixedCols then
           begin
-            if {not ShowHeader  and } InColsWidth(X, aCol) then
+            if not Header and InColsWidth(X, aCol) then
             begin
               FClkCol := aCol;
               FState := dgsResizeCol;
@@ -4725,6 +4726,14 @@ begin
     else
       ;
   end;
+end;
+
+procedure TntvGridSelected.Reset;
+begin
+  Start.Row := -1;
+  Stop.Row := -1;
+  Start.Col := -1;
+  Stop.Col := -1;
 end;
 
 procedure TntvGridSelected.SetColor(const Value: TColor);
