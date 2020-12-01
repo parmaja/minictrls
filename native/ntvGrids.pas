@@ -595,8 +595,6 @@ type
     FColumnEdit: TntvColumn;
     FColumns: TntvColumns;
     FColWidth: Integer;
-    FOldRow: Longint;
-    FOldCol: Longint;
     FDragAfter: Integer;
     FDragAfterMode: TntvDragAfterMode;
     FDualColor: Boolean;
@@ -2197,8 +2195,6 @@ begin
   FSelected := TntvGridSelected.Create(Self);
   FCurrent := TntvGridCurrent.Create(Self);
   FScrollBars := ssBoth;
-  FOldRow := 0;
-  FOldCol := 0;
   FOldX := 0;
   FOldY := 0;
   FCapacity := 5;
@@ -2303,7 +2299,6 @@ end;
 
 function TntvCustomGrid.IsSelected(vRow: Integer; vCol: Integer): Boolean;
 begin
-  Log.Write(vRow, vCol);
   if Editing then
     Result := False
   else
@@ -3922,6 +3917,8 @@ end;
 
 procedure TntvCustomGrid.SetCurCell(vRow: Integer; vCol: Integer; Selecting, CtrlSelecting: Boolean);
 var
+  aOldRow: Longint;
+  aOldCol: Longint;
   IsRowChanged: Boolean;
 begin
   if (Current.Row <> vRow) or (Current.Col <> vCol) then
@@ -3936,68 +3933,68 @@ begin
     vCol := VisibleColumns.Count - 1;
   if (vCol < FFixedCols) then
     vCol := FFixedCols;
-  FOldRow := Current.Row;
-  FOldCol := Current.Col;
+  aOldRow := Current.Row;
+  aOldCol := Current.Col;
   DoCurrentChange(vRow, vCol);
 
   Current.FRow := vRow;
   Current.FCol := vCol;
 
-  if FGutter and (FOldRow <> Current.Row) then
-    InvalidateCell(FOldRow, -1, garGutter);
-  if FHeader and (FOldCol <> Current.Col) then
-    InvalidateCell(-1, FOldCol, garHeader);
+  if FGutter and (aOldRow <> Current.Row) then
+    InvalidateCell(aOldRow, -1, garGutter);
+  if FHeader and (aOldCol <> Current.Col) then
+    InvalidateCell(-1, aOldCol, garHeader);
 
-  if (FOldCol <> vCol) or (FOldRow <> vRow) then
+  if (aOldCol <> vCol) or (aOldRow <> vRow) then
   begin
-    if RowRefresh and ((FOldCol <> vCol) and (FOldRow = vRow)) then
+    if RowRefresh and ((aOldCol <> vCol) and (aOldRow = vRow)) then
       //nothing
     else if RowSelect then
     begin
-      if not (CtrlSelecting and (Selected.Kind <> gskNone)) then
-        InvalidateRow(FOldRow);
+      if not (CtrlSelecting) then
+        InvalidateRow(aOldRow);
     end
     else
-      InvalidateCell(FOldRow, FOldCol);
+      InvalidateCell(aOldRow, aOldCol);
 
     if (Selected.Kind <> gskNone) then
     begin
       if not (CtrlSelecting and FRowSelect) then
       begin
         if Selecting then
-          SelectRowsCols(FOldRow, vRow, FOldCol, vCol)
+          SelectRowsCols(aOldRow, vRow, aOldCol, vCol)
         else
-          SelectRowsCols(FOldRow, -1, FOldCol, -1);
+          SelectRowsCols(aOldRow, -1, aOldCol, -1);
       end;
     end;
-    CurChanged(FOldRow, FOldCol);
+    CurChanged(aOldRow, aOldCol);
   end;
 
   IsRowChanged := False;
-  if (FOldRow <> vRow) or ShouldCurChange then
+  if (aOldRow <> vRow) or ShouldCurChange then
   begin
     ShowRow(vRow);
-    DoCurRowChanging(FOldRow, vRow);
+    DoCurRowChanging(aOldRow, vRow);
     IsRowChanged := True;
   end;
 
-  if FOldCol <> vCol then
+  if aOldCol <> vCol then
   begin
-    ColumnChanged(VisibleColumns[FOldCol].Column, VisibleColumns[vCol].Column);
+    ColumnChanged(VisibleColumns[aOldCol].Column, VisibleColumns[vCol].Column);
     ShowCol(vCol);
   end;
 
-  if (FOldCol <> vCol) or (FOldRow <> vRow) then
+  if (aOldCol <> vCol) or (aOldRow <> vRow) then
   begin
-    if RowRefresh and ((FOldCol <> vCol) and (FOldRow = vRow)) then
+    if RowRefresh and ((aOldCol <> vCol) and (aOldRow = vRow)) then
       InvalidateRow(vRow)
     else
       InvalidateCell(vRow, vCol);
   end;
 
-  if FGutter and (FOldRow <> Current.Row) then
+  if FGutter and (aOldRow <> Current.Row) then
     InvalidateCell(Current.Row, -1, garGutter);
-  if FHeader and (FOldCol <> Current.Col) then
+  if FHeader and (aOldCol <> Current.Col) then
     InvalidateCell(0, Current.Col, garHeader);
   if IsRowChanged then
   begin
@@ -4725,7 +4722,7 @@ begin
         Result := Result and ((abs(vCol - Start.Col) + abs(vCol - Stop.Col)) = abs(Start.Col - Stop.Col));
       end;
     else
-      ;
+      Result := False;
   end;
 end;
 
@@ -5592,7 +5589,7 @@ begin
   begin
     if PosToCoord(Pt.X, Pt.Y, aRow, aCol, aArea) and (aArea = garNormal) then
     begin
-      SetCurCell(aRow, aCol, False, False);
+      SetCurCell(aRow, aCol, False, False); //TODO use keystate
     end;
   end
   else
