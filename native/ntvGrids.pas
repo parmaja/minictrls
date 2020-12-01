@@ -44,17 +44,22 @@ type
   EntvGridException = class(Exception)
   end;
 
-  TntvKeyAction = (
+  TntvKey = (
     keyaNone, keyaDown, keyaUp, keyaLeft, keyaRight, keyaPageUp, keyaPageDown, keyaHome, keyaEnd,
     keyaReturn, keyaTab, keyaEscape, keyaCopy, keyaPaste, keyaCut, keyaFindFirst, keyaFindNext,
     keyaHelp, keyaDelete, keyaInsert, keyaInsertLine, keyaDeleteLine, keyaEdit, keyaBrowse,
     keyaNew, keyaProperty, keyaWordLeft, keyaWordRight, keyaScrollUp, keyaScrollDown,
-    keyaSave, keyaTop, keyaBottom, keyaSelectLeft, keyaSelectRight,
-    keyaSelectUp, keyaSelectDown, keyaSelectPageUp, keyaSelectPageDown, keyaDropDown,
-    keyaDropUp, keyaSaveAll, keyaFindPrior, keyaSelectHome, keyaSelectEnd, keyaBack, keyaForward,
-    keyaComplete, keyaHiComplete, keyaLoComplete, keyaSelectTop, keyaSelectBottom,
+    keyaSave, keyaTop, keyaBottom,  keyaDropDown,  keyaDropUp, keyaSaveAll, keyaFindPrior,
+    keyaBack, keyaForward,  keyaComplete, keyaHiComplete, keyaLoComplete,
     keyaExecute, keyaViewer, keyaFunction, keyaRepeat, keyaGoTo
   );
+
+  TntvKeyAction = record
+    Shift: Boolean;
+    Alt: Boolean;
+    Ctrl: Boolean;
+    Key: TntvKey;
+  end;
 
   TntvMasterAction = (
     mactLeft,
@@ -517,12 +522,6 @@ type
     property Count: Integer read GetCount write SetCount;
   end;
 
-  TntvSelectedRows = class(TFPGList<Integer>)
-  private
-  public
-    function Found(const Row: Integer): Integer;
-  end;
-
   { TntvGridCoordinate }
 
   TntvGridCoordinate = record
@@ -530,7 +529,15 @@ type
     Col: Integer;
   end;
 
-  TntvGridSelectKind =(gskNone, gskRows, gskCells);
+  { TntvGridRange }
+
+  TntvGridRange = record
+    Start: TntvGridCoordinate;
+    Stop: TntvGridCoordinate;
+    procedure SetRange(vStartRow, vStopRow, vStartCol, vStopCol: Integer);
+  end;
+
+  TntvGridSelectKind =(gskCells, gskRows{, gskCols});
 
   { TntvGridSelected }
 
@@ -548,6 +555,7 @@ type
     constructor Create(AGrid: TntvCustomGrid);
     destructor Destroy; override;
     function IsSelected(vRow, vCol: Integer): Boolean;
+    function IsSelecting: Boolean;
     procedure Reset;
     property Kind: TntvGridSelectKind read FKind write FKind;
   published
@@ -557,6 +565,8 @@ type
 
   { TGridCurrent }
 
+  { TntvGridCurrent }
+
   TntvGridCurrent = class(TPersistent)
   private
     FGrid: TntvCustomGrid;
@@ -565,8 +575,8 @@ type
     procedure SetCol(AValue: Integer); overload;
     procedure SetRow(AValue: Integer); overload;
 
-    procedure SetCol(AValue: Integer; Selecting: Boolean); overload;
-    procedure SetRow(AValue: Integer; Selecting: Boolean); overload;
+    procedure SetCol(AValue: Integer; Selecting, Enhance: Boolean); overload;
+    procedure SetRow(AValue: Integer; Selecting, Enhance: Boolean); overload;
   public
     constructor Create(AGrid: TntvCustomGrid);
     procedure Reset;
@@ -671,7 +681,6 @@ type
     function IsSelected(vRow: Integer; vCol: Integer): Boolean;
     function IsCurrent(vRow: Integer; vCol: Integer): Boolean; overload;
     function IsCurrent(vRow: Integer): Boolean; overload;
-    function GetTextRange(vStartRow, vStopRow: Integer; SpecialFormat: Boolean): String;
     procedure ColsScroll(vCols: Integer);
     procedure DrawColSizeLine(X: Integer);
     procedure SetLockAutoTotal(const Value: Boolean);
@@ -804,7 +813,6 @@ type
     function InvlidateRowsClient: Boolean;
     //BlankRow is a new row ready for type, hint draw in it with gray color
     function IsBlankRow(vRow: Integer): Boolean;
-    function IsSelecting: Boolean;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure SelectRows(vOldRow, vRow: Integer);
     procedure SelectCols(vOldCol, vCol: Integer);
@@ -870,12 +878,14 @@ type
     procedure DragDrop(Source: TObject; X, Y: Integer); override;
     function PosToCoord(x, y: Integer; out vRow: Integer; out vCol: Integer; out vArea: TntvGridArea; vCorrect: Boolean = True): Boolean;
     function FindRowNext(vStartRow: Integer; vInCol: Integer; vText: String; vPartial: Boolean = True): Integer;
-    procedure ClipboardCopy(Selected: Boolean);
+    function GetTextRange(vStartRow, vStopRow: Integer; SpecialFormat: Boolean): String; //deprecated
+    function ExportAsText(SpecialFormat: Boolean; vSelected: Boolean = False): String;
+    function ExportAsTSV(Range: TntvGridRange; TabChar: string = #9): string;
+    function ExportAsCSV(Range: TntvGridRange): string;
+    procedure ClipboardCopy(vSelected: Boolean);
     procedure ClipboardPaste;
     procedure CheckData; virtual;
     procedure CorrectRow(vRow: Integer); virtual;
-    procedure DecCurCol(Selecting: Boolean = False);
-    procedure DecCurRow(Selecting: Boolean = False);
     function OpenEdit(OpenBy: TntvGridOpenEdit; InitText: string = ''): Boolean;
     function CancelEdit: Boolean;
     procedure CloseEdit;
@@ -886,10 +896,13 @@ type
     procedure MoveCurrentRowCol(out vRow, vCol: Integer);
     procedure MoveCurrent;
     function CanMoveCurrent: Boolean;
-    function GetGridText(SpecialFormat: Boolean; vSelected: Boolean = False): String;
     function Search(vRow: Integer; vText: String): Boolean; virtual;
-    function IncCurCol(Selecting: Boolean = False): Boolean;
-    function IncCurRow(Selecting: Boolean = False): Boolean;
+
+    procedure IncCurCol(Selecting: Boolean = False);
+    procedure IncCurRow(Selecting: Boolean = False);
+    procedure DecCurCol(Selecting: Boolean = False);
+    procedure DecCurRow(Selecting: Boolean = False);
+
     procedure DeleteRow(vRow: Integer); virtual;
     procedure ClearRow(vRow: Integer); virtual;
     procedure InsertRow(vRow: Integer); virtual;
@@ -910,7 +923,7 @@ type
     procedure DublicateRow(vRow: Integer); virtual;
     procedure ResetPosition;
     procedure CheckPosition;
-    procedure SetCurCell(vRow: Integer; vCol: Integer; Selecting, CtrlSelecting: Boolean);
+    procedure SetCurCell(vRow: Integer; vCol: Integer; Selecting, Enhance: Boolean);
     procedure ShowCol(vCol: Integer);
     procedure ShowRow(vRow: Integer);
     procedure SortByColumn(Column: TntvColumn; SortDown: Boolean = False);
@@ -1131,7 +1144,11 @@ const
   sDefaultSetCell: TntvSetCells = [low(TntvSetCell)..high(TntvSetCell)] - [swcCorrectValue];
 
 var
-  CF_NativeGRID: Word;
+  CF_NATIVE_GRID: Word = 0;
+  CF_CSV: Word = 0;
+  CF_TSV: Word = 0;
+  CF_texthtml: Word = 0;
+
 
 function KeyDownToKeyAction(var KEY: Word; Shift: TShiftState): TntvKeyAction;
 function SpliteStr(out vText: String; const vStr: String; vPart: Integer; vComma: Char; vQuoted: Char = '"'): Boolean;
@@ -1227,87 +1244,91 @@ end;
 
 function KeyDownToKeyAction(var KEY: Word; Shift: TShiftState): TntvKeyAction;
 begin
-  Result := keyaNone;
+  Initialize(Result);
+  Result.Shift := ssShift in Shift;
+  Result.Ctrl := ssCtrl in Shift;
+  Result.Alt := ssAlt in Shift;
+  Result.Key := keyaNone;
+
+  case Key of
+    VK_Left: Result.Key := keyaLeft;
+    VK_Right: Result.Key := keyaRight;
+    VK_Up: Result.Key := keyaUp;
+    VK_Down: Result.Key := keyaDown;
+  end;
+
   if Shift = [] then
     case Key of
-      VK_Tab: Result := keyaTab;
-      VK_Return: Result := keyaReturn;
-      VK_Escape: Result := keyaEscape;
-      VK_Left: Result := keyaLeft;
-      VK_Right: Result := keyaRight;
-      VK_Up: Result := keyaUp;
-      VK_Down: Result := keyaDown;
-      VK_Home: Result := keyaHome;
-      VK_End: Result := keyaEnd;
-      VK_Prior: Result := keyaPageUp;
-      VK_Next: Result := keyaPageDown;
-      VK_Insert: Result := keyaInsert;
-      VK_Delete: Result := keyaDelete;
-      VK_F2: Result := keyaEdit;
-      VK_F3: Result := keyaFindNext;
-      VK_F5: Result := keyaFunction;
-      VK_F4: Result := keyaBrowse;
-    end
-  else if Shift = [ssCtrl] then
-    case Key of
-      VK_Escape: Result := keyaNone;
-      VK_Left: Result := keyaWordLeft;
-      VK_Right: Result := keyaWordRight;
-      VK_Up: Result := keyaScrollUp;
-      VK_Down: Result := keyaScrollDown;
-      VK_Home: Result := keyaTop;
-      VK_End: Result := keyaBottom;
-      VK_Delete, Ord('X'): Result := keyaCut;
-      VK_Insert, Ord('C'): Result := keyaCopy;
-      Ord('V'): Result := keyaPaste;
-      Ord('G'): Result := keyaGoTo;
-      VK_F2: Result := keyaSave;
-      VK_F3: Result := keyaFindFirst;
-      VK_Space: Result := keyaLoComplete;
-      VK_F5: Result := keyaViewer;
-      VK_F12: Result := keyaExecute;
-      Ord('D'), 222: Result := keyaRepeat;
+      VK_Tab: Result.Key := keyaTab;
+      VK_Return: Result.Key := keyaReturn;
+      VK_Escape: Result.Key := keyaEscape;
+      VK_Home: Result.Key := keyaHome;
+      VK_End: Result.Key := keyaEnd;
+      VK_Prior: Result.Key := keyaPageUp;
+      VK_Next: Result.Key := keyaPageDown;
+      VK_Insert: Result.Key := keyaInsert;
+      VK_Delete: Result.Key := keyaDelete;
+      VK_F2: Result.Key := keyaEdit;
+      VK_F3: Result.Key := keyaFindNext;
+      VK_F5: Result.Key := keyaFunction;
+      VK_F4: Result.Key := keyaBrowse;
     end
   else if Shift = [ssShift] then
     case Key of
-      VK_Return: Result := keyaReturn;
-      VK_Escape: Result := keyaEscape;
-      VK_Left: Result := keyaSelectLeft;
-      VK_Right: Result := keyaSelectRight;
-      VK_Up: Result := keyaSelectUp;
-      VK_Down: Result := keyaSelectDown;
-      VK_Prior: Result := keyaSelectPageUp;
-      VK_Next: Result := keyaSelectPageDown;
-      VK_Insert: Result := keyaPaste;
-      VK_Delete: Result := keyaCut;
-      VK_F2: Result := keyaSaveAll;
-      VK_F3: Result := keyaFindPrior;
-      VK_Home: Result := keyaSelectHome;
-      VK_End: Result := keyaSelectEnd;
-      VK_Space: Result := keyaHiComplete;
+      VK_Return: Result.Key := keyaReturn;
+      VK_Escape: Result.Key := keyaEscape;
+      VK_Prior: Result.Key := keyaPageUp;
+      VK_Next: Result.Key := keyaPageDown;
+      VK_Insert: Result.Key := keyaPaste;
+      VK_Delete: Result.Key := keyaCut;
+      VK_F2: Result.Key := keyaSaveAll;
+      VK_F3: Result.Key := keyaFindPrior;
+      VK_Home: Result.Key := keyaHome;
+      VK_End: Result.Key := keyaEnd;
+      VK_Space: Result.Key := keyaHiComplete;
+    end
+  else if Shift = [ssCtrl] then
+    case Key of
+      VK_Escape: Result.Key := keyaNone;
+      VK_Left: Result.Key := keyaWordLeft;
+      VK_Right: Result.Key := keyaWordRight;
+      VK_Up: Result.Key := keyaScrollUp;
+      VK_Down: Result.Key := keyaScrollDown;
+      VK_Home: Result.Key := keyaTop;
+      VK_End: Result.Key := keyaBottom;
+      VK_Delete, Ord('X'): Result.Key := keyaCut;
+      VK_Insert, Ord('C'): Result.Key := keyaCopy;
+      Ord('V'): Result.Key := keyaPaste;
+      Ord('G'): Result.Key := keyaGoTo;
+      VK_F2: Result.Key := keyaSave;
+      VK_F3: Result.Key := keyaFindFirst;
+      VK_Space: Result.Key := keyaLoComplete;
+      VK_F5: Result.Key := keyaViewer;
+      VK_F12: Result.Key := keyaExecute;
+      Ord('D'), 222: Result.Key := keyaRepeat;
     end
   else if Shift = [ssShift, ssCtrl] then
     case Key of
-      VK_Home: Result := keyaSelectTop;
-      VK_END: Result := keyaSelectBottom;
-      VK_Space: Result := keyaComplete;
+      VK_Home: Result.Key := keyaTop;
+      VK_END: Result.Key := keyaBottom;
+      VK_Space: Result.Key := keyaComplete;
     end
   else if Shift = [ssAlt] then
     case Key of
-      VK_Return: Result := keyaProperty;
-      VK_Escape: Result := keyaNone;
-      VK_Left: Result := keyaBack;
-      VK_Right: Result := keyaForward;
-      VK_Up: Result := keyaNone;
-      VK_Down: Result := keyaNone;
-      VK_Prior: Result := keyaNone;
-      VK_Next: Result := keyaNone;
-      VK_Insert: Result := keyaInsertLine;
-      VK_Delete: Result := keyaDeleteLine;
-      VK_F2: Result := keyaNone;
-      VK_F3: Result := keyaNone;
-      VK_Home: Result := keyaNone;
-      VK_End: Result := keyaNone;
+      VK_Return: Result.Key := keyaProperty;
+      VK_Escape: Result.Key := keyaNone;
+      VK_Left: Result.Key := keyaBack;
+      VK_Right: Result.Key := keyaForward;
+      VK_Up: Result.Key := keyaNone;
+      VK_Down: Result.Key := keyaNone;
+      VK_Prior: Result.Key := keyaNone;
+      VK_Next: Result.Key := keyaNone;
+      VK_Insert: Result.Key := keyaInsertLine;
+      VK_Delete: Result.Key := keyaDeleteLine;
+      VK_F2: Result.Key := keyaNone;
+      VK_F3: Result.Key := keyaNone;
+      VK_Home: Result.Key := keyaNone;
+      VK_End: Result.Key := keyaNone;
     end;
 end;
 
@@ -1417,6 +1438,16 @@ begin
   end;
 end;
 
+{ TntvGridRange }
+
+procedure TntvGridRange.SetRange(vStartRow, vStopRow, vStartCol, vStopCol: Integer);
+begin
+  Start.Row := vStartRow;
+  Stop.Row := vStopRow;
+  Start.Col := vStartCol;
+  Stop.Col := vStopCol;
+end;
+
 { TntvVisibleColumn }
 
 function TntvVisibleColumn.GetColumn: TntvColumn;
@@ -1476,24 +1507,24 @@ procedure TntvGridCurrent.SetCol(AValue: Integer);
 begin
   if FCol = AValue then
     Exit;
-  SetCol(AValue, False);
+  SetCol(AValue, False, False);
 end;
 
 procedure TntvGridCurrent.SetRow(AValue: Integer);
 begin
   if FRow =AValue then
     Exit;
-  SetRow(AValue, False);
+  SetRow(AValue, False, False);
 end;
 
-procedure TntvGridCurrent.SetCol(AValue: Integer; Selecting: Boolean);
+procedure TntvGridCurrent.SetCol(AValue: Integer; Selecting, Enhance: Boolean);
 begin
-  FGrid.SetCurCell(FRow, AValue, Selecting, False);
+  FGrid.SetCurCell(FRow, AValue, Selecting, Enhance);
 end;
 
-procedure TntvGridCurrent.SetRow(AValue: Integer; Selecting: Boolean);
+procedure TntvGridCurrent.SetRow(AValue: Integer; Selecting, Enhance: Boolean);
 begin
-  FGrid.SetCurCell(AValue, FCol, Selecting, False);
+  FGrid.SetCurCell(AValue, FCol, Selecting, Enhance);
 end;
 
 constructor TntvGridCurrent.Create(AGrid: TntvCustomGrid);
@@ -2332,19 +2363,27 @@ begin
   end;
 end;
 
-procedure TntvCustomGrid.ClipboardCopy(Selected: Boolean);
+procedure TntvCustomGrid.ClipboardCopy(vSelected: Boolean);
 var
-  S: String;
+  Range: TntvGridRange;
 begin
-  S := GetGridText(False, Selected);
-  if S <> '' then
+  if vSelected then
   begin
-    Clipboard.Clear;
-    //Clipboard.AddFormat()    //    SetClipboardText(CF_TEXT, S);
+    if Selected.IsSelecting then
+    begin
+      if Selected.Kind = gskRows then
+        Range.SetRange(Selected.Start.Row, Selected.Stop.Row - 1, 0, VisibleColumns.Count - 1)
+      else
+        Range.SetRange(Selected.Start.Row, Selected.Stop.Row, Selected.Start.Col, Selected.Stop.Col)
+    end
+    else
+      Range.SetRange(Current.Row, Current.Row, Current.Col, Current.Col);
+  end
+  else
+    Range.SetRange(0, RowsCount - 1, 0, VisibleColumns.Count - 1);
 
-    S := GetGridText(True, Selected);
-    //    SetClipboardText(CF_NativeGRID, S);
-  end;
+  //Clipboard.Clear;
+  Clipboard.AsText := ExportAsTSV(Range);
 end;
 
 function TntvCustomGrid.GetTextRange(vStartRow, vStopRow: Integer; SpecialFormat: Boolean): String;
@@ -2436,7 +2475,7 @@ var
 begin
   if not ReadOnly then
   begin
-    if Clipboard.HasFormat(CF_NativeGRID) then
+    if Clipboard.HasFormat(CF_NATIVE_GRID) then
     begin
       //      aStr := GetClipboardText(CF_NativeGRID);
       PasteText(aStr, True);
@@ -2652,16 +2691,6 @@ begin
     if Assigned(FOnCurChanged) then
       FOnCurChanged(Self, VisibleColumns[vCol].Column, vRow);
   end;
-end;
-
-procedure TntvCustomGrid.DecCurCol(Selecting: Boolean = False);
-begin
-  Current.SetCol(Current.Col - 1, Selecting);
-end;
-
-procedure TntvCustomGrid.DecCurRow(Selecting: Boolean = False);
-begin
-  Current.SetRow(Current.Row - 1, Selecting);
 end;
 
 procedure TntvCustomGrid.DoAfterEdit(AColumn: TntvColumn; vRow: Integer);
@@ -3240,7 +3269,7 @@ begin
   Result := FCapacity;
 end;
 
-function TntvCustomGrid.GetGridText(SpecialFormat: Boolean; vSelected: Boolean = False): String;
+function TntvCustomGrid.ExportAsText(SpecialFormat: Boolean; vSelected: Boolean): String;
 var
   aCell: TntvCell;
   aData: Integer;
@@ -3354,16 +3383,24 @@ begin
   end;
 end;
 
-function TntvCustomGrid.IncCurCol(Selecting: Boolean = False): Boolean;
+procedure TntvCustomGrid.IncCurCol(Selecting: Boolean);
 begin
-  Current.SetCol(Current.Col + 1, Selecting);
-  Result := True;
+  Current.SetCol(Current.Col + 1, Selecting, False);
 end;
 
-function TntvCustomGrid.IncCurRow(Selecting: Boolean = False): Boolean;
+procedure TntvCustomGrid.IncCurRow(Selecting: Boolean);
 begin
-  Current.SetRow(Current.Row + 1, Selecting);
-  Result := True;
+  Current.SetRow(Current.Row + 1, Selecting, False);
+end;
+
+procedure TntvCustomGrid.DecCurCol(Selecting: Boolean);
+begin
+  Current.SetCol(Current.Col - 1, Selecting, False);
+end;
+
+procedure TntvCustomGrid.DecCurRow(Selecting: Boolean);
+begin
+  Current.SetRow(Current.Row - 1, Selecting, False);
 end;
 
 function TntvCustomGrid.InColsWidth(X: Integer; var vCol: Integer): Boolean;
@@ -3471,14 +3508,6 @@ begin
   Result := ((vRow = Rows.Count) and (Rows.Count >= 0));
 end;
 
-function TntvCustomGrid.IsSelecting: Boolean;
-begin
-  if (Selected.Kind <> gskNone) and (FState = dgsDrag) or (GetKeyShiftState = [ssShift]) then
-    Result := True
-  else
-    Result := False;
-end;
-
 function TntvCustomGrid.IsValidCell(vRow: Integer; vCol: Integer): Boolean;
 begin
   if (vRow < Capacity) and (vRow >= 0) and (vCol < VisibleColumns.Count) and (vCol >= 0) then
@@ -3497,17 +3526,17 @@ end;
 
 procedure TntvCustomGrid.KeyDown(var Key: Word; Shift: TShiftState);
 var
-  aKeyEvent: TntvKeyAction;
+  aKeyAction: TntvKeyAction;
   aResumed: Boolean;
 begin
   if MouseCapture then
     EndCapture;
   inherited;
-  aKeyEvent := KeyDownToKeyAction(Key, Shift);
+  aKeyAction := KeyDownToKeyAction(Key, Shift);
   aResumed := False;
-  if aKeyEvent <> keyaNone then
+  if aKeyAction.Key <> keyaNone then
   begin
-    KeyAction(aKeyEvent, aResumed);
+    KeyAction(aKeyAction, aResumed);
     if aResumed then
       Key := 0;
   end;
@@ -3596,12 +3625,6 @@ begin
       garNormal:
         if not (csDesigning in ComponentState) then
         begin
-          if FSelected.IsSelected(FClkRow, FClkCol) then //TODO what the hell that <.<
-          begin
-            if FAttemptCapture then
-              DoButtonNow;
-            exit;
-          end;
           if aCol >= FixedCols then
           begin
             if not Header and InColsWidth(X, aCol) then
@@ -3895,9 +3918,76 @@ begin
 end;
 
 procedure TntvCustomGrid.SelectRowsCols(vOldRow, vRow, vOldCol, vCol: Integer);
+var
+  OldBeginRow: Integer;
+  OldBeginCol: Integer;
+  NeedInvalidate: Boolean;
 begin
-  SelectRows(vOldRow, vRow);
-  SelectCols(vOldCol, vCol);
+  NeedInvalidate := False;
+
+  if ((vRow = -1) and (vCol = -1)) then
+  begin
+    if ((Selected.Start.Row >= 0) or (Selected.Stop.Row >= 0) or (Selected.Start.Col >= 0) or (Selected.Stop.Col >= 0)) then
+      NeedInvalidate := True;
+    Selected.Reset;
+  end
+  else
+  begin
+    OldBeginRow := Selected.Start.Row;
+    if vRow = -1 then
+    begin
+      if not ((Selected.Start.Row < 0) and (Selected.Stop.Row < 0)) then
+      begin
+        Selected.Start.Row := -1;
+        Selected.Stop.Row := -1;
+        NeedInvalidate := True;
+      end;
+    end
+    else
+    begin
+      if OldBeginRow < 0 then
+      begin
+        Selected.Start.Row := vOldRow;
+        Selected.Stop.Row := vRow;
+        NeedInvalidate := True;
+      end
+      else
+      begin
+        if Selected.Stop.Row <> vRow then
+          NeedInvalidate := True;
+        Selected.Stop.Row := vRow;
+      end;
+    end;
+
+    OldBeginCol := Selected.Start.Col;
+    if vCol = -1 then
+    begin
+      if not ((Selected.Start.Col < 0) and (Selected.Stop.Col < 0)) then
+      begin
+        Selected.Start.Col := -1;
+        Selected.Stop.Col := -1;
+        NeedInvalidate := True;
+      end;
+    end
+    else
+    begin
+      if OldBeginCol < 0 then
+      begin
+        Selected.Start.Col := vOldCol;
+        Selected.Stop.Col := vCol;
+        NeedInvalidate := True;
+      end
+      else
+      begin
+        if Selected.Stop.Col <> vCol then
+          NeedInvalidate := True;
+
+        Selected.Stop.Col := vCol;
+      end;
+    end;
+  end;
+  if NeedInvalidate then
+    Invalidate;
 end;
 
 procedure TntvCustomGrid.SetLockAutoTotal(const Value: Boolean);
@@ -3915,7 +4005,7 @@ begin
     FColumnEdit := Value;
 end;
 
-procedure TntvCustomGrid.SetCurCell(vRow: Integer; vCol: Integer; Selecting, CtrlSelecting: Boolean);
+procedure TntvCustomGrid.SetCurCell(vRow: Integer; vCol: Integer; Selecting, Enhance: Boolean);
 var
   aOldRow: Longint;
   aOldCol: Longint;
@@ -3947,26 +4037,22 @@ begin
 
   if (aOldCol <> vCol) or (aOldRow <> vRow) then
   begin
+    if Selecting then
+    begin
+      if Enhance and (aOldCol <> vCol) then
+         Selected.Kind := gskRows;
+      SelectRowsCols(aOldRow, vRow, aOldCol, vCol)
+    end
+    else
+      SelectRowsCols(aOldRow, -1, aOldCol, -1); //Reseting select
+
     if RowRefresh and ((aOldCol <> vCol) and (aOldRow = vRow)) then
       //nothing
     else if RowSelect then
-    begin
-      if not (CtrlSelecting) then
-        InvalidateRow(aOldRow);
-    end
+      InvalidateRow(aOldRow)
     else
       InvalidateCell(aOldRow, aOldCol);
 
-    if (Selected.Kind <> gskNone) then
-    begin
-      if not (CtrlSelecting and FRowSelect) then
-      begin
-        if Selecting then
-          SelectRowsCols(aOldRow, vRow, aOldCol, vCol)
-        else
-          SelectRowsCols(aOldRow, -1, aOldCol, -1);
-      end;
-    end;
     CurChanged(aOldRow, aOldCol);
   end;
 
@@ -4000,7 +4086,7 @@ begin
   begin
     if (VisibleColumns.Count > 0) then
       VisibleColumns[Current.Col].Column.CurRowChanged;
-    if not (CtrlSelecting and (Selected.Kind <> gskNone) and RowSelect) then
+    if not RowSelect then
       DoCurRowChanged;
   end;
   ShouldCurChange := False;
@@ -4652,7 +4738,6 @@ constructor TntvGridSelected.Create(AGrid: TntvCustomGrid);
 begin
   inherited Create;
   FGrid := AGrid;
-  FKind := gskRows;
   Start.Row := -1;
   Stop.Row := -1;
   Start.Col := -1;
@@ -4726,8 +4811,14 @@ begin
   end;
 end;
 
+function TntvGridSelected.IsSelecting: Boolean;
+begin
+  Result := ((Stop.Row - Start.Row) > 0) or ((Stop.Col - Start.Col) > 0);
+end;
+
 procedure TntvGridSelected.Reset;
 begin
+  FKind := gskCells;
   Start.Row := -1;
   Stop.Row := -1;
   Start.Col := -1;
@@ -5211,6 +5302,29 @@ begin
   end;
 end;
 
+function TntvCustomGrid.ExportAsTSV(Range: TntvGridRange; TabChar: string): string;
+var
+  I, j: Integer;
+begin
+  Result := '';
+  for I := Range.Start.Row to Range.Stop.Row do
+  begin
+    if I > Range.Start.Row then
+      Result := Result + #13#10;
+    for J := Range.Start.Col to Range.Stop.Col do
+    begin
+      if J > Range.Start.Col then
+        Result := Result + TabChar;
+      Result := Result + VisibleColumns[J].Column.GetCellText(I);
+    end;
+  end;
+end;
+
+function TntvCustomGrid.ExportAsCSV(Range: TntvGridRange): string;
+begin
+  Result := ExportAsTSV(Range, ';');
+end;
+
 function TntvCustomGrid.GetCurCell: TntvCell;
 begin
   Result := FRows[Current.Row][Current.Col];
@@ -5504,7 +5618,7 @@ var
 
 begin
   Resumed := True;
-  case vKeyAction of
+  case vKeyAction.Key of
     {keyaTab:
       MoveCurrent;}
     keyaEdit:
@@ -5527,42 +5641,42 @@ begin
       ClipboardPaste;
     keyaCopy:
       ClipboardCopy(True);
-    keyaDown, keyaSelectDown:
-      Current.SetRow(Current.Row + 1, vKeyAction = keyaSelectDown);
-    keyaUp, keyaSelectUp:
-      Current.SetRow(Current.Row - 1, vKeyAction = keyaSelectUp);
-    keyaLeft, keyaSelectLeft:
-    begin
-      if UseRightToLeftAlignment then
-        IncCurCol(vKeyAction = keyaSelectLeft)
-      else
-        DecCurCol(vKeyAction = keyaSelectLeft);
-    end;
-    keyaRight, keyaSelectRight:
-    begin
-      if UseRightToLeftAlignment then
-        DecCurCol(vKeyAction = keyaSelectRight)
-      else
-        IncCurCol(vKeyAction = keyaSelectRight);
-    end;
-    keyaPageDown:
-      Current.SetRow(Current.Row + GetCompletedRows, vKeyAction = keyaSelectPageDown);
+    keyaUp:
+      SetCurCell(Current.Row - 1, Current.Col, vKeyAction.Shift, vKeyAction.Ctrl);
+    keyaDown:
+      SetCurCell(Current.Row + 1, Current.Col, vKeyAction.Shift, vKeyAction.Ctrl);
+    keyaLeft:
+      begin
+        if UseRightToLeftAlignment then
+          SetCurCell(Current.Row, Current.Col + 1, vKeyAction.Shift, vKeyAction.Ctrl)
+        else
+          SetCurCell(Current.Row, Current.Col - 1, vKeyAction.Shift, vKeyAction.Ctrl);
+      end;
+    keyaRight:
+      begin
+        if UseRightToLeftAlignment then
+          SetCurCell(Current.Row, Current.Col - 1, vKeyAction.Shift, vKeyAction.Ctrl)
+        else
+          SetCurCell(Current.Row, Current.Col + 1, vKeyAction.Shift, vKeyAction.Ctrl);
+      end;
     keyaPageUp:
-      Current.SetRow(Current.Row - GetCompletedRows, False);
-    keyaHome, keyaSelectHome:
+      Current.SetRow(Current.Row - GetCompletedRows, vKeyAction.Shift, vKeyAction.Ctrl);
+    keyaPageDown:
+      Current.SetRow(Current.Row + GetCompletedRows, vKeyAction.Shift, vKeyAction.Ctrl);
+    keyaHome:
       if RowSelect then
-        Current.SetRow(0, vKeyAction = keyaSelectTop)
+        Current.SetRow(0, vKeyAction.Shift, vKeyAction.Ctrl)
       else
-        Current.SetCol(FFixedCols, vKeyAction = keyaSelectHome);
-    keyaEnd, keyaSelectEnd:
+        Current.SetCol(FFixedCols, vKeyAction.Shift, vKeyAction.Ctrl);
+    keyaEnd:
       if RowSelect then
-        Current.SetRow(Rows.Count - 1, vKeyAction = keyaSelectBottom)
+        Current.SetRow(Rows.Count - 1, vKeyAction.Shift, vKeyAction.Ctrl)
       else
-        Current.SetCol(VisibleColumns.Count - 1, vKeyAction = keyaSelectEnd);
-    keyaTop, keyaSelectTop:
-      Current.SetRow(0, vKeyAction = keyaSelectTop);
-    keyaBottom, keyaSelectBottom:
-      Current.SetRow(Rows.Count - 1, vKeyAction = keyaSelectBottom);
+        Current.SetCol(VisibleColumns.Count - 1, vKeyAction.Shift, vKeyAction.Ctrl);
+    keyaTop:
+      Current.SetRow(0, vKeyAction.Shift, vKeyAction.Ctrl);
+    keyaBottom:
+      Current.SetRow(Rows.Count - 1, vKeyAction.Shift, vKeyAction.Ctrl);
     keyaDeleteLine: TryDeleteRow(Current.Row);
     keyaInsertLine: TryInsertRow(Current.Row);
     keyaScrollDown:
@@ -6722,25 +6836,11 @@ procedure TntvColumn.CorrectValue(var Text: String; var Data: Integer);
 begin
 end;
 
-{ TntvSelectedRows }
-
-function TntvSelectedRows.Found(const Row: Integer): Integer;
-var
-  Idx: Integer;
-begin
-  Result := -1;
-  for Idx := 0 to Count - 1 do
-  begin
-    if Items[Idx] = Row then
-    begin
-      Result := Idx;
-      Break;
-    end;
-  end;
-end;
-
 initialization
-  CF_NativeGRID := RegisterClipboardFormat('NativeGRID');
+  CF_NATIVE_GRID := RegisterClipboardFormat('CF_NATIVE_GRID');
+  CF_CSV := RegisterClipboardFormat('CSV');
+  CF_TSV := RegisterClipboardFormat('TSV');
+  CF_texthtml := RegisterClipboardFormat('text/html');
 finalization
   {$IFOPT D+}
     if FCellNodeCount <> 0 then
