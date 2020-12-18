@@ -91,7 +91,6 @@ end;
 procedure TPHPProcessor.HashLineCommentProc;
 begin
   Parent.FTokenID := tkComment;
-  Inc(Parent.Run);
   repeat
     Inc(Parent.Run);
   until Parent.FLine[Parent.Run] in [#0, #10, #13];

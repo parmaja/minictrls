@@ -1166,6 +1166,13 @@ const
 var
   FCellNodeCount: Integer = 0;
 
+procedure DrawFocusRect(Canvas: TCanvas; vRect: TRect);
+begin
+  Canvas.Pen.Style := psDot;
+  Canvas.Brush.Style := bsClear;
+  Canvas.Rectangle(vRect);
+end;
+
 function PixelsPerPoint: Integer;
 begin
   Result := Screen.PixelsPerInch div 72;
@@ -1780,6 +1787,7 @@ begin
 
   Canvas.Font.Color := aTextColor;
   Canvas.Brush.Color := aColor;
+  Canvas.Brush.Style := bsSolid;
 
   txtRect := vRect;
   CorrectCellRect(txtRect);
@@ -1850,7 +1858,7 @@ begin
   if csdFocused in State then
   begin
     InflateRect(vRect, sCellMargin, sCellMargin);
-    Canvas.DrawFocusRect(vRect);
+    DrawFocusRect(Canvas, vRect);
   end;
 end;
 
@@ -2747,6 +2755,7 @@ begin
   if (GridLines in [glHorizontal, glBoth]) then
   begin
     Canvas.Pen.Color := LinesColor;
+    Canvas.Pen.Style := psSolid;
     if UseRightToLeftAlignment then
     begin
       Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
@@ -2762,6 +2771,7 @@ begin
   if (GridLines in [glVertical, glBoth]) then
   begin
     Canvas.Pen.Color := LinesColor;
+    Canvas.Pen.Style := psSolid;
     if UseRightToLeftAlignment then
     begin
       Canvas.MoveTo(vRect.Left, vRect.Top);
@@ -2842,6 +2852,7 @@ var
   aRect: TRect;
 begin
   Canvas.Pen.Color := Color;
+  Canvas.Pen.Style := psSolid;
   vrtRect := RowsClient;
   if Header and (pntRect.Top < vrtRect.Top) then
   begin
@@ -3021,7 +3032,7 @@ begin
   if Focused and RowSelect and IsCurrent(vRow) then
   begin
     //Include(aDrawState, csdFocused);
-    Canvas.DrawFocusRect(vRect);
+    DrawFocusRect(Canvas, vRect);
   end;
 
   //Draw Empty Cell after last cell, if it full header we will draw fixed cell header at top
@@ -5079,6 +5090,7 @@ procedure TntvCustomGrid.DrawFixed(Canvas: TCanvas; vRect: TRect; S: String; vDr
 begin
   //Canvas.Pen.Color := MixColors(FixedColor, clBlack, 150);
   Canvas.Pen.Color := LinesColor;
+  Canvas.Pen.Style := psSolid;
   Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
   Canvas.LineTo(vRect.Right, vRect.Bottom - 1);
   if csdHeader in vDrawState then
@@ -5121,6 +5133,7 @@ begin
   else
   begin
     Canvas.Pen.Color := clLtGray;
+    Canvas.Pen.Style := psSolid;
     Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
     Canvas.LineTo(vRect.Right - 1, vRect.Bottom - 1);
     Canvas.LineTo(vRect.Right - 1, vRect.Top);
