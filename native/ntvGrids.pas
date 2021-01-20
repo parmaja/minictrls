@@ -134,6 +134,7 @@ type
 
   TntvRow = class(TntvList<TntvCell>)
   private
+    FDataObject: TObject;
     FData: Integer;
     FModified: Boolean;
     FRows: TntvRows;
@@ -146,6 +147,7 @@ type
     destructor Destroy; override;
     function SafeGet(Index: Integer): TntvCell;
     property Data: Integer read FData write FData;
+    property DataObject: TObject read FDataObject write FDataObject;
     property Modified: Boolean read FModified write FModified;
   end;
 
@@ -317,9 +319,9 @@ type
     procedure SetVisible(const Value: Boolean);
     function IsBiDiModeStored: Boolean;
     function GetItems(Row: Integer): TntvCell;
-    function GetActiveRow: Integer;
+    function GetActiveIndex: Integer;
     procedure SetImageIndex(const Value: Integer);
-    function GetImageList: TImageList;
+    function GetImageList: TCustomImageList;
     procedure SetEnabled(const Value: Boolean);
   protected
     Info: TntvColumnInfo;
@@ -425,14 +427,14 @@ type
 
     property Name: String read FName;
 
-    property ActiveRow: Integer read GetActiveRow;
+    property ActiveIndex: Integer read GetActiveIndex;
     property EditData: Integer read GetEditData write SetEditData;
     property EditText: String read GetEditText write SetEditText;
     property VisibleIndex: Integer read FVisibleIndex;
     property Grid: TntvCustomGrid read FGrid;
   public
     constructor Create(vGrid: TntvCustomGrid; AIndex: Integer); virtual; overload;
-    constructor Create(vGrid: TntvCustomGrid; vTitle: String = ''; vName: String = ''; vID: Integer = 0; vEnabled: Boolean = True); overload;
+    constructor Create(vGrid: TntvCustomGrid; vTitle: String = ''; vName: String = ''; vWidth: Integer = sColWidth; vID: Integer = 0; vEnabled: Boolean = True); overload;
     destructor Destroy; override;
     procedure Invalidate;
     procedure Assign(Source: TPersistent); override;
@@ -445,7 +447,7 @@ type
     property Items[Row: Integer]: TntvCell read GetItems; default;
     property ImageIndex: Integer read FImageIndex write SetImageIndex;
     property Alignment: TAlignment read FAlignment write SetAlignment;
-    property ImageList: TImageList read GetImageList default nil;
+    property ImageList: TCustomImageList read GetImageList default nil;
     property TextFormat: TTextStyle read Info.TextFormat write Info.TextFormat;
     property OrderIndex: Integer read FOrderIndex write SetOrderIndex;
     property Index: Integer read FIndex;
@@ -563,8 +565,6 @@ type
     property TextColor: TColor read FTextColor write SetTextColor default clHighlightText;
   end;
 
-  { TGridCurrent }
-
   { TntvGridCurrent }
 
   TntvGridCurrent = class(TPersistent)
@@ -658,8 +658,8 @@ type
     FScrollTimer: Cardinal;
     FAnchorColor: TColor;
     FSolid: Boolean;
-    FActiveRow: Integer;
-    FImageList: TImageList;
+    FActiveIndex: Integer;
+    FImageList: TCustomImageList;
     FImageChangeLink: TChangeLink;
     FFullHeader: Boolean;
     FAttemptCapture: Boolean;
@@ -673,7 +673,7 @@ type
     procedure SetColumnsCount(AValue: Integer);
     procedure SetValues(Col, Row: Integer; AValue: string);
 
-    procedure SetImageList(Value: TImageList);
+    procedure SetImageList(Value: TCustomImageList);
     procedure ImageListChange(Sender: TObject);
     procedure CalcNewWidth(X: Smallint);
     procedure BeginCapture(X, Y: Integer);
@@ -693,6 +693,7 @@ type
     function GetRowRect(vRow: Integer; out vRect:  TRect): Boolean;
     function GetCellRect(vRow: Integer; vCol: Integer; out vRect: TRect; vArea: TntvGridArea = garNormal): Boolean; overload;
     function GetCurrentColumn: TntvColumn;
+    function GetCurrentRow: TntvRow;
     //Rows fully visible in grid window, execlude the last row if partial visible
     function GetCompletedRows(vHeight: Integer): Integer; overload;
     //Rows Visible in grid window, even the row not fully visible (last row)
@@ -734,7 +735,7 @@ type
     procedure SetFringe(const Value: Boolean);
     procedure SetHeader(const Value: Boolean);
     procedure SetGutter(const Value: Boolean);
-    function GetCurCell: TntvCell;
+    function GetCurrentCell: TntvCell;
     function FlipRect(const cliRect, vRect: TRect): TRect;
     procedure SetAnchorColor(const Value: TColor);
     procedure CopyClick(Sender: TObject);
@@ -751,8 +752,8 @@ type
     procedure SetRowNumbers(const Value: Boolean);
     procedure SetRowSelect(const Value: Boolean);
     function GetItems(Index: Integer): TntvRow;
-    procedure SetInternalActiveRow(const Value: Integer);
-    procedure SetActiveRow(const Value: Integer);
+    procedure SetInternalActiveIndex(const Value: Integer);
+    procedure SetActiveIndex(const Value: Integer);
     procedure SetFullHeader(const Value: Boolean);
     function OnSortByCol(Index1, Index2: Integer): Integer;
     procedure ColumnsWidthsChanged;
@@ -803,7 +804,7 @@ type
     function GetMaxSideCol: Integer;
     function GetAllowedRows: Integer;
     function GetCompletedRows: Integer; overload;
-    function GetRowsCount: Integer; virtual;
+    function GetCount: Integer; virtual;
     function GetRealRow(vRow: Integer): Integer;
     function GetMaxCols: Integer; virtual;
     function GetCapacity: Integer; virtual;
@@ -817,7 +818,7 @@ type
     procedure SelectRows(vOldRow, vRow: Integer);
     procedure SelectCols(vOldCol, vCol: Integer);
     procedure SelectRowsCols(vOldRow, vRow, vOldCol, vCol: Integer);
-    procedure SetRowsCount(Value: Integer);
+    procedure SetCount(Value: Integer);
     procedure SetCapacity(Value: Integer);
     procedure SetSideCol(vCol: Integer);
     procedure SetTopRow(vRow: Integer); virtual;
@@ -937,15 +938,16 @@ type
     property VisibleColumns: TntvVisibleColumns read FVisibleColumns;
     property Rows: TntvRows read FRows;
     property ColumnsCount: Integer read GetColumnsCount write SetColumnsCount stored False default 0;
-    property RowsCount: Integer read GetRowsCount write SetRowsCount stored False default 0;
+    property Count: Integer read GetCount write SetCount stored False default 0;
 
     property Updating: Boolean read GetUpdating write SetUpdating;
     property Modified: Boolean read FModified write SetModified;
 
-    property CurCell: TntvCell read GetCurCell;
     property TopRow: Integer read FTopRow write SetTopRow;
     property CurrentColumn: TntvColumn read GetCurrentColumn;
-    property ActiveRow: Integer read FActiveRow write SetActiveRow;
+    property CurrentRow: TntvRow read GetCurrentRow;
+    property CurrentCell: TntvCell read GetCurrentCell;
+    property ActiveIndex: Integer read FActiveIndex write SetActiveIndex;
     //for published
     property RowRefresh: Boolean read FRowRefresh write FRowRefresh default False;
     property HighlightFixed: Boolean read FHighlightFixed write SetHighlightFixed default False;
@@ -994,7 +996,7 @@ type
     property RowSelect: Boolean read FRowSelect write SetRowSelect default False;
     property SideCol: Integer read FSideCol write SetSideCol stored False;
     property Solid: Boolean read FSolid write FSolid default False;
-    property ImageList: TImageList read FImageList write SetImageList;
+    property ImageList: TCustomImageList read FImageList write SetImageList;
     property OnGetColor: TOnGetColor read FOnGetColor write FOnGetColor;
     //Show header at top full of width of the Grid
     property FullHeader: Boolean read FFullHeader write SetFullHeader default False;
@@ -1166,11 +1168,18 @@ const
 var
   FCellNodeCount: Integer = 0;
 
+function InflateRect(var Rect: TRect; dx: Integer; dy: Integer): TRect;
+begin
+  Result := Rect;
+  Types.InflateRect(Result, dx, dy);
+end;
+
 procedure DrawFocusRect(Canvas: TCanvas; vRect: TRect);
 begin
-  Canvas.Pen.Style := psDot;
+  {Canvas.Pen.Style := psDot;
   Canvas.Brush.Style := bsClear;
-  Canvas.Rectangle(vRect);
+  Canvas.Rectangle(vRect);}
+  Canvas.DrawFocusRect(vRect);
 end;
 
 function PixelsPerPoint: Integer;
@@ -1814,6 +1823,7 @@ procedure TntvColumn.DrawCell(Canvas: TCanvas; vRow: Integer; vRect: TRect; Stat
 var
   aCell: TntvCell;
   y: Integer;
+  txtRect: TRect;
   aImage: Integer;
   aImageRect: TRect;
 begin
@@ -1836,10 +1846,12 @@ begin
 
   Canvas.Brush.Color := vColor;
   Canvas.FillRect(vRect);
-  InflateRect(vRect, - sCellMargin, - sCellMargin);
+
+  txtRect := vRect;
+  InflateRect(txtRect, - sCellMargin, - sCellMargin);
 
   if (csdNew in State) then
-    Grid.DrawString(Canvas, Hint, vRect, GetTextStyle, True)
+    Grid.DrawString(Canvas, Hint, txtRect, GetTextStyle, True)
   else if aCell <> nil then
   begin
     if (ImageList <> nil) and (ShowImage) then
@@ -1853,11 +1865,11 @@ begin
         ImageList.Draw(Canvas, aImageRect.Left, aImageRect.Top + y, aImage);
       end;
     end;
-    Grid.DrawString(Canvas, aCell.Text, vRect, GetTextStyle, True);
+    Grid.DrawString(Canvas, aCell.Text, txtRect, GetTextStyle, True);
   end;
   if csdFocused in State then
   begin
-    InflateRect(vRect, sCellMargin, sCellMargin);
+//    InflateRect(vRect, -1, -1);
     DrawFocusRect(Canvas, vRect);
   end;
 end;
@@ -1899,10 +1911,10 @@ begin
   try
     if Accept then
     begin
-      SetValueText(ActiveRow, EditText, EditData, sDefaultSetCell);
+      SetValueText(ActiveIndex, EditText, EditData, sDefaultSetCell);
     end;
   finally
-    Grid.AfterEdit(Self, ActiveRow);
+    Grid.AfterEdit(Self, ActiveIndex);
     FreeEdit; //moved after Grid.AfterEdit for Bug and WMKeyDown not completed
     Result := True;
   end;
@@ -2017,7 +2029,7 @@ end;
 
 function TntvColumn.GetData: Integer;
 begin
-  Result := GetCellData(ActiveRow);
+  Result := GetCellData(ActiveIndex);
 end;
 
 function TntvColumn.GetDisplayName: String;
@@ -2035,7 +2047,7 @@ function TntvColumn.GetAsString: String;
 var
   aCell: TntvCell;
 begin
-  aCell := GetCell(ActiveRow);
+  aCell := GetCell(ActiveIndex);
   if aCell <> nil then
     Result := aCell.Text
   else
@@ -2148,7 +2160,7 @@ end;
 
 procedure TntvColumn.SetAsString(const Value: String);
 begin
-  SetCellValue(ActiveRow, Value, 0, [swcText, swcInvalidate, swcComplete]);
+  SetCellValue(ActiveIndex, Value, 0, [swcText, swcInvalidate, swcComplete]);
 end;
 
 procedure TntvColumn.SetAsTime(const Value: TDateTime);
@@ -2167,7 +2179,7 @@ end;
 
 procedure TntvColumn.SetData(const Value: Integer);
 begin
-  SetCellValue(ActiveRow, '', Value, [swcData, swcInvalidate]);
+  SetCellValue(ActiveIndex, '', Value, [swcData, swcInvalidate]);
 end;
 
 destructor TntvColumns.Destroy;
@@ -2241,7 +2253,7 @@ begin
   Height := 130;
   Width := 260;
   FRowNumbers := True;
-  Color := clBtnFace;
+  Color := clWindow;
   TabStop := True;
   FOddColor := clMoneyGreen;
   FEvenColor := clWhite;
@@ -2388,7 +2400,7 @@ begin
       Range.SetRange(Current.Row, Current.Row, Current.Col, Current.Col);
   end
   else
-    Range.SetRange(0, RowsCount - 1, 0, VisibleColumns.Count - 1);
+    Range.SetRange(0, Count - 1, 0, VisibleColumns.Count - 1);
 
   //Clipboard.Clear;
   Clipboard.AsText := ExportAsTSV(Range);
@@ -2579,7 +2591,7 @@ begin
       if aClip <> '' then
       begin
         InsertRow(r);
-        //ActiveRow := r;
+        //ActiveIndex := r;
         LinePaste;
         AddTotals(r);
         if vCheckData then
@@ -3032,6 +3044,7 @@ begin
   if Focused and RowSelect and IsCurrent(vRow) then
   begin
     //Include(aDrawState, csdFocused);
+    //DrawFocusRect(Canvas, InflateRect(vRect, -1, -1));
     DrawFocusRect(Canvas, vRect);
   end;
 
@@ -3107,7 +3120,7 @@ begin
   Result := not ReadOnly and (CurrentColumn <> nil);
   if Result then
   begin
-    SetInternalActiveRow(Current.Row);
+    SetInternalActiveIndex(Current.Row);
     if CanEdit(Current.Row, Current.Col) then
     begin
       DoBeforeEdit(CurrentColumn, Current.Row);
@@ -3240,7 +3253,7 @@ begin
     Result := nil;
 end;
 
-function TntvCustomGrid.GetRowsCount: Integer;
+function TntvCustomGrid.GetCount: Integer;
 var
   c: integer;
 begin
@@ -4113,7 +4126,7 @@ begin
   end;
 end;
 
-procedure TntvCustomGrid.SetRowsCount(Value: Integer);
+procedure TntvCustomGrid.SetCount(Value: Integer);
 begin
   if not (csLoading in ComponentState) then //zaher temp
     FRows.Count := Value;
@@ -4290,18 +4303,18 @@ begin
     if not VisibleColumns[Current.Col].Column.GetReadOnly then
     begin
       vText := GetPartStr(vText, ntvEOL, 0, #0);
-      ActiveRow := Current.Row;
+      ActiveIndex := Current.Row;
       aColumn := VisibleColumns[Current.Col].Column;
       if SpecialFormat then
       begin
         aText := GetPartStr(vText, cntv_X_DATA, 0, #0);
         aData := StrToIntDef(GetPartStr(vText, cntv_X_DATA, 1, #0), 0);
-        aColumn.SetValueText(ActiveRow, aText, aData, sDefaultSetCell + sCheckOrValidate[aCheckData or (aData = 0)]);
+        aColumn.SetValueText(ActiveIndex, aText, aData, sDefaultSetCell + sCheckOrValidate[aCheckData or (aData = 0)]);
       end
       else
-        aColumn.SetValueText(ActiveRow, vText, 0, sDefaultSetCell + sCheckOrValidate[aCheckData]);
-      AfterPaste(aColumn, ActiveRow);
-      AfterEdit(aColumn, ActiveRow);
+        aColumn.SetValueText(ActiveIndex, vText, 0, sDefaultSetCell + sCheckOrValidate[aCheckData]);
+      AfterPaste(aColumn, ActiveIndex);
+      AfterEdit(aColumn, ActiveIndex);
     end;
   end;
   DoChanged;
@@ -4649,6 +4662,14 @@ begin
   Result := Columns.Count;
 end;
 
+function TntvCustomGrid.GetCurrentRow: TntvRow;
+begin
+  if Current.Row < Rows.Count then
+    Result := Rows[Current.Row]
+  else
+    Result := nil;
+end;
+
 procedure TntvCustomGrid.SetColumnsCount(AValue: Integer);
 begin
   Columns.Count := AValue;
@@ -4890,8 +4911,8 @@ var
   aRect: TRect;
   aColor, aTextColor: TColor;
 begin
-  Grid.GetColor([], ActiveRow, VisibleIndex, garNormal, aColor, aTextColor);
-  GetTextArea(ActiveRow, aRect);
+  Grid.GetColor([], ActiveIndex, VisibleIndex, garNormal, aColor, aTextColor);
+  GetTextArea(ActiveIndex, aRect);
   aEdit := (FEditControl as TntvEdit);
   aEdit.Color := aColor;
   aEdit.Font.Color := Grid.Font.Color;
@@ -5338,7 +5359,7 @@ begin
   Result := ExportAsTSV(Range, ';');
 end;
 
-function TntvCustomGrid.GetCurCell: TntvCell;
+function TntvCustomGrid.GetCurrentCell: TntvCell;
 begin
   Result := FRows[Current.Row][Current.Col];
 end;
@@ -5435,17 +5456,17 @@ procedure TntvCustomGrid.AfterPasteRow(vRow: Integer);
 begin
 end;
 
-constructor TntvColumn.Create(vGrid: TntvCustomGrid; vTitle: String; vName: String; vID: Integer; vEnabled: Boolean);
+constructor TntvColumn.Create(vGrid: TntvCustomGrid; vTitle: String; vName: String; vWidth: Integer; vID: Integer; vEnabled: Boolean);
 begin
   Create(vGrid, vGrid.Columns.Count);
   if vName = '' then
     FName := Copy(ClassName, 2, MaxInt)
   else
     FName := vName;
-  Info.Title := vTitle;
-
   FEnabled := vEnabled;
 
+  Info.Title := vTitle;
+  Info.Width := vWidth;
   Info.ID := vID;
 
   if vGrid <> nil then
@@ -5606,7 +5627,7 @@ function TntvColumn.GetReadOnly: Boolean;
 begin
   Result := ReadOnly or Grid.ReadOnly;
   if not Result then
-    Grid.DoIsReadOnly(Self, ActiveRow, Result);
+    Grid.DoIsReadOnly(Self, ActiveIndex, Result);
 end;
 
 procedure TntvCustomGrid.KeyAction(vKeyAction: TntvKeyAction; var Resumed: Boolean);
@@ -5881,7 +5902,7 @@ begin
   begin
     if not Grid.Solid or (Grid.Current.Row < Grid.Rows.Count) then
     begin
-      Grid.ActiveRow := Grid.Current.Row; //zaher
+      Grid.ActiveIndex := Grid.Current.Row; //zaher
       AsBoolean := not AsBoolean;
       Grid.AfterEdit(Self, Grid.Current.Row);
     end;
@@ -6162,10 +6183,13 @@ procedure TntvCustomGrid.GetColor(vRow, vCol: Integer; out vColor: TColor);
 begin
   if vRow < Rows.Count then
   begin
+    vColor := EvenColor;
     DoGetColor(VisibleColumns[vCol].Column, vRow, vColor);
     if Assigned(OnGetColor) then
       OnGetColor(Self, VisibleColumns[vCol].Column, vRow, vColor);
-  end;
+  end
+  else
+    vColor := Color;
 end;
 
 procedure TntvCustomGrid.GetColor(vDrawState: TntvCellDrawState; vRow, vCol: Integer; vArea: TntvGridArea; out vColor, vTextColor: TColor);
@@ -6218,25 +6242,25 @@ begin
   end;
 end;
 
-procedure TntvCustomGrid.SetInternalActiveRow(const Value: Integer);
+procedure TntvCustomGrid.SetInternalActiveIndex(const Value: Integer);
 begin
   if Editing then
-    raise EntvGridException.Create('Can not change ActiveRow in edit mode');
-  FActiveRow := Value;
+    raise EntvGridException.Create('Can not change ActiveIndex in edit mode');
+  FActiveIndex := Value;
 end;
 
-function TntvColumn.GetActiveRow: Integer;
+function TntvColumn.GetActiveIndex: Integer;
 begin
-  Result := Grid.ActiveRow;
+  Result := Grid.ActiveIndex;
 end;
 
-procedure TntvCustomGrid.SetActiveRow(const Value: Integer);
+procedure TntvCustomGrid.SetActiveIndex(const Value: Integer);
 begin
-  if FActiveRow <> Value then
+  if FActiveIndex <> Value then
   begin
-    SetInternalActiveRow(Value);
-    if FActiveRow > Rows.Count - 1 then
-      Rows.Count := FActiveRow + 1;
+    SetInternalActiveIndex(Value);
+    if FActiveIndex > Rows.Count - 1 then
+      Rows.Count := FActiveIndex + 1;
   end;
 end;
 
@@ -6263,7 +6287,7 @@ end;
 
 function TntvColumn.GetIsNull: Boolean;
 begin
-  Result := GetCell(ActiveRow) = nil;
+  Result := GetCell(ActiveIndex) = nil;
 end;
 
 procedure TntvColumn.SetAsDateTime(const Value: TDateTime);
@@ -6287,7 +6311,7 @@ end;
 procedure TntvCustomGrid.ValueChanged(AColumn: TntvColumn);
 begin
   if Assigned(FOnValueChanged) then
-    FOnValueChanged(Self, AColumn, ActiveRow);
+    FOnValueChanged(Self, AColumn, ActiveIndex);
 end;
 
 procedure TntvColumn.ValueChanged;
@@ -6473,7 +6497,7 @@ begin
   Invalidate;
 end;
 
-procedure TntvCustomGrid.SetImageList(Value: TImageList);
+procedure TntvCustomGrid.SetImageList(Value: TCustomImageList);
 begin
   if FImageList <> Value then
   begin
@@ -6499,7 +6523,7 @@ begin
   end;
 end;
 
-function TntvColumn.GetImageList: TImageList;
+function TntvColumn.GetImageList: TCustomImageList;
 begin
   Result := Grid.FImageList;
 end;
@@ -6683,7 +6707,7 @@ function TntvColumn.GetIsEmpty: Boolean;
 var
   aCell: TntvCell;
 begin
-  aCell := GetCell(ActiveRow);
+  aCell := GetCell(ActiveIndex);
   if aCell <> nil then
     Result := aCell.Text = ''
   else

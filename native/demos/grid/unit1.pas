@@ -120,8 +120,8 @@ begin
   AddressCol := TntvStandardColumn.Create(Grid, 'Address');
   Grid.TabOrder := 0;
 
-  Grid.ActiveRow := 0;
-  IDCol.AsString := '101';
+  Grid.ActiveIndex := 0;
+  IDCol.AsInteger := 101;
 
   NameCol.AsString := 'zaher';
   AddressCol.AsString := 'syria';
