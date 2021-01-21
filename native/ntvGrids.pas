@@ -797,7 +797,7 @@ type
     procedure DoCurrentChange(var vRow: Integer; var vCol: Integer);
     procedure DoCurRowChanging(vOldRow, vNewRow: Integer); virtual;
     procedure DoCurrentRowChanged; virtual;
-    procedure DrawGridLines(Canvas: TCanvas; vRect: TRect);
+    procedure DrawGridLines(Canvas: TCanvas; vRect: TRect; Both: Boolean = False);
     procedure DrawFixed(Canvas: TCanvas; vRect: TRect; S: String; vDrawState: TntvCellDrawState);
     procedure DrawRow(Canvas: TCanvas; vRow: Integer; vRect, pntRect: TRect; vArea: TntvGridArea);
     procedure Draw(Canvas: TCanvas; wndRect, pntRect: TRect);
@@ -1799,6 +1799,8 @@ begin
   Canvas.Font.Color := aTextColor;
   Canvas.Brush.Color := aColor;
   Canvas.Brush.Style := bsSolid;
+  Canvas.Pen.Color := aTextColor;
+  Canvas.Pen.Style := psSolid;
 
   txtRect := vRect;
   CorrectCellRect(txtRect);
@@ -1829,10 +1831,10 @@ var
   aImageRect: TRect;
 begin
   aCell := GetCell(vRow);
+
   Canvas.Brush.Color := vColor;
   Canvas.FillRect(vRect);
 
-  InflateRect(vRect, -sCellMargin, 0);
   if not (csdNew in State) and (ImageList <> nil) and ShowImage then
   begin
     if UseRightToLeftAlignment then
@@ -1845,13 +1847,11 @@ begin
       aImageRect := Rect(vRect.Left, vRect.Top, vRect.Left + ImageList.Width, vRect.Bottom);
       vRect.Left := vRect.Left + ImageList.Width + sCellMargin;
     end;
-//    Canvas.Brush.Color := Grid.Color;
-//    Canvas.FillRect(aImageRect);
   end;
 
   txtRect := vRect;
 
-  InflateRect(txtRect, 0, -sCellMargin);
+  InflateRect(txtRect, -sCellMargin, -sCellMargin);
 
   if (csdNew in State) then
     Grid.DrawString(Canvas, Hint, txtRect, GetTextStyle, True)
@@ -1867,11 +1867,9 @@ begin
     end;
     Grid.DrawString(Canvas, aCell.Text, txtRect, GetTextStyle, True);
   end;
+
   if csdFocused in State then
-  begin
-//    InflateRect(vRect, -1, -1);
     DrawFocusRect(Canvas, vRect);
-  end;
 end;
 
 procedure TntvColumn.DrawFooter(Canvas: TCanvas; vRow: Integer; vRect: TRect; State: TntvCellDrawState);
@@ -2762,9 +2760,9 @@ begin
     FOnCurrentRowChanged(Self, Current.Row);
 end;
 
-procedure TntvCustomGrid.DrawGridLines(Canvas: TCanvas; vRect: TRect);
+procedure TntvCustomGrid.DrawGridLines(Canvas: TCanvas; vRect: TRect; Both: Boolean);
 begin
-  if (GridLines in [glHorizontal, glBoth]) then
+  if Both or (GridLines in [glHorizontal, glBoth]) then
   begin
     Canvas.Pen.Color := LinesColor;
     Canvas.Pen.Style := psSolid;
@@ -2780,7 +2778,7 @@ begin
     end;
   end;
 
-  if (GridLines in [glVertical, glBoth]) then
+  if Both or (GridLines in [glVertical, glBoth]) then
   begin
     Canvas.Pen.Color := LinesColor;
     Canvas.Pen.Style := psSolid;
@@ -2920,7 +2918,7 @@ procedure TntvCustomGrid.DrawRow(Canvas: TCanvas; vRow: Integer; vRect, pntRect:
 var
   X, W: Integer;
   aCol, vrtCol: Integer;
-  cliRect, TmpRect, aRect: TRect;
+  cliRect, TmpRect, aRowRect, aCellRect: TRect;
   s: String;
   aInitDrawState, aDrawState: TntvCellDrawState;
 begin
@@ -2945,6 +2943,7 @@ begin
         if FStateBtn then
           aDrawState := aDrawState + [csdDown];
       end;
+
       if vRow = Current.Row then
         Canvas.Brush.Color := MixColors(FFixedColor, Selected.Color, 150)
       else
@@ -3009,13 +3008,21 @@ begin
     if vrtCol >= VisibleColumns.Count then
       break;
     W := VisibleColumns[vrtCol].Width;
-    aRect := Rect(X, vRect.Top, X + W, vRect.Bottom);
-    aRect := FlipRect(cliRect, aRect);
+    aRowRect := Rect(X, vRect.Top, X + W, vRect.Bottom);
+    aCellRect := FlipRect(cliRect, aRowRect);
+
     aDrawState := [];
     if (vrtCol = VisibleColumns.Count - 1) then
       Include(aDrawState, csdLastCell);
     if (vrtCol = 0) then
       Include(aDrawState, csdFirstCell);
+
+    if (FState = dgsDown) then
+    begin
+      if FStateBtn then
+        aDrawState := aDrawState + [csdDown];
+    end;
+
     if Gutter then
       Include(aDrawState, csdFirstOpened);
     if vArea = garHeader then
@@ -3033,9 +3040,13 @@ begin
     if Focused and not RowSelect and IsCurrent(vRow, vrtCol) then
       Include(aDrawState, csdFocused);
 
-    VisibleColumns[vrtCol].Column.Draw(Canvas, aDrawState, vRow, vrtCol, aRect, vArea);
+    VisibleColumns[vrtCol].Column.Draw(Canvas, aDrawState, vRow, vrtCol, aCellRect, vArea);
+
     if vArea = garNormal then
-      DrawGridLines(Canvas, aRect);
+      DrawGridLines(Canvas, aCellRect)
+    else
+      DrawGridLines(Canvas, aCellRect, True);
+      //DrawFixed(Canvas, vRect, '', aDrawState);
 
     Inc(aCol);
     X := X + W;
@@ -3044,7 +3055,7 @@ begin
   if Focused and RowSelect and IsCurrent(vRow) then
   begin
     //Include(aDrawState, csdFocused);
-    //DrawFocusRect(Canvas, InflateRect(vRect, -1, -1));
+    //DrawFocusRect(Canvas, InflateRectEx(vRect, -1, -1));
     DrawFocusRect(Canvas, vRect);
   end;
 
@@ -3061,6 +3072,7 @@ begin
       aDrawState := aDrawState + [csdFirstOpened];
     if Fringe then
       aDrawState := aDrawState + [csdLastOpened];
+
     if (vArea = garHeader) and FullHeader then
     begin
       Canvas.Brush.Color := FixedColor;
