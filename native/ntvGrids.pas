@@ -1170,10 +1170,10 @@ const
 var
   FCellNodeCount: Integer = 0;
 
-function InflateRect(var Rect: TRect; dx: Integer; dy: Integer): TRect;
+function InflateRectEx(var Rect: TRect; dx: Integer; dy: Integer): TRect;
 begin
   Result := Rect;
-  Types.InflateRect(Result, dx, dy);
+  InflateRect(Result, dx, dy);
 end;
 
 procedure DrawFocusRect(Canvas: TCanvas; vRect: TRect);
@@ -1831,17 +1831,19 @@ begin
   aCell := GetCell(vRow);
   Canvas.Brush.Color := vColor;
   Canvas.FillRect(vRect);
+
+  InflateRect(vRect, -sCellMargin, 0);
   if not (csdNew in State) and (ImageList <> nil) and ShowImage then
   begin
     if UseRightToLeftAlignment then
     begin
       aImageRect := Rect(vRect.Right - ImageList.Width, vRect.Top, vRect.Right, vRect.Bottom);
-      vRect.Right := vRect.Right - ImageList.Width;
+      vRect.Right := vRect.Right - ImageList.Width - sCellMargin;
     end
     else
     begin
       aImageRect := Rect(vRect.Left, vRect.Top, vRect.Left + ImageList.Width, vRect.Bottom);
-      vRect.Left := vRect.Left + ImageList.Width;
+      vRect.Left := vRect.Left + ImageList.Width + sCellMargin;
     end;
 //    Canvas.Brush.Color := Grid.Color;
 //    Canvas.FillRect(aImageRect);
@@ -1849,7 +1851,7 @@ begin
 
   txtRect := vRect;
 
-  InflateRect(txtRect, - sCellMargin, - sCellMargin);
+  InflateRect(txtRect, 0, -sCellMargin);
 
   if (csdNew in State) then
     Grid.DrawString(Canvas, Hint, txtRect, GetTextStyle, True)
