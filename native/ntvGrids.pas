@@ -4676,7 +4676,7 @@ end;
 
 function TntvCustomGrid.GetActiveRow: TntvRow;
 begin
-  if Current.Row < Rows.Count then
+  if ActiveIndex < Rows.Count then
     Result := Rows[ActiveIndex]
   else
     Result := nil;
