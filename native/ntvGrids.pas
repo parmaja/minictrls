@@ -423,7 +423,7 @@ type
     function CreateColumnProperty(AOwner: TComponent): TntvColumnProperty;
     procedure SetColumnProperty(AProperty: TntvColumnProperty);
 
-    procedure CurRowChanged; virtual;
+    procedure CurrentRowChanged; virtual;
 
     property Name: String read FName;
 
@@ -629,7 +629,7 @@ type
     FOnColClick: TOnNotifyCol;
     FOnValueChanged: TOnValueChanged;
     FOnCurChanged: TOnNotifyCell;
-    FOnCurRowChanged: TOnNotifyRow;
+    FOnCurrentRowChanged: TOnNotifyRow;
     FOnCountChanged: TNotifyEvent;
     FOnModified: TNotifyEvent;
     FOnPopupMenu: TNotifyEvent;
@@ -693,6 +693,7 @@ type
     function GetRowRect(vRow: Integer; out vRect:  TRect): Boolean;
     function GetCellRect(vRow: Integer; vCol: Integer; out vRect: TRect; vArea: TntvGridArea = garNormal): Boolean; overload;
     function GetCurrentColumn: TntvColumn;
+    function GetActiveRow: TntvRow;
     function GetCurrentRow: TntvRow;
     //Rows fully visible in grid window, execlude the last row if partial visible
     function GetCompletedRows(vHeight: Integer): Integer; overload;
@@ -795,7 +796,7 @@ type
     procedure DoClickArea(vRow: Integer; vCol: Integer; vArea: TntvGridArea); virtual;
     procedure DoCurrentChange(var vRow: Integer; var vCol: Integer);
     procedure DoCurRowChanging(vOldRow, vNewRow: Integer); virtual;
-    procedure DoCurRowChanged; virtual;
+    procedure DoCurrentRowChanged; virtual;
     procedure DrawGridLines(Canvas: TCanvas; vRect: TRect);
     procedure DrawFixed(Canvas: TCanvas; vRect: TRect; S: String; vDrawState: TntvCellDrawState);
     procedure DrawRow(Canvas: TCanvas; vRow: Integer; vRect, pntRect: TRect; vArea: TntvGridArea);
@@ -948,6 +949,7 @@ type
     property CurrentRow: TntvRow read GetCurrentRow;
     property CurrentCell: TntvCell read GetCurrentCell;
     property ActiveIndex: Integer read FActiveIndex write SetActiveIndex;
+    property ActiveRow: TntvRow read GetActiveRow;
     //for published
     property RowRefresh: Boolean read FRowRefresh write FRowRefresh default False;
     property HighlightFixed: Boolean read FHighlightFixed write SetHighlightFixed default False;
@@ -982,7 +984,7 @@ type
     property OnColClick: TOnNotifyCol read FOnColClick write FOnColClick;
     property OnValueChanged: TOnValueChanged read FOnValueChanged write FOnValueChanged;
     property OnCurChanged: TOnNotifyCell read FOnCurChanged write FOnCurChanged;
-    property OnCurRowChanged: TOnNotifyRow read FOnCurRowChanged write FOnCurRowChanged;
+    property OnCurrentRowChanged: TOnNotifyRow read FOnCurrentRowChanged write FOnCurrentRowChanged;
     property OnCountChanged: TNotifyEvent read FOnCountChanged write FOnCountChanged;
     property OnModified: TNotifyEvent read FOnModified write FOnModified;
     property OnPopupMenu: TNotifyEvent read FOnPopupMenu write FOnPopupMenu;
@@ -1076,7 +1078,7 @@ type
     property OnRowClick;
     property OnColClick;
     property OnCurChanged;
-    property OnCurRowChanged;
+    property OnCurrentRowChanged;
     property OnDblClick;
     property OnDragDrop;
     property OnDragOver;
@@ -1823,9 +1825,10 @@ procedure TntvColumn.DrawCell(Canvas: TCanvas; vRow: Integer; vRect: TRect; Stat
 var
   aCell: TntvCell;
   y: Integer;
-  txtRect: TRect;
+  txtRect, imgRect: TRect;
   aImage: Integer;
   aImageRect: TRect;
+  aImageList: TCustomImageList;
 begin
   aCell := GetCell(vRow);
   if not (csdNew in State) and (ImageList <> nil) and ShowImage then
@@ -1848,6 +1851,26 @@ begin
   Canvas.FillRect(vRect);
 
   txtRect := vRect;
+  if ImageIndex >=0 then
+  begin
+    aImageList := GetImageList;
+    if aImageList <> nil then
+    begin
+      imgRect := txtRect;
+      if UseRightToLeftAlignment then
+      begin
+        txtRect.Right := txtRect.Right - aImageList.Width;
+        imgRect.Left := txtRect.Right + 1;
+      end
+      else
+      begin
+        txtRect.Left := txtRect.Left + aImageList.Width;
+        imgRect.Right := txtRect.Left + - 1;
+      end;
+      aImageList.Draw(Canvas, imgRect.Left, imgRect.Top, ImageIndex);
+    end;
+  end;
+
   InflateRect(txtRect, - sCellMargin, - sCellMargin);
 
   if (csdNew in State) then
@@ -2756,10 +2779,10 @@ procedure TntvCustomGrid.DoCurRowChanging(vOldRow, vNewRow: Integer);
 begin
 end;
 
-procedure TntvCustomGrid.DoCurRowChanged;
+procedure TntvCustomGrid.DoCurrentRowChanged;
 begin
-  if Assigned(FOnCurRowChanged) then
-    FOnCurRowChanged(Self, Current.Row);
+  if Assigned(FOnCurrentRowChanged) then
+    FOnCurrentRowChanged(Self, Current.Row);
 end;
 
 procedure TntvCustomGrid.DrawGridLines(Canvas: TCanvas; vRect: TRect);
@@ -3143,7 +3166,7 @@ begin
     //  CheckPosition;
     if Assigned(FOnCountChanged) then
       FOnCountChanged(Self);
-    DoCurRowChanged;
+    DoCurrentRowChanged;
     Modified := True;
     DoChanged;
   end;
@@ -4109,9 +4132,9 @@ begin
   if IsRowChanged then
   begin
     if (VisibleColumns.Count > 0) then
-      VisibleColumns[Current.Col].Column.CurRowChanged;
+      VisibleColumns[Current.Col].Column.CurrentRowChanged;
     if not RowSelect then
-      DoCurRowChanged;
+      DoCurrentRowChanged;
   end;
   ShouldCurChange := False;
 end;
@@ -4660,6 +4683,14 @@ end;
 function TntvCustomGrid.GetColumnsCount: Integer;
 begin
   Result := Columns.Count;
+end;
+
+function TntvCustomGrid.GetActiveRow: TntvRow;
+begin
+  if Current.Row < Rows.Count then
+    Result := Rows[ActiveIndex]
+  else
+    Result := nil;
 end;
 
 function TntvCustomGrid.GetCurrentRow: TntvRow;
@@ -6714,7 +6745,7 @@ begin
     Result := True;
 end;
 
-procedure TntvColumn.CurRowChanged;
+procedure TntvColumn.CurrentRowChanged;
 begin
 end;
 
