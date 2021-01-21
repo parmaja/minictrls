@@ -30,7 +30,7 @@ const
 
   sColWidth = 80;
   sColMinWidth = 1;
-  sCellMargin = 3;
+  sCellMargin = 2;
   sGutterWidth = 40;
   sFringeWidth = 40;
 
@@ -785,6 +785,7 @@ type
     procedure FontChanged(Sender: TObject); override;
     procedure Validate(AColumn: TntvColumn); virtual;
     procedure ScrollBarChanged;
+    procedure ImageListChanged; virtual;
     procedure ColumnsChanged; virtual;
     procedure DoModified; virtual;
     procedure GetColor(vRow, vCol: Integer; out vColor: TColor); overload;
@@ -1846,13 +1847,13 @@ begin
   begin
     if UseRightToLeftAlignment then
     begin
-      aImageRect := Rect(vRect.Right - ImageList.Width, vRect.Top, vRect.Right, vRect.Bottom);
-      vRect.Right := vRect.Right - ImageList.Width - sCellMargin;
+      aImageRect := Rect(vRect.Right - ImageList.Width - sCellMargin, vRect.Top, vRect.Right - sCellMargin, vRect.Bottom);
+      vRect.Right := aImageRect.Left - 1;
     end
     else
     begin
-      aImageRect := Rect(vRect.Left, vRect.Top, vRect.Left + ImageList.Width, vRect.Bottom);
-      vRect.Left := vRect.Left + ImageList.Width + sCellMargin;
+      aImageRect := Rect(vRect.Left + sCellMargin, vRect.Top, vRect.Left + ImageList.Width + sCellMargin, vRect.Bottom);
+      vRect.Left := aImageRect.Right + 1;
     end;
   end;
 
@@ -2370,6 +2371,7 @@ begin
   Rows.BeginUpdate;
   try
     Columns.ClearTotals;
+    ResetPosition;
     Rows.Count := 0;
   finally
     Rows.EndUpdate;
@@ -5064,6 +5066,10 @@ begin
   end;
 end;
 
+procedure TntvCustomGrid.ImageListChanged;
+begin
+end;
+
 function TntvCustomGrid.MovingRect: TRect;
 var
   i, w: Integer;
@@ -6536,6 +6542,7 @@ begin
       FImageList.RegisterChanges(FImageChangeLink);
       FImageList.FreeNotification(Self);
     end;
+    ImageListChanged;
     if not (csLoading in ComponentState) then
       Invalidate;
   end;
