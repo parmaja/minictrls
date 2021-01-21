@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
-  <Package Version="4">
+  <Package Version="5">
     <Name Value="MiniCtrls"/>
     <Type Value="RunAndDesignTime"/>
     <Author Value="www.parmaja.com"/>
@@ -88,14 +88,15 @@
         <UnitName Value="mnSynHighlighterGo"/>
       </Item17>
       <Item18>
-        <Filename Value="syn/GoKeywords.inc"/>
-        <Type Value="Include"/>
+        <Filename Value="syn/mnSynHighlighterSARD.pas"/>
+        <UnitName Value="mnSynHighlighterSARD"/>
       </Item18>
       <Item19>
-        <Filename Value="syn/mnSynHighlighterSard.pas"/>
-        <UnitName Value="mnSynHighlighterSard"/>
+        <Filename Value="syn/GoKeywords.inc"/>
+        <Type Value="Include"/>
       </Item19>
     </Files>
+    <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="MiniCommons"/>

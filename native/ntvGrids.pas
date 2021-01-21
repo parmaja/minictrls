@@ -20,7 +20,7 @@ interface
 
 uses
   SysUtils, Variants, Messages, Classes, Graphics, Controls,
-  LCLType, LCLIntf, fgl, mnLogs,
+  LCLType, LCLIntf, LMessages, fgl, mnLogs,
   StdCtrls, Dialogs, Math, Menus, Forms, ImgList, Contnrs,
   ColorUtils, mnClasses, UniDates, mnFields,
   ntvCtrls, ntvThemes;
@@ -719,7 +719,7 @@ type
     procedure WMKillFocus(var Message: TWMKillFocus); Message WM_KILLFOCUS;
     procedure WMSetFocus(var Message: TWMSetFocus); Message WM_SETFOCUS;
     procedure WMSize(var Message: TWMSize); Message WM_SIZE;
-    procedure WMTimer(var Message: TWMTimer); Message WM_Timer;
+    procedure WMTimer(var Message: TLMTimer); Message LM_Timer;
     procedure WMVScroll(var Message: TWMVScroll); Message WM_VSCROLL;
 
     procedure CMExit(var Message: TCMExit); Message CM_Exit;
@@ -4713,7 +4713,7 @@ begin
   end;
 end;
 
-procedure TntvCustomGrid.WMTimer(var Message: TWMTimer);
+procedure TntvCustomGrid.WMTimer(var Message: TLMTimer);
 var
   Pt: TPoint;
 begin

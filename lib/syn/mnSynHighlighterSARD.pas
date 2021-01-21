@@ -1,4 +1,4 @@
-unit mnSynHighlighterSard;
+unit mnSynHighlighterSARD;
 {$mode objfpc}{$H+}
 {**
  * NOT COMPLETED

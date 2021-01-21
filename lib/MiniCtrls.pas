@@ -12,7 +12,7 @@ uses
   HTMLProcessor, mnSynHighlighterXHTML, mnSynHighlighterStdSQL, 
   mnSynHighlighterApache, mnSynHighlighterConfig, mnSynHighlighterCpp, 
   mnSynHighlighterD, mnSynHighlighterFirebird, mnSynHighlighterLua, 
-  mnSynHighlighterMultiProc, mnSynHighlighterGo, mnSynHighlighterSard, 
+  mnSynHighlighterMultiProc, mnSynHighlighterGo, mnSynHighlighterSARD,
   LazarusPackageIntf;
 
 implementation
