@@ -1825,12 +1825,12 @@ procedure TntvColumn.DrawCell(Canvas: TCanvas; vRow: Integer; vRect: TRect; Stat
 var
   aCell: TntvCell;
   y: Integer;
-  txtRect, imgRect: TRect;
-  aImage: Integer;
+  txtRect: TRect;
   aImageRect: TRect;
-  aImageList: TCustomImageList;
 begin
   aCell := GetCell(vRow);
+  Canvas.Brush.Color := vColor;
+  Canvas.FillRect(vRect);
   if not (csdNew in State) and (ImageList <> nil) and ShowImage then
   begin
     if UseRightToLeftAlignment then
@@ -1843,33 +1843,11 @@ begin
       aImageRect := Rect(vRect.Left, vRect.Top, vRect.Left + ImageList.Width, vRect.Bottom);
       vRect.Left := vRect.Left + ImageList.Width;
     end;
-    Canvas.Brush.Color := Grid.Color;
-    Canvas.FillRect(aImageRect);
+//    Canvas.Brush.Color := Grid.Color;
+//    Canvas.FillRect(aImageRect);
   end;
-
-  Canvas.Brush.Color := vColor;
-  Canvas.FillRect(vRect);
 
   txtRect := vRect;
-  if ImageIndex >=0 then
-  begin
-    aImageList := GetImageList;
-    if aImageList <> nil then
-    begin
-      imgRect := txtRect;
-      if UseRightToLeftAlignment then
-      begin
-        txtRect.Right := txtRect.Right - aImageList.Width;
-        imgRect.Left := txtRect.Right + 1;
-      end
-      else
-      begin
-        txtRect.Left := txtRect.Left + aImageList.Width;
-        imgRect.Right := txtRect.Left + - 1;
-      end;
-      aImageList.Draw(Canvas, imgRect.Left, imgRect.Top, ImageIndex);
-    end;
-  end;
 
   InflateRect(txtRect, - sCellMargin, - sCellMargin);
 
@@ -1879,13 +1857,10 @@ begin
   begin
     if (ImageList <> nil) and (ShowImage) then
     begin
-      aImage := ImageIndex;
-      if aImage < 0 then
-        aImage := aCell.Data;
-      if aImage >= 0 then
+      if ImageIndex >= 0 then
       begin
         y := (aImageRect.Bottom - aImageRect.Top) div 2 - ImageList.Height div 2;
-        ImageList.Draw(Canvas, aImageRect.Left, aImageRect.Top + y, aImage);
+        ImageList.Draw(Canvas, aImageRect.Left, aImageRect.Top + y, ImageIndex);
       end;
     end;
     Grid.DrawString(Canvas, aCell.Text, txtRect, GetTextStyle, True);
@@ -3769,7 +3744,7 @@ begin
   tmpCanvas := GetWorkingCanvas(Canvas);
   tmpCanvas.Font := Font;
   tmpCanvas.Font.PixelsPerInch := Font.PixelsPerInch;
-  Result := tmpCanvas.TextHeight('Fj')+7;
+  Result := tmpCanvas.TextHeight('Fj') + sCellMargin * 2 + 2;
   if tmpCanvas <> Canvas then
     FreeWorkingCanvas(tmpCanvas);
   RowHeight := Result;
@@ -4133,7 +4108,7 @@ begin
   begin
     if (VisibleColumns.Count > 0) then
       VisibleColumns[Current.Col].Column.CurrentRowChanged;
-    if not RowSelect then
+//    if not RowSelect then
       DoCurrentRowChanged;
   end;
   ShouldCurChange := False;
@@ -6757,6 +6732,7 @@ begin
   FEnabled := True;
   Info.Visible := True;
   Info.Width := sColWidth;
+  Info.ShowImage := False;
 
   FIndex := AIndex;
   FVisibleIndex := -1;
