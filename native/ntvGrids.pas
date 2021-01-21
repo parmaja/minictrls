@@ -136,6 +136,7 @@ type
   private
     FDataObject: TObject;
     FData: Integer;
+    FImageIndex: Integer;
     FModified: Boolean;
     FRows: TntvRows;
   protected
@@ -149,6 +150,7 @@ type
     property Data: Integer read FData write FData;
     property DataObject: TObject read FDataObject write FDataObject;
     property Modified: Boolean read FModified write FModified;
+    property ImageIndex: Integer read FImageIndex write FImageIndex;
   end;
 
   TntvRowClass = class of TntvRow;
@@ -1592,6 +1594,7 @@ constructor TntvRow.Create(ARows: TntvRows);
 begin
   inherited Create;
   FRows := ARows;
+  FImageIndex := -1;
 end;
 
 procedure TntvRow.Changed;
@@ -1828,9 +1831,13 @@ var
   aCell: TntvCell;
   y: Integer;
   txtRect: TRect;
+  aImageIndex: Integer;
   aImageRect: TRect;
 begin
   aCell := GetCell(vRow);
+  aImageIndex := Grid.Rows[vRow].ImageIndex;
+  if aImageIndex < 0 then
+    aImageIndex := ImageIndex;
 
   Canvas.Brush.Color := vColor;
   Canvas.FillRect(vRect);
@@ -1859,10 +1866,10 @@ begin
   begin
     if (ImageList <> nil) and (ShowImage) then
     begin
-      if ImageIndex >= 0 then
+      if aImageIndex >= 0 then
       begin
         y := (aImageRect.Bottom - aImageRect.Top) div 2 - ImageList.Height div 2;
-        ImageList.Draw(Canvas, aImageRect.Left, aImageRect.Top + y, ImageIndex);
+        ImageList.Draw(Canvas, aImageRect.Left, aImageRect.Top + y, aImageIndex);
       end;
     end;
     Grid.DrawString(Canvas, aCell.Text, txtRect, GetTextStyle, True);
