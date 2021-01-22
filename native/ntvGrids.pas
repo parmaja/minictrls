@@ -259,9 +259,9 @@ type
     property Capacity: Integer read FCapacity write FCapacity default 10000;
     property VerticalJump: Boolean read FVerticalJump write FVerticalJump default False;
     property GridLines: TntvGridLines read FGridLines write FGridLines;
-    property LinesColor: TColor read FLinesColor write FLinesColor default clLtGray;
+    property LinesColor: TColor read FLinesColor write FLinesColor default clBtnShadow;
     property OddColor: TColor read FOddColor write FOddColor default clMoneyGreen;
-    property EvenColor: TColor read FEvenColor write FEvenColor default clWhite;
+    property EvenColor: TColor read FEvenColor write FEvenColor default clWindow;
     property AnchorColor: TColor read FAnchorColor write FAnchorColor default $00EAEAEA;
     property AnchorCols: Integer read FAnchorCols write FAnchorCols default 0;
   end;
@@ -958,14 +958,14 @@ type
     property HighlightFixed: Boolean read FHighlightFixed write SetHighlightFixed default False;
 
     property DragAfterMode: TntvDragAfterMode read FDragAfterMode write FDragAfterMode default damNone;
-    property DualColor: Boolean read FDualColor write SetDualColor default True;
+    property DualColor: Boolean read FDualColor write SetDualColor default False;
     property FixedCols: Integer read FFixedCols write SetFixedCols default 0;
     property FixedColor: TColor read FFixedColor write SetFixedColor default clBtnFace;
-    property FixedFontColor: TColor read FFixedFontColor write SetFixedFontColor default clBtnFace;
+    property FixedFontColor: TColor read FFixedFontColor write SetFixedFontColor default clBtnText;
     property FollowDrag: Boolean read FFollowDrag write FFollowDrag default False;
 
     property GridLines: TntvGridLines read FGridLines write SetGridLines default glBoth;
-    property LinesColor: TColor read FLinesColor write SetLinesColor default clLtGray;
+    property LinesColor: TColor read FLinesColor write SetLinesColor default clBtnShadow;
     property Footer: Boolean read FFooter write SetFooter default False;
     property Header: Boolean read FHeader write SetHeader default True;
     property Gutter: Boolean read FGutter write SetGutter default True;
@@ -974,7 +974,7 @@ type
     property FringeWidth: Integer read FFringeWidth write SetFringeWidth default sFringeWidth;
     property Color default clBtnFace;
     property OddColor: TColor read FOddColor write SetOddColor default clMoneyGreen;
-    property EvenColor: TColor read FEvenColor write SetEvenColor default clWhite;
+    property EvenColor: TColor read FEvenColor write SetEvenColor default clWindow;
     property AnchorColor: TColor read FAnchorColor write SetAnchorColor default clCream;
     property AnchorCols: Integer read FAnchorCols write SetAnchorCols default 0;
     property ReturnColumns: Integer read FReturnColumns write FReturnColumns default 0;
@@ -2262,24 +2262,25 @@ begin
   Color := clWindow;
   TabStop := True;
   FOddColor := clMoneyGreen;
-  FEvenColor := clWhite;
+  FEvenColor := clWindow;
   FAnchorColor := clCream;
   FFixedCols := 0;
   FTopRow := 0;
   FSideCol := 0;
   FDragAfter := 0;
   FGridLines := glBoth;
-  FLinesColor := clLtGray;
+  FLinesColor := clBtnShadow;
   FColWidth := sColWidth;
   FStateBtn := False;
   FModified := False;
   FRow := 0;
   FGutter := True;
-  FDualColor := True;
+  FDualColor := False;
   FHeader := True;
   FGutterWidth := sGutterWidth;
   FFringeWidth := sFringeWidth;
   FFixedColor := clBtnFace;
+  FFixedFontColor := clBtnText;
   CalcRowHeight;
 end;
 
@@ -6420,14 +6421,14 @@ end;
 constructor TntvGridProperty.Create(AOwner: TComponent);
 begin
   inherited;
-  FOddColor := clWhite;
-  FEvenColor := clWhite;
+  FOddColor := clWindow;
+  FEvenColor := clWindow;
   FAnchorColor := $00EAEAEA;
   FCapacity := 10000;
   FCurRow := -1;
   FCurCol := -1;
   FGridLines := glBoth;
-  FLinesColor := $00DDDDDD;
+  FLinesColor := clBtnShadow;
 end;
 
 function TntvGridProperty.GetChildOwner: TComponent;
