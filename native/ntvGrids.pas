@@ -1836,9 +1836,14 @@ var
   aImageRect: TRect;
 begin
   aCell := GetCell(vRow);
-  aImageIndex := Grid.Rows[vRow].ImageIndex;
-  if aImageIndex < 0 then
-    aImageIndex := ImageIndex;
+  if aCell <> nil then
+  begin
+    aImageIndex := Grid.Rows[vRow].ImageIndex;
+    if aImageIndex < 0 then
+      aImageIndex := ImageIndex;
+  end
+  else
+    aImageIndex := -1;
 
   Canvas.Brush.Color := vColor;
   Canvas.FillRect(vRect);
@@ -5053,7 +5058,7 @@ begin
     begin
       aScrollInfo.nMin := 0;
       aScrollInfo.nMax := Max(0, aMax - 1);
-      aScrollInfo.nPage := GetCompletedRows;
+      Integer(aScrollInfo.nPage) := GetCompletedRows;
       aScrollInfo.nPos := TopRow;
     end
     else
