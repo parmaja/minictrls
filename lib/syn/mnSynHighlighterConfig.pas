@@ -290,7 +290,7 @@ procedure TSynConfigSyn.CommentProc;
 begin
   FTokenID := tkComment;
   inc(Run);
-  if (FLine[Run] <> #0) and (FLine[Run] = '#') then
+  if (FLine[Run] <> #0) and (FLine[Run] in ['#', ';', '*']) then
     DocumentProc
   else
   while FLine[Run] <> #0 do
