@@ -23,14 +23,15 @@ uses
   LCLType, LCLIntf, LMessages, fgl, mnLogs,
   StdCtrls, Dialogs, Math, Menus, Forms, ImgList, Contnrs,
   ColorUtils, mnClasses, UniDates, mnFields,
-  ntvCtrls, ntvThemes;
+  ntvCtrls;
 
 const
   sGridVersion = 'NativeGrid=v1.0';
 
   sColWidth = 80;
   sColMinWidth = 1;
-  sCellMargin = 2;
+  sCellLeftRightMargin = 3;
+  sCellTopBottomMargin = 1;
   sGutterWidth = 40;
   sFringeWidth = 40;
 
@@ -1852,19 +1853,19 @@ begin
   begin
     if UseRightToLeftAlignment then
     begin
-      aImageRect := Rect(vRect.Right - ImageList.Width - sCellMargin, vRect.Top, vRect.Right - sCellMargin, vRect.Bottom);
+      aImageRect := Rect(vRect.Right - ImageList.Width - sCellLeftRightMargin, vRect.Top, vRect.Right - sCellLeftRightMargin, vRect.Bottom);
       vRect.Right := aImageRect.Left - 1;
     end
     else
     begin
-      aImageRect := Rect(vRect.Left + sCellMargin, vRect.Top, vRect.Left + ImageList.Width + sCellMargin, vRect.Bottom);
+      aImageRect := Rect(vRect.Left + sCellLeftRightMargin, vRect.Top, vRect.Left + ImageList.Width + sCellLeftRightMargin, vRect.Bottom);
       vRect.Left := aImageRect.Right + 1;
     end;
   end;
 
   txtRect := vRect;
 
-  InflateRect(txtRect, -sCellMargin, -sCellMargin);
+  InflateRect(txtRect, -sCellLeftRightMargin, -sCellTopBottomMargin);
 
   if (csdNew in State) then
     Grid.DrawString(Canvas, Hint, txtRect, GetTextStyle, True)
@@ -3773,7 +3774,7 @@ begin
   tmpCanvas := GetWorkingCanvas(Canvas);
   tmpCanvas.Font := Font;
   tmpCanvas.Font.PixelsPerInch := Font.PixelsPerInch;
-  Result := tmpCanvas.TextHeight('Fj') + sCellMargin * 2 + 2;
+  Result := tmpCanvas.TextHeight('Fj') + sCellTopBottomMargin * 2 + 2;
   if tmpCanvas <> Canvas then
     FreeWorkingCanvas(tmpCanvas);
   RowHeight := Result;
@@ -6578,7 +6579,7 @@ begin
     else
       vRect.Left := vRect.Left + ImageList.Width;
   end;
-  InflateRect(vRect, - sCellMargin, - sCellMargin);
+  InflateRect(vRect, - sCellLeftRightMargin, - sCellTopBottomMargin);
 end;
 
 procedure TntvCustomGrid.SetFullHeader(const Value: Boolean);

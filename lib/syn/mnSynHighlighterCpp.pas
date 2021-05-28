@@ -1,4 +1,5 @@
 unit mnSynHighlighterCpp;
+//deprecated 'Buggy fix it first';
 {$mode objfpc}{$H+}
 {**
  *

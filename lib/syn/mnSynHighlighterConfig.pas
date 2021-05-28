@@ -19,10 +19,10 @@ uses
 
 
 type
-  TtkTokenKind = (tkKey, tkText, tkSection, tkComment, tkDocument, tkNull, tkNumber,
+  TtkTokenKind = (tkKey, tkSubKey, tkSection, tkText, tkComment, tkDocument, tkNull, tkNumber,
     tkSpace, tkString, tkSymbol, tkUnknown);
 
-  TSynConfRange = (cnfrKey, cnfrValue);
+  TSynConfRange = (cnfrKey, cnfrSubKey, cnfrValue, cnfrSection);
 
   { TSynConfigSyn }
 
@@ -42,8 +42,8 @@ type
     FSpaceAttri: TSynHighlighterAttributes;
     FStringAttri: TSynHighlighterAttributes;
     FSymbolAttri: TSynHighlighterAttributes;
-    procedure SectionOpenProc;
-    procedure SlashSectionOpenProc;
+    procedure BracketSectionOpenProc;
+    procedure BSSectionOpenProc;
     procedure LFProc;
     procedure NullProc;
     procedure CRProc;
@@ -52,6 +52,8 @@ type
     procedure DocumentProc;
     procedure KeyProc;
     procedure EqualProc;
+    procedure ParamProc;
+    procedure DotProc;
     procedure TextProc;
     procedure NumberProc;
     procedure DQStringProc;  // ""
@@ -62,10 +64,10 @@ type
     function GetIdentChars: TSynIdentChars; override;
     function GetSampleSource: String; override;
     function IsFilterStored: Boolean; override;
+  public
     procedure SetRange(Value: Pointer); override;
     function GetRange: Pointer; override;
     procedure ResetRange; override;
-  public
     class function GetLanguageName: string; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -107,12 +109,14 @@ begin
       #13 {CR}: FProcTable[i] := @CRProc;
       #1..#9, #11, #12, #14..#32: FProcTable[i] := @SpaceProc;
       '=' : FProcTable[i] := @EqualProc;
+      '.' : FProcTable[i] := @DotProc;
+      '?' : FProcTable[i] := @ParamProc;
       '"'  : FProcTable[i] := @DQStringProc;
       '''' : FProcTable[i] := @SQStringProc;
       '#' : FProcTable[i] := @DocumentProc;
       ';' : FProcTable[i] := @CommentProc;
-      '[' : FProcTable[i] := @SectionOpenProc;
-      '/' : FProcTable[i] := @SlashSectionOpenProc;
+      '[' : FProcTable[i] := @BracketSectionOpenProc;
+      '\' : FProcTable[i] := @BSSectionOpenProc;
       '0'..'9': FProcTable[i] := @NumberProc;
     else
       FProcTable[i] := @TextProc;
@@ -162,7 +166,7 @@ begin
   Next;
 end;
 
-procedure TSynConfigSyn.SectionOpenProc;
+procedure TSynConfigSyn.BracketSectionOpenProc;
 begin
   FTokenID := tkSection;
   inc(Run);
@@ -179,7 +183,7 @@ begin
     end;
 end;
 
-procedure TSynConfigSyn.SlashSectionOpenProc;
+procedure TSynConfigSyn.BSSectionOpenProc;
 begin
   FTokenID := tkSection;
   inc(Run);
@@ -202,9 +206,34 @@ end;
 
 procedure TSynConfigSyn.EqualProc;
 begin
+  if FRange = cnfrValue then
+    TextProc
+  else
+  begin
+    inc(Run);
+    FTokenID := tkSymbol;
+    SetRange(Pointer(cnfrValue));
+  end;
+end;
+
+procedure TSynConfigSyn.ParamProc;
+begin
   inc(Run);
-  FTokenID := tkSymbol;
+  if FRange = cnfrValue then
+    FTokenID := tkSymbol;
   SetRange(Pointer(cnfrValue));
+end;
+
+procedure TSynConfigSyn.DotProc;
+begin
+  if FRange = cnfrValue then
+    TextProc
+  else
+  begin
+    inc(Run);
+    FTokenID := tkSymbol;
+    SetRange(Pointer(cnfrSubKey));
+  end;
 end;
 
 procedure TSynConfigSyn.KeyProc;
@@ -214,6 +243,7 @@ begin
   while FLine[Run] <> #0 do
     case FLine[Run] of
       '=': break;
+      '.': break;
       #10: break;
       #13: break;
     else
@@ -223,7 +253,7 @@ end;
 
 procedure TSynConfigSyn.TextProc;
 begin
-  if FRange = cnfrKey then
+  if FRange <> cnfrValue then
     KeyProc
   else
   begin
@@ -245,7 +275,7 @@ end;
 
 procedure TSynConfigSyn.NumberProc;
 begin
-  if TSynConfRange(GetRange) = cnfrKey then
+  if TSynConfRange(GetRange) <> cnfrValue then
     KeyProc
   else begin
     inc(Run);
@@ -260,6 +290,9 @@ procedure TSynConfigSyn.CommentProc;
 begin
   FTokenID := tkComment;
   inc(Run);
+  if (FLine[Run] <> #0) and (FLine[Run] = '#') then
+    DocumentProc
+  else
   while FLine[Run] <> #0 do
     case FLine[Run] of
       #10: break;
@@ -294,6 +327,8 @@ procedure TSynConfigSyn.DQStringProc;
 begin
   if FRange = cnfrKey then
     FTokenID := tkKey
+  else if FRange = cnfrSubKey then
+    FTokenID := tkSubKey
   else
     FTokenID := tkString;
   inc(Run);
@@ -314,6 +349,8 @@ procedure TSynConfigSyn.SQStringProc;
 begin
   if FRange = cnfrKey then
     FTokenID := tkKey
+  else if FRange = cnfrSubKey then
+    FTokenID := tkSubKey
   else
     FTokenID := tkString;
   inc(Run);
@@ -382,6 +419,7 @@ begin
     tkText   : Result := FTextAttri;
     tkSection: Result := FSectionAttri;
     tkKey    : Result := FKeyAttri;
+    tkSubKey : Result := FKeyAttri;
     tkNumber : Result := FNumberAttri;
     tkSpace  : Result := FSpaceAttri;
     tkString : Result := FStringAttri;
@@ -391,7 +429,7 @@ begin
   end;
 end;
 
-function TSynConfigSyn.GetTokenKind: integer;
+function TSynConfigSyn.GetTokenKind: Integer;
 begin
   Result := Ord(FTokenId);
 end;
