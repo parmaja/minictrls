@@ -276,11 +276,8 @@ begin
   Result := cSardSample;
 end;
 
-end.
-
 initialization
   RegisterPlaceableHighlighter(TSynSardSyn);
 finalization
-  FreeAndNil(FSardSyn);
 end.
 
