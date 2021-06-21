@@ -275,7 +275,7 @@ end;
 
 procedure TSynConfigSyn.NumberProc;
 begin
-  if TSynConfRange(GetRange) <> cnfrValue then
+  if FRange <> cnfrValue then
     KeyProc
   else begin
     inc(Run);
@@ -452,12 +452,12 @@ end;
 procedure TSynConfigSyn.SetRange(Value: Pointer);
 begin
   inherited;
-  FRange := TSynConfRange(Value);
+  FRange := TSynConfRange(PtrInt(Value));
 end;
 
 function TSynConfigSyn.GetRange: Pointer;
 begin
-  Result := Pointer(FRange);
+  Result := Pointer(PtrInt(FRange));
 end;
 
 procedure TSynConfigSyn.ResetRange;

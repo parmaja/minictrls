@@ -12,8 +12,8 @@ uses
   HTMLProcessor, mnSynHighlighterXHTML, mnSynHighlighterStdSQL, 
   mnSynHighlighterApache, mnSynHighlighterConfig, mnSynHighlighterCpp, 
   mnSynHighlighterD, mnSynHighlighterFirebird, mnSynHighlighterLua, 
-  mnSynHighlighterMultiProc, mnSynHighlighterGo, mnSynHighlighterSARD,
-  LazarusPackageIntf;
+  mnSynHighlighterMultiProc, mnSynHighlighterGo, mnSynHighlighterSARD, 
+  mnSynHighlighterLSL, LazarusPackageIntf;
 
 implementation
 
