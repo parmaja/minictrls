@@ -116,6 +116,7 @@ begin
       '#' : FProcTable[i] := @DocumentProc;
       ';' : FProcTable[i] := @CommentProc;
       '[' : FProcTable[i] := @BracketSectionOpenProc;
+      ']' : FProcTable[i] := @BracketSectionOpenProc;
       '\' : FProcTable[i] := @BSSectionOpenProc;
       '0'..'9': FProcTable[i] := @NumberProc;
     else

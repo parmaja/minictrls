@@ -242,15 +242,11 @@ begin
     else
       Brush.Color := NormalColor;
     //Brush.Color := clred;
-    FillRect(vRect);
     aTextStyle.Layout := tlCenter;
     aTextStyle.Alignment := taCenter;
     if tbfRightToLeft in vFlags then
        aTextStyle.RightToLeft := True;
     //Font.Color := clBlack;
-    if tdsActive in State then
-    else
-      OffsetRect(vRect , 1, 1);
     InflateRect(vRect, -cTextMargin, -cTextMargin);
     TextRect(vRect, 0, 0, vItem.Caption, aTextStyle);
 
@@ -380,6 +376,9 @@ begin
   begin
     Pen.Style := psSolid;//psInsideframe;
     aTextRect := vRect;
+
+    if not (tdsActive in vState) then
+      OffsetRect(aTextRect , 1, 1);
 
     if tbfRightToLeft in vFlags then
     begin
@@ -922,18 +921,21 @@ end;
 
 procedure TntvTabDrawSheet.DoPaint(vItem: TntvTabItem; Canvas: TCanvas; var vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags);
 var
-  aTextRect: TRect;
+  aGapRect, aTextRect: TRect;
 begin
   with Canvas do
   begin
-    Brush.Style := bsSolid;
+    aGapRect := vRect;
+    if not (tdsActive in vState) then
+      aGapRect.Top := aGapRect.Top + 2;
     if tdsActive in vState then
       Brush.Color := ActiveColor
     else
       Brush.Color := NormalColor;
-    FillRect(vRect);
+    Brush.Style := bsSolid;
+    FillRect(aGapRect);
 
-    aTextRect := vRect;
+    aTextRect := aGapRect;
     InflateRect(aTextRect, -2, -2);
 
     Pen.Style := psSolid;
@@ -942,50 +944,34 @@ begin
     begin
       if tbfRightToLeft in vFlags then
       begin
-        MoveTo(vRect.Left, vRect.Bottom);
-        LineTo(vRect.Left, vRect.Top);
-        LineTo(vRect.Right + 1, vRect.Top);
-        if (tdsFirst in vState) then
-        begin
-          MoveTo(vRect.Right, vRect.Bottom);
-          LineTo(vRect.Right, vRect.Top);
-        end;
+        MoveTo(aGapRect.Left, aGapRect.Bottom);
+        LineTo(aGapRect.Left, aGapRect.Top);
+        LineTo(aGapRect.Right, aGapRect.Top);
+        LineTo(aGapRect.Right, aGapRect.Bottom + 1);
       end
       else
       begin
-        MoveTo(vRect.Right, vRect.Bottom);
-        LineTo(vRect.Right, vRect.Top);
-        LineTo(vRect.Left - 1, vRect.Top);
-        if (tdsFirst in vState) then
-        begin
-          MoveTo(vRect.Left, vRect.Bottom);
-          LineTo(vRect.Left, vRect.Top);
-        end;
+        MoveTo(aGapRect.Right, aGapRect.Bottom);
+        LineTo(aGapRect.Right, aGapRect.Top);
+        LineTo(aGapRect.Left, aGapRect.Top);
+        LineTo(aGapRect.Left, aGapRect.Bottom + 1);
       end;
     end
     else if vPosition = tbpBottom then
     begin
       if tbfRightToLeft in vFlags then
       begin
-        MoveTo(vRect.Left, vRect.Top);
-        LineTo(vRect.Left, vRect.Bottom);
-        LineTo(vRect.Right + 1, vRect.Bottom);
-        if (tdsFirst in vState) then
-        begin
-          MoveTo(vRect.Right, vRect.Top);
-          LineTo(vRect.Right, vRect.Bottom);
-        end;
+        MoveTo(aGapRect.Left, aGapRect.Top);
+        LineTo(aGapRect.Left, aGapRect.Bottom);
+        LineTo(aGapRect.Right, aGapRect.Bottom);
+        LineTo(aGapRect.Right, aGapRect.Top - 1);
       end
       else
       begin
-        MoveTo(vRect.Right, vRect.Top);
-        LineTo(vRect.Right, vRect.Bottom);
-        LineTo(vRect.Left - 1, vRect.Bottom);
-        if (tdsFirst in vState) then
-        begin
-          MoveTo(vRect.Left, vRect.Top);
-          LineTo(vRect.Left, vRect.Bottom);
-        end;
+        MoveTo(aGapRect.Right, aGapRect.Top);
+        LineTo(aGapRect.Right, aGapRect.Bottom);
+        LineTo(aGapRect.Left, aGapRect.Bottom);
+        LineTo(aGapRect.Left, aGapRect.Top - 1);
       end;
     end;
   end;

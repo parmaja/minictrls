@@ -261,5 +261,7 @@ begin
   inherited Destroy;
 end;
 
+finalization
+  FreeAndNil(FntvTheme);
 end.
 

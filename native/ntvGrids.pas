@@ -1764,8 +1764,9 @@ begin
     try
       for aRow in FGrid.Rows do
       begin
-        if Index < aRow.Count then
-          aRow.Delete(Index);
+        if aRow <> nil then
+          if Index < aRow.Count then
+            aRow.Delete(Index);
       end;
       FGrid.ColumnsChanged;
     finally
@@ -2389,8 +2390,8 @@ procedure TntvCustomGrid.Reset;
 begin
   Updating := True;
   try
-    Columns.Clear;
     Clear;
+    Columns.Clear;
     FModified := False;
   finally
     Updating := False;
