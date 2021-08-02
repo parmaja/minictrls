@@ -105,6 +105,9 @@ type
     function SelectTab(Index: Integer; Force: Boolean = False): Boolean;
     function LeftMouseDown(Point: TPoint): boolean;
 
+    procedure DoEnter; override;
+    procedure DoExit; override;
+
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
 
     property TopIndex: Integer read GetTopIndex write SetTopIndex;
@@ -371,11 +374,10 @@ begin
         aTabsRect := GetTabsRect;
         Items.GetTabRect(aTabsRect, ItemIndex, R, GetFlags);
 
-        Pen.Style := psSolid;
-        Pen.Color := clDkGray;
-
         if ShowBorder then
         begin
+          Pen.Style := psSolid;
+          Pen.Color := clDkGray;
           MoveTo(aTabsRect.Right, aTabsRect.Bottom - 1);
           LineTo(ClientRect.Right - 1, aTabsRect.Bottom - 1);
           LineTo(ClientRect.Right - 1, ClientRect.Bottom - 1);
@@ -521,6 +523,18 @@ begin
   end;
 end;
 
+procedure TntvCustomTabSet.DoEnter;
+begin
+  inherited;
+  Invalidate;
+end;
+
+procedure TntvCustomTabSet.DoExit;
+begin
+  inherited;
+  Invalidate;
+end;
+
 procedure TntvCustomTabSet.DoTabShow(Index: Integer; vSetfocus: Boolean);
 begin
 end;
@@ -533,50 +547,47 @@ procedure TntvCustomTabSet.ShowTab(Index: Integer; Force: Boolean; vSetfocus: Bo
 var
   OldIndex: Integer;
 begin
-//  if HandleAllocated then
+  if ((Index <> Items.ItemIndex) or Force) and (Index < Items.Visibles.Count) then
   begin
-    if ((Index <> Items.ItemIndex) or Force) and (Index < Items.Visibles.Count) then
+    OldIndex := Items.ItemIndex;
+    DoTabShow(Index, vSetfocus);
+    //and (Items[Index].Control.Enabled)
+    Items.ItemIndex := Index;
+
+    if (Items.ItemIndex < 0) and (Items.Visibles.Count > 0) then
+      Items.ItemIndex := 0
+    else if (Items.ItemIndex > Items.Visibles.Count - 1) then
+      Items.ItemIndex := Items.Visibles.Count - 1;
+    if Items.ItemIndex < TopIndex then
+      TopIndex := Items.ItemIndex
+    else
+      Items.ShowTab(Canvas, GetTabsRect, ItemIndex, GetFlags);
+    if Items.ItemIndex >= 0 then
     begin
-      OldIndex := Items.ItemIndex;
-      DoTabShow(Index, vSetfocus);
-      //and (Items[Index].Control.Enabled)
-      Items.ItemIndex := Index;
-
-      if (Items.ItemIndex < 0) and (Items.Visibles.Count > 0) then
-        Items.ItemIndex := 0
-      else if (Items.ItemIndex > Items.Visibles.Count - 1) then
-        Items.ItemIndex := Items.Visibles.Count - 1;
-      if Items.ItemIndex < TopIndex then
-        TopIndex := Items.ItemIndex
-      else
-        Items.ShowTab(Canvas, GetTabsRect, ItemIndex, GetFlags);
-      if Items.ItemIndex >= 0 then
-      begin
-        Invalidate;
-        DoTabShowed(Index, vSetfocus);
-      end
-      else if Items.ItemIndex < 0 then
-      begin
-        Items.ItemIndex := Index;
-        Invalidate;
-      end;
-
-      if ((OldIndex <> -1) and (OldIndex < Items.Visibles.Count)) then
-      begin
-        if ((Index <> -1) and (Index < Items.Visibles.Count)) then
-          DoTabChanged((Items.Visibles[OldIndex]), (Items.Visibles[Index]))
-        else
-          DoTabChanged((Items.Visibles[OldIndex]), nil)
-      end
-      else
-      begin
-        if ((Index <> -1) and (Index < Items.Visibles.Count)) then
-          DoTabChanged(nil, Items.Visibles[Index])
-        else
-          DoTabChanged(nil, nil)
-      end;
+      Invalidate;
+      DoTabShowed(Index, vSetfocus);
     end
-  end;
+    else if Items.ItemIndex < 0 then
+    begin
+      Items.ItemIndex := Index;
+      Invalidate;
+    end;
+
+    if ((OldIndex <> -1) and (OldIndex < Items.Visibles.Count)) then
+    begin
+      if ((Index <> -1) and (Index < Items.Visibles.Count)) then
+        DoTabChanged((Items.Visibles[OldIndex]), (Items.Visibles[Index]))
+      else
+        DoTabChanged((Items.Visibles[OldIndex]), nil)
+    end
+    else
+    begin
+      if ((Index <> -1) and (Index < Items.Visibles.Count)) then
+        DoTabChanged(nil, Items.Visibles[Index])
+      else
+        DoTabChanged(nil, nil)
+    end;
+  end
 end;
 
 procedure TntvCustomTabSet.NextClick;

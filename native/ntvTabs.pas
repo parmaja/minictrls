@@ -31,6 +31,7 @@ const
 
 type
   TntvhtTabHitTest = (htNone, htTab, htNext, htPrior, htClose);
+
   TntvFlag = (tbfFocused, tbfRightToLeft);
   TntvFlags = set of TntvFlag;
 
@@ -46,7 +47,7 @@ type
     tdsFirst: First tab Index = 0
     tdsLast: Last tab Index = Count -1
   }
-  TTabDrawState = (tdsActive, tdsAfter, tdsBefore, tdsNear,tdsFirst, tdsLast);
+  TTabDrawState = (tdsActive, tdsAfter, tdsBefore, tdsNear, tdsFirst, tdsLast);
   TTabDrawStates = set of TTabDrawState;
 
   { TntvTabDraw }
@@ -56,13 +57,15 @@ type
     ActiveColor: TColor;
     NormalColor: TColor;
 
+    function GetEdgeColor(Canvas: TCanvas): TColor;
     function GetWidth(State: TTabDrawStates; vTabsRect: TRect; Width: Integer): Integer; virtual; abstract;
     procedure PaintText(vItem: TntvTabItem; Canvas:TCanvas; vRect: TRect; vPosition: TntvTabPosition; State: TTabDrawStates ; vFlags: TntvFlags); virtual;
     {
       Paint the tab without the text area, and return in vRect the rect of text area
     }
-    procedure DoPaint(vItem: TntvTabItem; Canvas:TCanvas; var vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags); virtual; abstract;
-    procedure Paint(vItem: TntvTabItem; Canvas:TCanvas; vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags);
+    procedure DoPaint(vItem: TntvTabItem; Canvas: TCanvas; var vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags); virtual; abstract;
+    procedure Paint(vItem: TntvTabItem; Canvas: TCanvas; vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags);
+    procedure DoPaintRest(Canvas: TCanvas; vRect: TRect; vPosition: TntvTabPosition; vFlags: TntvFlags); virtual;
   end;
 
   TntvTabDrawClass = class of TntvTabDraw;
@@ -81,6 +84,7 @@ type
   public
     function GetWidth(State: TTabDrawStates; vTabsRect: TRect; Width: Integer): Integer; override;
     procedure DoPaint(vItem: TntvTabItem; Canvas: TCanvas; var vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags); override;
+    procedure DoPaintRest(Canvas: TCanvas; vRect: TRect; vPosition: TntvTabPosition; vFlags: TntvFlags); override;
   end;
 
   { TntvTabItem }
@@ -165,6 +169,7 @@ type
 
     procedure DrawButtons(Canvas: TCanvas; var vRect: TRect; vFlags: TntvFlags); //TODO
     procedure DrawTab(Canvas: TCanvas; Index: Integer; vRect: TRect; vFlags: TntvFlags);
+    procedure DrawRest(Canvas: TCanvas; vRect: TRect; vFlags: TntvFlags); //rest of tabs
     //ShowAll for DesignMode or special states, visible and non visible tab
     property ShowAll: Boolean read FShowAll write FShowAll;
   public
@@ -230,6 +235,11 @@ end;
 
 { TntvTabDraw }
 
+function TntvTabDraw.GetEdgeColor(Canvas: TCanvas): TColor;
+begin
+  Result := MixColors(Canvas.Font.Color, NormalColor, 100);
+end;
+
 procedure TntvTabDraw.PaintText(vItem: TntvTabItem; Canvas: TCanvas; vRect: TRect; vPosition: TntvTabPosition; State: TTabDrawStates; vFlags: TntvFlags);
 var
   aTextStyle: TTextStyle;
@@ -265,6 +275,10 @@ procedure TntvTabDraw.Paint(vItem: TntvTabItem; Canvas: TCanvas; vRect: TRect; v
 begin
   DoPaint(vItem, Canvas, vRect, vPosition, vState, vFlags);
   PaintText(vItem, Canvas, vRect, vPosition, vState, vFlags);
+end;
+
+procedure TntvTabDraw.DoPaintRest(Canvas: TCanvas; vRect: TRect; vPosition: TntvTabPosition; vFlags: TntvFlags);
+begin
 end;
 
 { TntvTabDrawCart }
@@ -324,11 +338,6 @@ var
      end;
   end;
 
-  function GetEdgeColor: TColor;
-  begin
-    Result := MixColors(Canvas.Font.Color, NormalColor, 100);
-  end;
-
   procedure DrawPrevious;
   var
     points: TMyPoints;
@@ -362,7 +371,7 @@ var
       Pen.Color := Brush.Color;
       Polygon(points.p, points.Count);
 
-      Pen.Color := GetEdgeColor;
+      Pen.Color := GetEdgeColor(Canvas);;
       MyPolyline(canvas, points.p, points.Count -1);
     end;
   end;
@@ -410,7 +419,7 @@ begin
     else
       Brush.Color := NormalColor;
 
-    Pen.Color := GetEdgeColor;
+    Pen.Color := GetEdgeColor(Canvas);
 
     if tbfRightToLeft in vFlags then
     begin
@@ -444,7 +453,7 @@ begin
     Polygon(points.p, points.Count);
 
     //Draw Border
-    Pen.Color := GetEdgeColor;
+    Pen.Color := GetEdgeColor(Canvas);
 
     if (tdsLast in vState) then
       MyPolyline(canvas, points.p, points.Count)
@@ -765,6 +774,12 @@ var
 begin
   if FUpdateItems then
     UpdateItems(Canvas);
+  aRect := vRect;
+  if tbfRightToLeft in vFlags then
+    aRect.Left := aRect.Right
+  else
+    aRect.Right := aRect.Left;
+
   for i := TopIndex to Visibles.Count - 1 do
   begin
     if GetTabRect(vRect, i, aRect, vFlags) then
@@ -780,6 +795,11 @@ begin
         Break;
     end;
   end;
+  if tbfRightToLeft in vFlags then
+    vRect.Right := aRect.Left
+  else
+    vRect.Left := aRect.Right;
+  DrawRest(Canvas, vRect, vFlags);
 end;
 
 function TntvTabs.GetTabRect(const vTabsRect: TRect; TopIndex, Index: Integer; out vTabRect: TRect; vFlags: TntvFlags): Boolean;
@@ -836,6 +856,18 @@ begin
   TabDraw := CreateTabDraw;
   try
     TabDraw.Paint(Visibles[Index], Canvas, vRect, Position, IndexToState(Index), vFlags);
+  finally
+    FreeAndNil(TabDraw)
+  end;
+end;
+
+procedure TntvTabs.DrawRest(Canvas: TCanvas; vRect: TRect; vFlags: TntvFlags);
+var
+  TabDraw: TntvTabDraw;
+begin
+  TabDraw := CreateTabDraw;
+  try
+    TabDraw.DoPaintRest(Canvas, vRect, Position, vFlags);
   finally
     FreeAndNil(TabDraw)
   end;
@@ -920,6 +952,8 @@ begin
 end;
 
 procedure TntvTabDrawSheet.DoPaint(vItem: TntvTabItem; Canvas: TCanvas; var vRect: TRect; vPosition: TntvTabPosition; vState: TTabDrawStates; vFlags: TntvFlags);
+const
+  aCapMargin = 3;
 var
   aGapRect, aTextRect: TRect;
 begin
@@ -927,7 +961,7 @@ begin
   begin
     aGapRect := vRect;
     if not (tdsActive in vState) then
-      aGapRect.Top := aGapRect.Top + 2;
+      aGapRect.Top := aGapRect.Top + aCapMargin;
     if tdsActive in vState then
       Brush.Color := ActiveColor
     else
@@ -939,43 +973,66 @@ begin
     InflateRect(aTextRect, -2, -2);
 
     Pen.Style := psSolid;
-    Pen.Color := clDkGray;
+    Pen.Color := GetEdgeColor(Canvas);
     if vPosition = tbpTop then
     begin
       if tbfRightToLeft in vFlags then
       begin
-        MoveTo(aGapRect.Left, aGapRect.Bottom);
+        MoveTo(aGapRect.Left, aGapRect.Bottom - 1);
         LineTo(aGapRect.Left, aGapRect.Top);
         LineTo(aGapRect.Right, aGapRect.Top);
-        LineTo(aGapRect.Right, aGapRect.Bottom + 1);
+        LineTo(aGapRect.Right, aGapRect.Bottom);
       end
       else
       begin
         MoveTo(aGapRect.Right, aGapRect.Bottom);
         LineTo(aGapRect.Right, aGapRect.Top);
         LineTo(aGapRect.Left, aGapRect.Top);
-        LineTo(aGapRect.Left, aGapRect.Bottom + 1);
+        if tdsActive in vState then
+          LineTo(aGapRect.Left, aGapRect.Bottom + 1)
+        else
+        begin
+          LineTo(aGapRect.Left, aGapRect.Bottom);
+          LineTo(aGapRect.Right + 1, aGapRect.Bottom);
+        end;
       end;
     end
     else if vPosition = tbpBottom then
     begin
       if tbfRightToLeft in vFlags then
       begin
-        MoveTo(aGapRect.Left, aGapRect.Top);
+        MoveTo(aGapRect.Left, aGapRect.Top + 1);
         LineTo(aGapRect.Left, aGapRect.Bottom);
         LineTo(aGapRect.Right, aGapRect.Bottom);
-        LineTo(aGapRect.Right, aGapRect.Top - 1);
+        LineTo(aGapRect.Right, aGapRect.Top);
       end
       else
       begin
-        MoveTo(aGapRect.Right, aGapRect.Top);
+        MoveTo(aGapRect.Right, aGapRect.Top + 1);
         LineTo(aGapRect.Right, aGapRect.Bottom);
         LineTo(aGapRect.Left, aGapRect.Bottom);
-        LineTo(aGapRect.Left, aGapRect.Top - 1);
+        LineTo(aGapRect.Left, aGapRect.Top);
       end;
     end;
   end;
   vRect := aTextRect;
+end;
+
+procedure TntvTabDrawSheet.DoPaintRest(Canvas: TCanvas; vRect: TRect; vPosition: TntvTabPosition; vFlags: TntvFlags);
+begin
+  with Canvas do
+  begin
+    if vPosition = tbpBottom then
+    begin
+      MoveTo(vRect.Left, vRect.Top);
+      LineTo(vRect.Right, vRect.Top);
+    end
+    else
+    begin
+      MoveTo(vRect.Left, vRect.Bottom);
+      LineTo(vRect.Right, vRect.Bottom);
+    end;
+  end;
 end;
 
 end.
