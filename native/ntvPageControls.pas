@@ -93,6 +93,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function ActivableControl: TWinControl;
     procedure ActivateControl;
     property ActiveControl: TControl read GetActiveControl write SetActiveControl;
     property Page[Control: TControl]: TntvPageItem read GetPageItem;
@@ -172,34 +173,46 @@ begin
   inherited;
 end;
 
+function TntvPageControl.ActivableControl: TWinControl;
+var
+  aList: TFPList;
+  i: Integer;
+begin
+  Result := nil;
+  if (ActiveControl is TWinControl) and (ActiveControl as TWinControl).CanFocus then
+  begin
+    aList := TFPList.Create;
+    try
+      (ActiveControl as TWinControl).GetTabOrderList(aList);
+      aList.Add(ActiveControl as TWinControl);
+      for i := 0 to aList.Count - 1 do
+      begin
+        if (TControl(aList[i]) as TWinControl).CanFocus and (TControl(aList[i]) as TWinControl).TabStop then
+        begin
+          Result := TControl(aList[i]) as TWinControl;
+          break;
+        end;
+      end;
+    finally
+      aList.Free;
+    end;
+  end
+end;
+
 procedure TntvPageControl.ActivateControl;
 var
   ParentForm: TCustomForm;
   aList: TFPList;
   i: Integer;
+  aControl: TWinControl;
 begin
-  if (ActiveControl is TWinControl) and (ActiveControl as TWinControl).CanFocus then
+  ParentForm := GetParentForm(Self);
+  if ParentForm <> nil then
   begin
-    ParentForm := GetParentForm(Self);
-    if ParentForm <> nil then
-    begin
-      aList := TFPList.Create;
-      try
-        (ActiveControl as TWinControl).GetTabOrderList(aList);
-        aList.Add(ActiveControl as TWinControl);
-        for i := 0 to aList.Count - 1 do
-        begin
-          if (TControl(aList[i]) as TWinControl).CanFocus and (TControl(aList[i]) as TWinControl).TabStop then
-          begin
-            ParentForm.ActiveControl := TControl(aList[i]) as TWinControl;
-            break;
-          end;
-        end;
-      finally
-        aList.Free;
-      end;
-    end;
-  end
+    aControl := ActivableControl;
+    if aControl <> nil then
+      ParentForm.ActiveControl := aControl
+  end;
 end;
 
 procedure TntvPageControl.CreateParams(var Params: TCreateParams);
