@@ -726,6 +726,8 @@ type
     procedure WMTimer(var Message: TLMTimer); Message LM_Timer;
     procedure WMVScroll(var Message: TWMVScroll); Message WM_VSCROLL;
 
+    function  DialogChar(var Message: TLMKey): boolean; override;
+
     procedure CMExit(var Message: TCMExit); Message CM_Exit;
     procedure CMDesignHitTest(var Message: TCMDesignHitTest); Message CM_DESIGNHITTEST;
     procedure CMBiDiModeChanged(var Message: TMessage); Message CM_BIDIMODECHANGED;
@@ -4545,7 +4547,7 @@ end;
 
 procedure TntvCustomGrid.WMGetDlgCode(var Message: TWMGetDlgCode);
 begin
-  inherited;
+//  inherited;
   Message.Result := DLGC_WANTARROWS or DLGC_WANTCHARS;
   //Message.Result := Message.Result and not DLGC_WANTTAB; //no i don't like it
 end;
@@ -4799,6 +4801,19 @@ begin
   end;
   //  UpdateWindow(Handle);
   Message.Result := 0;
+end;
+
+function TntvCustomGrid.DialogChar(var Message: TLMKey): boolean;
+var
+  i: Integer;
+begin
+  for i:=0 to VisibleColumns.Count-1 do
+      if IsAccel(Message.CharCode, Columns[i].Title) then begin
+        Result := true;
+        //TODO;
+        exit;
+      end;
+  result := inherited;
 end;
 
 { TntvGridSelected }
@@ -6013,10 +6028,17 @@ begin
     begin
       if not ReadOnly and (CurrentColumn <> nil) then
       begin
+        OpenEdit(goeChar, UTF8Key);
+        UTF8Key := '';
+        Result := True; //eat it
       end;
     end
     else
+    begin
       OpenEdit(goeChar, UTF8Key);
+      UTF8Key := '';
+      Result := True; //eat it
+    end;
   end;
 end;
 
