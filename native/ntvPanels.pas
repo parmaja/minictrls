@@ -498,8 +498,8 @@ begin
       spsRaisedLine:
       begin
         {$ifdef USE_NTV_THEME}
-        C1 := ntvTheme.Painter.RaisedColor;
-        C2 := ntvTheme.Painter.LoweredColor;
+        C1 := Theme.Separator.Foreground;
+        C2 := Theme.Separator.Background;
         {$else}
         C1 := clBtnHiLight;
         C2 := clBtnShadow;
@@ -508,8 +508,8 @@ begin
       spsLoweredLine:
       begin
         {$ifdef USE_NTV_THEME}
-        C1 := ntvTheme.Painter.LoweredColor;
-        C2 := ntvTheme.Painter.RaisedColor;
+        C1 := Theme.Separator.Foreground;
+        C2 := Theme.Separator.Background;
         {$else}
         C1 := clBtnShadow;
         C2 := clBtnHiLight;

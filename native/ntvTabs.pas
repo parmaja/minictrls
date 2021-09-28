@@ -18,6 +18,7 @@ interface
 
 uses
   Classes, SysUtils, Graphics, Controls, Contnrs, Types,
+  ntvThemes,
   LCLType, LCLIntf, LCLProc;
 
 const
@@ -54,10 +55,9 @@ type
 
   TntvTabDraw = class abstract(TObject)
   public
-    ActiveColor: TColor;
-    NormalColor: TColor;
 
-    function GetEdgeColor(Canvas: TCanvas): TColor;
+    function GetEdgeColor: TColor;
+    function GetUnactiveColor: TColor;
     function GetWidth(State: TTabDrawStates; vTabsRect: TRect; Width: Integer): Integer; virtual; abstract;
     procedure PaintText(vItem: TntvTabItem; Canvas:TCanvas; vRect: TRect; vPosition: TntvTabPosition; State: TTabDrawStates ; vFlags: TntvFlags); virtual;
     {
@@ -142,10 +142,8 @@ type
 
   TntvTabs = class(TCollection)
   private
-    FActiveColor: TColor;
     FImages: TImageList;
     FItemIndex: Integer;
-    FNormalColor: TColor;
     FPosition: TntvTabPosition;
     FShowAll: Boolean;
     FShowButtons: Boolean;
@@ -198,8 +196,6 @@ type
     property TopIndex: Integer read FTopIndex write FTopIndex;
     property ShowButtons: Boolean read FShowButtons write FShowButtons;
     property Position: TntvTabPosition read FPosition write FPosition;
-    property ActiveColor: TColor read FActiveColor write FActiveColor;
-    property NormalColor: TColor read FNormalColor write FNormalColor;
     property TabDrawClass: TntvTabDrawClass read FTabDrawClass write SetTabDrawClass;
   published
   end;
@@ -235,9 +231,14 @@ end;
 
 { TntvTabDraw }
 
-function TntvTabDraw.GetEdgeColor(Canvas: TCanvas): TColor;
+function TntvTabDraw.GetEdgeColor: TColor;
 begin
-  Result := MixColors(Canvas.Font.Color, NormalColor, 100);
+  Result := MixColors(Theme.Default.Foreground, Theme.Panel.Background, 100);
+end;
+
+function TntvTabDraw.GetUnactiveColor: TColor;
+begin
+  Result := MixColors(Theme.Default.Background, Theme.Panel.Background, 100);
 end;
 
 procedure TntvTabDraw.PaintText(vItem: TntvTabItem; Canvas: TCanvas; vRect: TRect; vPosition: TntvTabPosition; State: TTabDrawStates; vFlags: TntvFlags);
@@ -248,15 +249,13 @@ begin
   begin
     Brush.Style := bsSolid;
     if tdsActive in State then
-      Brush.Color := ActiveColor
+      Brush.Color := Theme.Default.Background
     else
-      Brush.Color := NormalColor;
-    //Brush.Color := clred;
+      Brush.Color := GetUnactiveColor;
     aTextStyle.Layout := tlCenter;
     aTextStyle.Alignment := taCenter;
     if tbfRightToLeft in vFlags then
        aTextStyle.RightToLeft := True;
-    //Font.Color := clBlack;
     InflateRect(vRect, -cTextMargin, -cTextMargin);
     TextRect(vRect, 0, 0, vItem.Caption, aTextStyle);
 
@@ -347,9 +346,9 @@ var
     with Canvas do
     begin
       if (tdsNear in vState) and (tdsAfter in vState) then
-        Brush.Color := ActiveColor
+        Brush.Color := Theme.Default.Background
       else
-        Brush.Color := NormalColor;
+        Brush.Color := GetUnactiveColor;
 
       if tbfRightToLeft in vFlags then
       begin
@@ -371,7 +370,7 @@ var
       Pen.Color := Brush.Color;
       Polygon(points.p, points.Count);
 
-      Pen.Color := GetEdgeColor(Canvas);;
+      Pen.Color := GetEdgeColor;
       MyPolyline(canvas, points.p, points.Count -1);
     end;
   end;
@@ -415,11 +414,11 @@ begin
     end;
 
     if tdsActive in vState then
-      Brush.Color := ActiveColor
+      Brush.Color := Theme.Default.Background
     else
-      Brush.Color := NormalColor;
+      Brush.Color := GetUnactiveColor;
 
-    Pen.Color := GetEdgeColor(Canvas);
+    Pen.Color := GetEdgeColor;
 
     if tbfRightToLeft in vFlags then
     begin
@@ -453,7 +452,7 @@ begin
     Polygon(points.p, points.Count);
 
     //Draw Border
-    Pen.Color := GetEdgeColor(Canvas);
+    Pen.Color := GetEdgeColor;
 
     if (tdsLast in vState) then
       MyPolyline(canvas, points.p, points.Count)
@@ -649,6 +648,8 @@ begin
   try
     TmpCanvas.Handle := GetDC(0);
     TmpCanvas.Font.Assign(vCanvas.Font);
+    TmpCanvas.Font.Color := Theme.Default.Foreground;
+
     for i := 0 to Count - 1 do
       if Items[I].AutoWidth then
       begin
@@ -712,8 +713,6 @@ end;}
 function TntvTabs.CreateTabDraw: TntvTabDraw;
 begin
   Result := TabDrawClass.Create;
-  Result.ActiveColor := ActiveColor;
-  Result.NormalColor := NormalColor;
 end;
 
 constructor TntvTabs.Create(AItemClass: TCollectionItemClass);
@@ -963,9 +962,9 @@ begin
     if not (tdsActive in vState) then
       aGapRect.Top := aGapRect.Top + aCapMargin;
     if tdsActive in vState then
-      Brush.Color := ActiveColor
+      Brush.Color := Theme.Default.Background
     else
-      Brush.Color := NormalColor;
+      Brush.Color := GetUnactiveColor;
     Brush.Style := bsSolid;
     FillRect(aGapRect);
 
@@ -973,7 +972,7 @@ begin
     InflateRect(aTextRect, -2, -2);
 
     Pen.Style := psSolid;
-    Pen.Color := GetEdgeColor(Canvas);
+    Pen.Color := GetEdgeColor;
     if vPosition = tbpTop then
     begin
       if tbfRightToLeft in vFlags then

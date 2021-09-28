@@ -107,8 +107,6 @@ type
     property ShowBorder;
     property ItemIndex;
     property ImageList;
-    property ActiveColor;
-    property NormalColor;
 
     property Items: TntvPages read GetItems write SetItems;
     property OnTabSelected;

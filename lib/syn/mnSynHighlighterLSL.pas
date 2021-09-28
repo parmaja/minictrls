@@ -89,11 +89,6 @@ const
                 +''#13
                 +'}'#13;
 
-implementation
-
-uses
-  mnUtils;
-
 const
   sLSLTypes =
     'integer,'+
@@ -1406,6 +1401,8 @@ const
     'experience_permissions,'+
     'experience_permissions_denied';
 
+  //http://opensimulator.org/wiki/Category:OSSL_Functions
+
   sOpenSIMFunctions = 'osAddAgentToGroup,'+
     'osAgentSaveAppearance,'+
     'osAvatarName2Key,'+
@@ -1630,6 +1627,10 @@ const
     'osVecDistSquare,'+
     'osVecMagSquare';
 
+implementation
+
+uses
+  mnUtils;
 
 procedure TLSLProcessor.GreaterProc;
 begin

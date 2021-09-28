@@ -25,9 +25,6 @@ uses
   LMessages, LCLType, LCLIntf, LCLProc, 
   ntvTabs, ntvUtils, ntvThemes;
 
-const
-  sNormalColor = $00DBDBDB;
-
 type
   TntvCustomTabSet = class;
 
@@ -63,15 +60,11 @@ type
     FStoreIndex: Boolean;
     FShowTabs: Boolean;
     FTabStyle: TntvTabStyle;
-    function GetActiveColor: TColor;
     function GetImageList: TImageList;
-    function GetNormalColor: TColor;
     function GetShowButtons: Boolean;
     function GetTabPosition: TntvTabPosition;
     function GetTopIndex: Integer;
-    procedure SetActiveColor(AValue: TColor);
     procedure SetItemIndex(Value: Integer);
-    procedure SetNormalColor(AValue: TColor);
     procedure SetShowBorder(const AValue: Boolean);
     procedure SetTabPosition(AValue: TntvTabPosition);
     procedure SetTabStyle(AValue: TntvTabStyle);
@@ -134,8 +127,6 @@ type
     property HeaderHeight: Integer read FHeaderHeight write FHeaderHeight;
     property ItemIndex: Integer read GetItemIndex write SetItemIndex stored FStoreIndex default 0;
     property ImageList: TImageList read GetImageList write SetImageList;
-    property ActiveColor: TColor read GetActiveColor write SetActiveColor default clWhite;
-    property NormalColor: TColor read GetNormalColor write SetNormalColor default sNormalColor;
 
     property Items: TntvTabs read FItems write FItems;
     property OnTabSelected: TOnTabSelected read FOnTabSelected write FOnTabSelected;
@@ -274,8 +265,6 @@ begin
   FItems := CreateTabs;
   Items.ItemIndex := -1;
   Items.TopIndex := 0;
-  Items.ActiveColor := clWhite;
-  Items.NormalColor := sNormalColor;
   UpdateHeaderRect;
   FShowTabs := True;
   FShowBorder := False;
@@ -296,15 +285,6 @@ begin
       Items.ItemIndex := Value
     else if not SelectTab(Value) then
         //beep;
-  end;
-end;
-
-procedure TntvCustomTabSet.SetNormalColor(AValue: TColor);
-begin
-  if Items.NormalColor <> AValue then
-  begin
-    Items.NormalColor := AValue;
-    Invalidate;
   end;
 end;
 
@@ -689,28 +669,9 @@ begin
   Result := Items.TopIndex;
 end;
 
-procedure TntvCustomTabSet.SetActiveColor(AValue: TColor);
-begin
-  if Items.ActiveColor <> AValue then
-  begin
-    Items.ActiveColor := AValue;
-    Invalidate;
-  end;
-end;
-
 function TntvCustomTabSet.GetImageList: TImageList;
 begin
     Result := Items.Images;
-end;
-
-function TntvCustomTabSet.GetActiveColor: TColor;
-begin
-  Result := FItems.ActiveColor;
-end;
-
-function TntvCustomTabSet.GetNormalColor: TColor;
-begin
-  Result := FItems.NormalColor;
 end;
 
 function TntvCustomTabSet.GetShowButtons: Boolean;

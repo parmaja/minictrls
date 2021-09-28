@@ -29,19 +29,53 @@ type
 
   TntvThemeEngine = class;
 
-  { TntvThemePainter }
+  TntvTheme = class;
 
-  TntvThemePainter = class(TObject)
+  { TThemeAttribute }
+
+  TThemeAttribute = class(TPersistent)
   private
-    FActiveColor: TColor;
+    FBackground: TColor;
+    FDescription: string;
+    FForeground: TColor;
+    FIndex: Integer;
+    FParent: TntvTheme;
+    FTitle: string;
+  protected
+  public
+    constructor Create;
+    procedure Assign(Source: TPersistent); override;
+    procedure Reset;
+    property Index: Integer read FIndex;
+    property Title: string read FTitle write FTitle;
+    property Description: string read FDescription write FDescription;
+  published
+    property Background: TColor read FBackground write FBackground default clNone;
+    property Foreground: TColor read FForeground write FForeground default clNone;
+  end;
+
+  { TntvTheme }
+
+  TntvTheme = class (specialize TmnObjectList<TThemeAttribute>)
+  private
+    FActive: TThemeAttribute;
+    FButton: TThemeAttribute;
+    FOdd: TThemeAttribute;
+    FDefault: TThemeAttribute;
     FEngine: TntvThemeEngine;
-    FLoweredColor: TColor;
+    FHeader: TThemeAttribute;
+    FHighlighted: TThemeAttribute;
+    FLink: TThemeAttribute;
+    FPanel: TThemeAttribute;
     FName: string;
-    FRaisedColor: TColor;
+    FSelected: TThemeAttribute;
+    FSeparator: TThemeAttribute;
+    FStub: TThemeAttribute;
+    FTitle: TThemeAttribute;
     procedure SetName(const AValue: string);
   public
     constructor Create(AEngine: TntvThemeEngine; AName: string); virtual;
-
+    procedure Correct;
     procedure DrawText(Canvas: TCanvas; Text: string; Rect: TRect; Style: TTextStyle; UseRightToLeft: Boolean); virtual;
     procedure DrawText(Canvas: TCanvas; Text: string; Rect: TRect; UseRightToLeft: Boolean = False);
     procedure DrawRect(Canvas: TCanvas; const Rect: TRect; Color, BorderColor: TColor); virtual;
@@ -51,33 +85,53 @@ type
     procedure DrawImage(Canvas: TCanvas; ImageList:TImageList; ImageIndex: TImageIndex; Rect: TRect; States: TdrawStates); virtual;
     property Name: string read FName write SetName;
   published
-    property LoweredColor: TColor read FLoweredColor write FLoweredColor;
-    property RaisedColor: TColor read FRaisedColor write FRaisedColor;
-    property ActiveColor: TColor read FActiveColor write FActiveColor;
+    property Default: TThemeAttribute read FDefault; //ListBox, Grid
+    property Odd: TThemeAttribute read FOdd; //alternate ListBox, Grid colors
+    property Panel: TThemeAttribute read FPanel; //Forms and Panels
+    property Button: TThemeAttribute read FButton;
+    property Title: TThemeAttribute read FTitle;
+    property Header: TThemeAttribute read FHeader;
+    property Stub: TThemeAttribute read FStub;
+    property Separator: TThemeAttribute read FSeparator;
+    property Link: TThemeAttribute read FLink;
+    property Selected: TThemeAttribute read FSelected;
+    property Highlighted: TThemeAttribute  read FHighlighted;
+    property Active: TThemeAttribute read FActive;
   end;
 
-  TntvThemePainters = class(specialize TmnNamedObjectList<TntvThemePainter>)
+  TntvThemes = class(specialize TmnNamedObjectList<TntvTheme>)
+  end;
+
+  IThemeNotify = interface(IInterface)
+  ['{9F320814-3CEA-4106-8CCC-22C04DDCED53}']
+    procedure InvalidateTheme;
   end;
 
   { TntvThemeEngine }
 
   TntvThemeEngine = class(TObject)
   private
-    FPainter: TntvThemePainter;
-    FPainters: TntvThemePainters;
+    FTheme: TntvTheme;
+    FThemes: TntvThemes;
     FShowButtonImages: Boolean;
+    FNotifyComponents: TComponentList;
   protected
     procedure Switched;
   public
     constructor Create;
     destructor Destroy; override;
-    //function Switch(NewPainter: TntvThemePainter):Boolean;// use Painter class
+    procedure AddNotification(AComponent: TComponent);
+    procedure RemoveNotification(AComponent: TComponent);
+    procedure Correct;
+    procedure Notify;
+    //function Switch(NewPainter: TntvTheme):Boolean;// use Painter class
     //function Switch(NewPainter: string):Boolean; //use Painter name
-    property Painter: TntvThemePainter read FPainter;
+    property Theme: TntvTheme read FTheme;
     property ShowButtonImages: Boolean read FShowButtonImages write FShowButtonImages;
   end;
 
-function ntvTheme: TntvThemeEngine;
+function ThemeEngine: TntvThemeEngine;
+function Theme: TntvTheme;
 
 function DrawStates(Enabled, Down, Focused: Boolean): TdrawStates;
 function DrawStates(ADrawStates: TdrawStates; Enabled, Down, Focused: Boolean): TdrawStates;
@@ -88,13 +142,18 @@ uses
   Types, ntvStdThemes;
 
 var
-  FntvTheme: TntvThemeEngine = nil;
+  FThemeEngine: TntvThemeEngine = nil;
 
-function ntvTheme: TntvThemeEngine;
+function Theme: TntvTheme;
 begin
-  if FntvTheme = nil then
-    FntvTheme := TntvThemeEngine.Create;
-  Result := FntvTheme;
+  Result := ThemeEngine.Theme;
+end;
+
+function ThemeEngine: TntvThemeEngine;
+begin
+  if FThemeEngine = nil then
+    FThemeEngine := TntvThemeEngine.Create;
+  Result := FThemeEngine;
 end;
 
 function DrawStates(Enabled, Down, Focused: Boolean): TdrawStates;
@@ -113,33 +172,85 @@ begin
     Result := Result + [pdsDisabled];
 end;
 
-{ TntvThemePainter }
+{ TThemeAttribute }
 
-procedure TntvThemePainter.SetName(const AValue: string);
+constructor TThemeAttribute.Create;
+begin
+  inherited;
+  FBackground := clNone;
+  FForeground := clNone;
+end;
+
+procedure TThemeAttribute.Assign(Source: TPersistent);
+begin
+  if Source is TThemeAttribute then
+  begin
+    Foreground := (Source as TThemeAttribute).Foreground;
+    Background := (Source as TThemeAttribute).Background;
+  end
+  else
+    inherited;
+end;
+
+procedure TThemeAttribute.Reset;
+begin
+  FBackground := clNone;
+  FForeground := clNone;
+end;
+
+{ TntvTheme }
+
+procedure TntvTheme.SetName(const AValue: string);
 begin
   if FName =AValue then exit;
   FName :=AValue;
 end;
 
-constructor TntvThemePainter.Create(AEngine: TntvThemeEngine; AName: string);
+constructor TntvTheme.Create(AEngine: TntvThemeEngine; AName: string);
+  procedure Add(var Item: TThemeAttribute; Title, Description: string; Foreground, Background: TColor);
+  begin
+    Item := TThemeAttribute.Create;
+    Item.Title := Title;
+    Item.Description := Description;
+    Item.Foreground := Foreground;
+    Item.Background := Background;
+    Item.FParent := Self;
+    Item.FIndex := inherited Add(Item);
+  end;
 begin
   inherited Create;
-  //RaisedColor := clLtGray;
-  //LoweredColor := clDkGray;
-  FRaisedColor := cl3DHilight;
-  FLoweredColor := cl3DShadow;
   FEngine:= AEngine;
   FName := AName;
+
+  Add(FDefault, 'Default', 'Default colors', clWindowText, clWindow);
+  Add(FPanel, 'Panel', 'GUI Panel', clBtnText, clBtnFace);
+  Add(FButton, 'Button', 'Buttons', clBtnText, clBtnFace);
+  Add(FSelected, 'Selected', 'Selected text', clHighlightText, clHighlight);
+  Add(FTitle, 'Title', 'Title', clCaptionText, clActiveCaption);
+  Add(FSeparator, 'Separator', 'Seperators, between Stub of Editor and Line numbers', $00D8D8D8, $00CDCDCD);
+  Add(FLink, 'Link', 'URL Links of follow defines highlight', clWhite, $002A190F);
+  Add(FHighlighted, 'Highlighted', 'Highlighted important line, like running line', $00150FFF, clNone);
+  Add(FActive, 'Active', 'Hover', clBlack, $008585CB);
+
+  Add(FHeader, 'Header', 'Header', clBlack, $00E9E9E9);
+  Add(FStub, 'Stub', 'Stub', clBlack, $00E9E9E9);
+  Add(FOdd, 'Odd', 'Odd', clBlack, clMoneyGreen);
+
+  Correct;
 end;
 
-procedure TntvThemePainter.DrawText(Canvas: TCanvas; Text: string; Rect: TRect; Style: TTextStyle; UseRightToLeft: Boolean);
+procedure TntvTheme.Correct;
+begin
+end;
+
+procedure TntvTheme.DrawText(Canvas: TCanvas; Text: string; Rect: TRect; Style: TTextStyle; UseRightToLeft: Boolean);
 begin
   Style.RightToLeft := UseRightToLeft;
   Rect.Top := Rect.Top + 1; //idk why
   Canvas.TextRect(Rect, Rect.Left, Rect.Top, Text, Style);
 end;
 
-procedure TntvThemePainter.DrawText(Canvas: TCanvas; Text: string; Rect: TRect; UseRightToLeft: Boolean);
+procedure TntvTheme.DrawText(Canvas: TCanvas; Text: string; Rect: TRect; UseRightToLeft: Boolean);
 var
   TS: TTextStyle;
 begin
@@ -158,7 +269,7 @@ begin
   DrawText(Canvas, Text, Rect, TS, UseRightToLeft);
 end;
 
-procedure TntvThemePainter.DrawButtonText(Canvas: TCanvas; Text: string; ImageWidth: Integer; Rect: TRect; States: TdrawStates; UseRightToLeft: Boolean);
+procedure TntvTheme.DrawButtonText(Canvas: TCanvas; Text: string; ImageWidth: Integer; Rect: TRect; States: TdrawStates; UseRightToLeft: Boolean);
 var
   TS: TTextStyle;
 begin
@@ -190,38 +301,38 @@ begin
   end;
 end;
 
-procedure TntvThemePainter.DrawButtonEdge(Canvas: TCanvas; Rect: TRect; States: TdrawStates);
+procedure TntvTheme.DrawButtonEdge(Canvas: TCanvas; Rect: TRect; States: TdrawStates);
 begin
   if not (pdsDown in States) then
   begin
-    Canvas.Pen.Color := RaisedColor;
+    Canvas.Pen.Color := Separator.Foreground;
     Canvas.MoveTo(Rect.Left, Rect.Bottom - 1);
     Canvas.LineTo(Rect.Left, Rect.Top);
     Canvas.LineTo(Rect.Right - 1, Rect.Top);
-    Canvas.Pen.Color := LoweredColor;
+    Canvas.Pen.Color := Separator.Background;
     Canvas.LineTo(Rect.Right - 1, Rect.Bottom - 1);
     Canvas.LineTo(Rect.Left, Rect.Bottom - 1);
   end
   else
   begin
-    Canvas.Pen.Color := RaisedColor;
+    Canvas.Pen.Color := Separator.Foreground;
     Canvas.MoveTo(Rect.Left, Rect.Bottom - 1);
     Canvas.LineTo(Rect.Left, Rect.Top);
     Canvas.LineTo(Rect.Right - 1, Rect.Top);
-    Canvas.Pen.Color := LoweredColor;
+    Canvas.Pen.Color := Separator.Background;
     Canvas.LineTo(Rect.Right - 1, Rect.Bottom - 1);
     Canvas.LineTo(Rect.Left, Rect.Bottom - 1);
   end;
 end;
 
-procedure TntvThemePainter.DrawButton(Canvas: TCanvas; Text: string; ImageWidth: Integer; Rect: TRect; States: TdrawStates; UseRightToLeft: Boolean);
+procedure TntvTheme.DrawButton(Canvas: TCanvas; Text: string; ImageWidth: Integer; Rect: TRect; States: TdrawStates; UseRightToLeft: Boolean);
 begin
   DrawButtonEdge(Canvas, Rect, States);
   InflateRect(Rect, -1 , -1);
   DrawButtonText(Canvas, Text, ImageWidth, Rect, States, UseRightToLeft);
 end;
 
-procedure TntvThemePainter.DrawImage(Canvas: TCanvas; ImageList: TImageList; ImageIndex: TImageIndex; Rect: TRect; States: TdrawStates);
+procedure TntvTheme.DrawImage(Canvas: TCanvas; ImageList: TImageList; ImageIndex: TImageIndex; Rect: TRect; States: TdrawStates);
 var
   X, Y: integer;
 begin
@@ -230,7 +341,7 @@ begin
   ImageList.Draw(Canvas, x, y, ImageIndex, gdeNormal);
 end;
 
-procedure TntvThemePainter.DrawRect(Canvas: TCanvas; const Rect: TRect; Color, BorderColor: TColor);
+procedure TntvTheme.DrawRect(Canvas: TCanvas; const Rect: TRect; Color, BorderColor: TColor);
 begin
   Canvas.Pen.Color := BorderColor;
   Canvas.MoveTo(Rect.Left, Rect.Bottom - 1);
@@ -244,24 +355,55 @@ end;
 
 procedure TntvThemeEngine.Switched;
 begin
+  Notify;
 end;
 
 constructor TntvThemeEngine.Create;
 begin
   inherited;
-  FPainters := TntvThemePainters.Create;
-  FPainters.Add(TntvThemePainter.Create(Self, 'Standard'));
-  FPainter := FPainters[0];
+  FNotifyComponents := TComponentList.Create(False);
+  FThemes  := TntvThemes.Create;
+  FThemes.Add(TntvTheme.Create(Self, 'Standard'));
+  FTheme := FThemes[0];
   Switched;
 end;
 
 destructor TntvThemeEngine.Destroy;
 begin
-  FreeAndNil(FPainters);
+  FreeAndNil(FThemes);
+  FreeAndNil(FNotifyComponents);
   inherited Destroy;
 end;
 
+procedure TntvThemeEngine.AddNotification(AComponent: TComponent);
+begin
+  FNotifyComponents.Add(AComponent);
+end;
+
+procedure TntvThemeEngine.RemoveNotification(AComponent: TComponent);
+begin
+  FNotifyComponents.Remove(AComponent);
+end;
+
+procedure TntvThemeEngine.Correct;
+begin
+  Theme.Correct;
+end;
+
+procedure TntvThemeEngine.Notify;
+var
+  i: Integer;
+begin
+  for i := 0 to FNotifyComponents.Count -1 do
+  begin
+    if FNotifyComponents[i] is IThemeNotify then
+    begin
+      (FNotifyComponents[i] as IThemeNotify).InvalidateTheme;
+    end;
+  end;
+end;
+
 finalization
-  FreeAndNil(FntvTheme);
+  FreeAndNil(FThemeEngine);
 end.
 

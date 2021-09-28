@@ -5,7 +5,7 @@ unit Unit1;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Grids, Menus,
+  Windows, Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, Grids, Menus,
   DBGrids, ExtCtrls, ntvGrids;
 
 type
@@ -17,6 +17,7 @@ type
     Button2: TButton;
     Button3: TButton;
     Button4: TButton;
+    Button5: TButton;
     CellsSelectChk: TCheckBox;
     ClearBtn1: TButton;
     SetCountBtn: TButton;
@@ -34,6 +35,7 @@ type
     procedure Button2Click(Sender: TObject);
     procedure Button3Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
+    procedure Button5Click(Sender: TObject);
     procedure CellsSelectChkChange(Sender: TObject);
     procedure ClearBtn1Click(Sender: TObject);
     procedure ClearBtnClick(Sender: TObject);
@@ -103,7 +105,7 @@ begin
   Grid.Fringe := True;
   Grid.PopupMenu := PopupMenu1;
   Grid.FullHeader := true;
-  Grid.AnchorCols := 2;
+  Grid.StubCols := 2;
   Grid.BorderStyle := bsSingle;
   Grid.FixedCols := 1;
 
@@ -155,6 +157,11 @@ begin
   //Grid.ColumnsCount := 3;
 end;
 
+procedure TForm1.Button5Click(Sender: TObject);
+begin
+  DrawFocusRect(Grid.Canvas.Handle, Rect(10, 10, 100, 100));
+end;
+
 procedure TForm1.CellsSelectChkChange(Sender: TObject);
 begin
   if CellsSelectChk.Checked then
@@ -179,7 +186,7 @@ end;
 
 procedure TForm1.SetCountBtn1Click(Sender: TObject);
 begin
-  Grid.AnchorCols := 1;
+  Grid.StubCols := 1;
 end;
 
 procedure TForm1.SetCountBtn2Click(Sender: TObject);
@@ -203,4 +210,3 @@ begin
 end;
 
 end.
-

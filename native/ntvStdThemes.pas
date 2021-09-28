@@ -20,7 +20,7 @@ type
 
   { TntvStdThemePainter }
 
-  TntvStdThemePainter = class(TntvThemePainter)
+  TntvStdThemePainter = class(TntvTheme)
   private
   public
   end;
@@ -29,7 +29,6 @@ implementation
 
 uses
   Types;
-
 
 end.
 

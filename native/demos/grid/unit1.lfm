@@ -7,7 +7,7 @@ object Form1: TForm1
   ClientHeight = 404
   ClientWidth = 728
   OnCreate = FormCreate
-  LCLVersion = '2.1.0.0'
+  LCLVersion = '2.3.0.0'
   object Panel1: TPanel
     Left = 602
     Height = 404
@@ -133,6 +133,15 @@ object Form1: TForm1
       Caption = 'Cells Select'
       OnChange = CellsSelectChkChange
       TabOrder = 10
+    end
+    object Button5: TButton
+      Left = 32
+      Height = 25
+      Top = 320
+      Width = 75
+      Caption = 'B&utton5'
+      OnClick = Button5Click
+      TabOrder = 11
     end
   end
   object ClientPnl: TPanel

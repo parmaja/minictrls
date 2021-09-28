@@ -176,7 +176,7 @@ begin
 
   if Active then
   begin
-    Canvas.Brush.Color := ntvTheme.Painter.ActiveColor;
+    Canvas.Brush.Color := Theme.Active.Background;
     Canvas.Brush.Style := bsSolid;
     Canvas.FillRect(ClientRect);
   end
@@ -202,7 +202,7 @@ begin
       aCaptionRect.Left := aCaptionRect.Left + aImageWidth;
       aRect.Right := aCaptionRect.Left;
     end;
-    ntvTheme.Painter.DrawButton(Canvas, Caption, aImageWidth, aCaptionRect, DrawStates(Enabled, Down, False), UseRightToLeftAlignment);
+    Theme.DrawButton(Canvas, Caption, aImageWidth, aCaptionRect, DrawStates(Enabled, Down, False), UseRightToLeftAlignment);
   end;
 
   if aImageWidth <> 0 then
@@ -211,7 +211,7 @@ begin
     begin
       if Down then
         OffsetRect(aRect, 1, 1);
-      ntvTheme.Painter.DrawImage(Canvas, FImages, FImageIndex, aRect, DrawStates(Enabled, Down, False));
+      Theme.DrawImage(Canvas, FImages, FImageIndex, aRect, DrawStates(Enabled, Down, False));
     end
   end;
 end;
