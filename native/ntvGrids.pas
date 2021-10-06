@@ -244,7 +244,6 @@ type
     FCurRow: Integer;
     FCurCol: Integer;
     FGridLines: TntvGridLines;
-    FLinesColor: TColor;
   protected
     procedure GetChildren(Proc: TGetChildProc; Root: TComponent); override;
     function GetChildOwner: TComponent; override;
@@ -261,7 +260,6 @@ type
     property Capacity: Integer read FCapacity write FCapacity default 10000;
     property VerticalJump: Boolean read FVerticalJump write FVerticalJump default False;
     property GridLines: TntvGridLines read FGridLines write FGridLines;
-    property LinesColor: TColor read FLinesColor write FLinesColor default clBtnShadow;
     property OddColor: TColor read FOddColor write FOddColor default clMoneyGreen;
     property EvenColor: TColor read FEvenColor write FEvenColor default clWindow;
     property AnchorColor: TColor read FAnchorColor write FAnchorColor default $00EAEAEA;
@@ -2781,7 +2779,7 @@ procedure TntvCustomGrid.DrawGridLines(Canvas: TCanvas; vRect: TRect; Both: Bool
 begin
   if Both or (GridLines in [glHorizontal, glBoth]) then
   begin
-    Canvas.Pen.Color := Theme.Separator.Foreground;
+    Canvas.Pen.Color := Theme.GetLineColor;
     Canvas.Pen.Style := psSolid;
     if UseRightToLeftAlignment then
     begin
@@ -2797,7 +2795,7 @@ begin
 
   if Both or (GridLines in [glVertical, glBoth]) then
   begin
-    Canvas.Pen.Color := Theme.Separator.Foreground;
+    Canvas.Pen.Color := Theme.GetLineColor;
     Canvas.Pen.Style := psSolid;
     if UseRightToLeftAlignment then
     begin
@@ -5108,7 +5106,6 @@ end;
 
 procedure TntvCustomGrid.DrawFixed(Canvas: TCanvas; vRect: TRect; S: String; vDrawState: TntvCellDrawState);
 begin
-  //Canvas.Pen.Color := MixColors(Theme.Header.Background, clBlack, 150);
   Canvas.Pen.Color := Theme.Separator.Foreground;
   Canvas.Pen.Style := psSolid;
   Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
@@ -5152,12 +5149,12 @@ begin
   end
   else
   begin
-    Canvas.Pen.Color := clLtGray;
+    Canvas.Pen.Color := Theme.Separator.Foreground;
     Canvas.Pen.Style := psSolid;
     Canvas.MoveTo(vRect.Left, vRect.Bottom - 1);
     Canvas.LineTo(vRect.Right - 1, vRect.Bottom - 1);
     Canvas.LineTo(vRect.Right - 1, vRect.Top);
-    Canvas.Pen.Color := clBtnShadow;
+    Canvas.Pen.Color := Theme.Separator.Background;
     Canvas.LineTo(vRect.Left, vRect.Top);
     Canvas.LineTo(vRect.Left, vRect.Bottom - 1);
   end;
@@ -6387,7 +6384,6 @@ begin
   FCurRow := -1;
   FCurCol := -1;
   FGridLines := glBoth;
-  FLinesColor := clBtnShadow;
 end;
 
 function TntvGridProperty.GetChildOwner: TComponent;

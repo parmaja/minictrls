@@ -55,9 +55,6 @@ type
 
   TntvTabDraw = class abstract(TObject)
   public
-
-    function GetEdgeColor: TColor;
-    function GetUnactiveColor: TColor;
     function GetWidth(State: TTabDrawStates; vTabsRect: TRect; Width: Integer): Integer; virtual; abstract;
     procedure PaintText(vItem: TntvTabItem; Canvas:TCanvas; vRect: TRect; vPosition: TntvTabPosition; State: TTabDrawStates ; vFlags: TntvFlags); virtual;
     {
@@ -231,16 +228,6 @@ end;
 
 { TntvTabDraw }
 
-function TntvTabDraw.GetEdgeColor: TColor;
-begin
-  Result := MixColors(Theme.Default.Foreground, Theme.Panel.Background, 100);
-end;
-
-function TntvTabDraw.GetUnactiveColor: TColor;
-begin
-  Result := MixColors(Theme.Default.Background, Theme.Panel.Background, 100);
-end;
-
 procedure TntvTabDraw.PaintText(vItem: TntvTabItem; Canvas: TCanvas; vRect: TRect; vPosition: TntvTabPosition; State: TTabDrawStates; vFlags: TntvFlags);
 var
   aTextStyle: TTextStyle;
@@ -251,7 +238,7 @@ begin
     if tdsActive in State then
       Brush.Color := Theme.Default.Background
     else
-      Brush.Color := GetUnactiveColor;
+      Brush.Color := Theme.GetUnactiveColor;
     aTextStyle.Layout := tlCenter;
     aTextStyle.Alignment := taCenter;
     if tbfRightToLeft in vFlags then
@@ -348,7 +335,7 @@ var
       if (tdsNear in vState) and (tdsAfter in vState) then
         Brush.Color := Theme.Default.Background
       else
-        Brush.Color := GetUnactiveColor;
+        Brush.Color := Theme.GetUnactiveColor;
 
       if tbfRightToLeft in vFlags then
       begin
@@ -370,7 +357,7 @@ var
       Pen.Color := Brush.Color;
       Polygon(points.p, points.Count);
 
-      Pen.Color := GetEdgeColor;
+      Pen.Color := Theme.GetEdgeColor;
       MyPolyline(canvas, points.p, points.Count -1);
     end;
   end;
@@ -416,9 +403,9 @@ begin
     if tdsActive in vState then
       Brush.Color := Theme.Default.Background
     else
-      Brush.Color := GetUnactiveColor;
+      Brush.Color := Theme.GetUnactiveColor;
 
-    Pen.Color := GetEdgeColor;
+    Pen.Color := Theme.GetEdgeColor;
 
     if tbfRightToLeft in vFlags then
     begin
@@ -452,7 +439,7 @@ begin
     Polygon(points.p, points.Count);
 
     //Draw Border
-    Pen.Color := GetEdgeColor;
+    Pen.Color := Theme.GetEdgeColor;
 
     if (tdsLast in vState) then
       MyPolyline(canvas, points.p, points.Count)
@@ -964,7 +951,7 @@ begin
     if tdsActive in vState then
       Brush.Color := Theme.Default.Background
     else
-      Brush.Color := GetUnactiveColor;
+      Brush.Color := Theme.GetUnactiveColor;
     Brush.Style := bsSolid;
     FillRect(aGapRect);
 
@@ -972,7 +959,7 @@ begin
     InflateRect(aTextRect, -2, -2);
 
     Pen.Style := psSolid;
-    Pen.Color := GetEdgeColor;
+    Pen.Color := Theme.GetEdgeColor;
     if vPosition = tbpTop then
     begin
       if tbfRightToLeft in vFlags then

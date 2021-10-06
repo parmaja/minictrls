@@ -12,7 +12,7 @@ interface
 
 uses
   Classes, Controls, SysUtils, Contnrs, Graphics, ImgList, GraphType,
-  mnClasses,
+  mnClasses, ColorUtils,
   LCLType, LCLIntf;
 
 type
@@ -76,6 +76,10 @@ type
   public
     constructor Create(AEngine: TntvThemeEngine; AName: string); virtual;
     procedure Correct;
+    function GetEdgeColor: TColor;
+    function GetLineColor: TColor; //for grids
+    function GetUnactiveColor: TColor;
+
     procedure DrawText(Canvas: TCanvas; Text: string; Rect: TRect; Style: TTextStyle; UseRightToLeft: Boolean); virtual;
     procedure DrawText(Canvas: TCanvas; Text: string; Rect: TRect; UseRightToLeft: Boolean = False);
     procedure DrawRect(Canvas: TCanvas; const Rect: TRect; Color, BorderColor: TColor); virtual;
@@ -241,6 +245,22 @@ end;
 
 procedure TntvTheme.Correct;
 begin
+end;
+
+function TntvTheme.GetEdgeColor: TColor;
+begin
+  Result := MixColors(Default.Foreground, Theme.Panel.Background, 100);
+end;
+
+function TntvTheme.GetLineColor: TColor;
+begin
+  Result := MixColors(Default.Foreground, Theme.Default.Background, 100);
+end;
+
+function TntvTheme.GetUnactiveColor: TColor;
+begin
+  Result := MixColors(Theme.Default.Background, Theme.Panel.Background, 100);
+
 end;
 
 procedure TntvTheme.DrawText(Canvas: TCanvas; Text: string; Rect: TRect; Style: TTextStyle; UseRightToLeft: Boolean);
