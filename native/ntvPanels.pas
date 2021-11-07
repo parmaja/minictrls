@@ -86,6 +86,7 @@ type
 
   TntvPanel = class(TntvCustomPanel)
   published
+    property OnResize;
     property Anchors;
     property Align;
     property Color;

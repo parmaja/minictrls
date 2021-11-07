@@ -115,7 +115,7 @@ const
     'notnull,null,of,offset,on,or,order,outer,plan,pragma,primary,query,raise,'+
     'references,regexp,reindex,release,rename,replace,restrict,right,rollback,'+
     'row,savepoint,select,set,table,temp,temporary,then,to,transaction,trigger,'+
-    'union,unique,update,using,vacuum,values,view,virtual,when,where';
+    'union,unique,update,using,vacuum,values,view,virtual,with,when,where';
 
   // functions
   StdSQLFunctions =
@@ -123,7 +123,7 @@ const
     'abs,changes,coalesce,ifnull,hex,last_insert_rowid,length,'+
     'load_extension,lower,ltrim,nullif,quote,random,randomblob,round,rtrim,'+
     'soundex,StdSQL_version,substr,total_changes,trim,typeof,upper,zeroblob,'+
-    'date,time,datetime,julianday,strftime';
+    'date,time,datetime,julianday,strftime,split_part,SubString';
 
   // types
   StdSQLTypes = 'blob,char,character,decimal,double,float,boolean,real,integer,' +
