@@ -18,7 +18,7 @@
     </CompilerOptions>
     <Description Value="MiniCtrls Lazarus library"/>
     <Version Major="1"/>
-    <Files Count="20">
+    <Files Count="21">
       <Item1>
         <Filename Value="PHPUtils.pas"/>
         <UnitName Value="PHPUtils"/>
@@ -88,17 +88,21 @@
         <UnitName Value="mnSynHighlighterGo"/>
       </Item17>
       <Item18>
-        <Filename Value="syn/mnSynHighlighterSARD.pas"/>
-        <UnitName Value="mnSynHighlighterSARD"/>
-      </Item18>
-      <Item19>
         <Filename Value="syn/GoKeywords.inc"/>
         <Type Value="Include"/>
+      </Item18>
+      <Item19>
+        <Filename Value="syn/mnSynHighlighterSARD.pas"/>
+        <UnitName Value="mnSynHighlighterSARD"/>
       </Item19>
       <Item20>
         <Filename Value="syn/mnSynHighlighterLSL.pas"/>
         <UnitName Value="mnSynHighlighterLSL"/>
       </Item20>
+      <Item21>
+        <Filename Value="syn/mnSynHighlighterBVH.pas"/>
+        <UnitName Value="mnSynHighlighterBVH"/>
+      </Item21>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">

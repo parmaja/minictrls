@@ -13,7 +13,7 @@ uses
   mnSynHighlighterApache, mnSynHighlighterConfig, mnSynHighlighterCpp, 
   mnSynHighlighterD, mnSynHighlighterFirebird, mnSynHighlighterLua, 
   mnSynHighlighterMultiProc, mnSynHighlighterGo, mnSynHighlighterSARD, 
-  mnSynHighlighterLSL, LazarusPackageIntf;
+  mnSynHighlighterLSL, mnSynHighlighterBVH, LazarusPackageIntf;
 
 implementation
 
