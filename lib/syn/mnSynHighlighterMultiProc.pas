@@ -497,6 +497,8 @@ begin
     rscStringSQ: iCloseChar := '''';
     rscStringDQ: iCloseChar := '"';
     rscStringBQ: iCloseChar := '`';
+    else
+      raise Exception.Create('Syntax, Not a string');
   end;
 
   while not (Parent.FLine[Parent.Run] in [#0, #10, #13]) do

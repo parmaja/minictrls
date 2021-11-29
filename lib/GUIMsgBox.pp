@@ -538,7 +538,7 @@ begin
 end;
 
 initialization
-  Msg.Register(TGUIMsgBox, True);
+  MsgBox.Register(TGUIMsgBox, True);
 finalization
 end.
 
