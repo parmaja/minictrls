@@ -39,7 +39,7 @@ implementation
 
 procedure Register;
 begin
-  RegisterComponents('Native', [TntvDotMatrix, TntvTextDotMatrix, TntvProgressBar, TntvImgBtn,
+  RegisterComponents('Mini', [TntvDotMatrix, TntvTextDotMatrix, TntvProgressBar, TntvImgBtn,
     TntvTabSet, TntvPageControl, TntvSplitter, TntvPanel, TntvGrid, TntvBoard, TntvPixelGrid, TntvEdit]);
   RegisterComponentEditor(TntvCustomTabSet, TntvTabSetEditor);
 end;

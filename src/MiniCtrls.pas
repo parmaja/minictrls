@@ -13,12 +13,16 @@ uses
   mnSynHighlighterApache, mnSynHighlighterConfig, mnSynHighlighterCpp, 
   mnSynHighlighterD, mnSynHighlighterFirebird, mnSynHighlighterLua, 
   mnSynHighlighterMultiProc, mnSynHighlighterGo, mnSynHighlighterSARD, 
-  mnSynHighlighterLSL, mnSynHighlighterBVH, LazarusPackageIntf;
+  mnSynHighlighterLSL, mnSynHighlighterBVH, ntvBoard, ntvCtrls, ntvDotMatrix, 
+  ntvGrids, ntvImgBtns, ntvPageControls, ntvPanels, ntvPixelGrids, 
+  ntvProgressBars, ntvRegCtrls, ntvSplitters, ntvStdThemes, ntvTabs, 
+  ntvTabSets, ntvThemes, ntvUtils, LazarusPackageIntf;
 
 implementation
 
 procedure Register;
 begin
+  RegisterUnit('ntvRegCtrls', @ntvRegCtrls.Register);
 end;
 
 initialization
