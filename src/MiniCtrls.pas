@@ -16,7 +16,8 @@ uses
   mnSynHighlighterLSL, mnSynHighlighterBVH, ntvBoard, ntvCtrls, ntvDotMatrix, 
   ntvGrids, ntvImgBtns, ntvPageControls, ntvPanels, ntvPixelGrids, 
   ntvProgressBars, ntvRegCtrls, ntvSplitters, ntvStdThemes, ntvTabs, 
-  ntvTabSets, ntvThemes, ntvUtils, LazarusPackageIntf;
+  ntvTabSets, ntvThemes, ntvUtils, CSVOptionsForms, ParamsForms, 
+  LazarusPackageIntf;
 
 implementation
 

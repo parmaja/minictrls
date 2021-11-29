@@ -7,7 +7,8 @@
     <CompilerOptions>
       <Version Value="11"/>
       <SearchPaths>
-        <OtherUnitFiles Value=".;syn"/>
+        <IncludeFiles Value="db"/>
+        <OtherUnitFiles Value=".;syn;db"/>
         <UnitOutputDirectory Value="units/$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Other>
@@ -18,7 +19,7 @@
     </CompilerOptions>
     <Description Value="MiniCtrls Lazarus library"/>
     <Version Major="1"/>
-    <Files Count="38">
+    <Files Count="42">
       <Item1>
         <Filename Value="PHPUtils.pas"/>
         <UnitName Value="PHPUtils"/>
@@ -172,18 +173,37 @@
         <Filename Value="ntvUtils.pas"/>
         <UnitName Value="ntvUtils"/>
       </Item38>
+      <Item39>
+        <Filename Value="db/CSVOptionsForms.lfm"/>
+        <Type Value="LFM"/>
+      </Item39>
+      <Item40>
+        <Filename Value="db/CSVOptionsForms.pas"/>
+        <UnitName Value="CSVOptionsForms"/>
+      </Item40>
+      <Item41>
+        <Filename Value="db/ParamsForms.lfm"/>
+        <Type Value="LFM"/>
+      </Item41>
+      <Item42>
+        <Filename Value="db/ParamsForms.pas"/>
+        <UnitName Value="ParamsForms"/>
+      </Item42>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="3">
+    <RequiredPkgs Count="4">
       <Item1>
-        <PackageName Value="IDEIntf"/>
+        <PackageName Value="MiniConnections"/>
       </Item1>
       <Item2>
-        <PackageName Value="MiniCommons"/>
+        <PackageName Value="MiniLib"/>
       </Item2>
       <Item3>
-        <PackageName Value="SynEdit"/>
+        <PackageName Value="IDEIntf"/>
       </Item3>
+      <Item4>
+        <PackageName Value="SynEdit"/>
+      </Item4>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>
