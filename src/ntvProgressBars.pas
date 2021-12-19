@@ -231,10 +231,10 @@ begin
 end;
 
 procedure TntvProgressBar.RedrawBorder(const Clip: HRGN);
-var
+{var
   DC: HDC;
   RW: TRect;
-  OldDC: HDC;
+  OldDC: HDC;}
 begin
   {if (BorderStyle <> ibsNone) then
   begin

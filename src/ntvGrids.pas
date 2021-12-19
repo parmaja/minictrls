@@ -19,7 +19,7 @@ unit ntvGrids;
 interface
 
 uses
-  Windows,
+  //Windows,
   SysUtils, Variants, Messages, Classes, Graphics, Controls,
   LCLType, LCLIntf, LMessages, fgl, mnLogs, ntvThemes,
   StdCtrls, Dialogs, Math, Menus, Forms, ImgList, Contnrs,
@@ -3059,10 +3059,7 @@ begin
       if Focused and IsCurrent(vRow, vrtCol) then
       begin
         Include(aDrawState, csdFocused);
-        OutputDebugString(PAnsiChar('not IsCurrent' + IntToStr(vrtCol)));
-      end
-      else
-        OutputDebugString(PAnsiChar('IsCurrent'));
+      end;
     end;
 
     VisibleColumns[vrtCol].Column.Draw(Canvas, aDrawState, vRow, vrtCol, aCellRect, vArea);
