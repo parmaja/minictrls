@@ -69,7 +69,8 @@ const
   cLSLSample =  '/**'
                 +'    This examples are worked, and this comment will ignored, not compiled or parsed as we say.'#13
                 +'  */'#13
-                +'//Single Line comment'#13
+                +'//* Single Line documentation'#13
+                +'// Single Line comment'#13
                 +'key avatar;'#13
                 +'/* integer count;'#13
                 +'integer isExist = TRUE; */'#13
@@ -1676,7 +1677,11 @@ begin
   case Parent.FLine[Parent.Run] of
     '/':
       begin
-        SLCommentProc;
+        Inc(Parent.Run);
+        if Parent.FLine[Parent.Run] = '*' then
+          SLDocumentProc
+        else
+          SLCommentProc;
       end;
     '*':
       begin
