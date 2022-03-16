@@ -8,7 +8,7 @@ unit mnSynHighlighterConfig;
  * @url       http://www.sourceforge.net/projects/minilib
  * @license   modifiedLGPL (modified of http://www.gnu.org/licenses/lgpl.html)
  *            See the file COPYING.MLGPL, included in this distribution,
- * @author    Zaher Dirkey <zaher at parmaja dot com>
+ * @author    Zaher Dirkey
  *}
 
 interface
@@ -19,10 +19,10 @@ uses
 
 
 type
-  TtkTokenKind = (tkKey, tkSubKey, tkSection, tkText, tkComment, tkDocument, tkNull, tkNumber,
+  TtkTokenKind = (tkNone, tkKey, tkSubKey, tkSection, tkText, tkComment, tkDocument, tkNull, tkNumber,
     tkSpace, tkString, tkSymbol, tkUnknown);
 
-  TSynConfRange = (cnfrKey, cnfrSubKey, cnfrValue, cnfrSection);
+  TSynConfRange = (cnfrNone, cnfrKey, cnfrSubKey, cnfrValue, cnfrSection);
 
   { TSynConfigSyn }
 
@@ -162,8 +162,8 @@ begin
   inherited;
   FLine := PChar(NewValue);
   Run := 0;
-  FRange := cnfrKey;
-  FTokenID := tkKey;
+  FRange := cnfrNone;
+  FTokenID := tkNone;
   Next;
 end;
 
@@ -186,14 +186,23 @@ end;
 
 procedure TSynConfigSyn.BSSectionOpenProc;
 begin
-  FTokenID := tkSection;
-  inc(Run);
-  while FLine[Run] <> #0 do
-    case FLine[Run] of
-      #10: break;
-      #13: break;
-    else inc(Run);
-    end;
+  if FRange = cnfrNone then
+  begin
+    FTokenID := tkSection;
+    inc(Run);
+    while FLine[Run] <> #0 do
+      case FLine[Run] of
+        #10: break;
+        #13: break;
+      else
+        inc(Run);
+      end;
+  end
+  else
+  begin
+    FTokenID := tkSymbol;
+    inc(Run);
+  end;
 end;
 
 procedure TSynConfigSyn.CRProc;
@@ -326,7 +335,7 @@ end;
 // ""
 procedure TSynConfigSyn.DQStringProc;
 begin
-  if FRange = cnfrKey then
+  if FRange in [cnfrNone, cnfrKey] then
     FTokenID := tkKey
   else if FRange = cnfrSubKey then
     FTokenID := tkSubKey
@@ -348,7 +357,7 @@ end;
 // ''
 procedure TSynConfigSyn.SQStringProc;
 begin
-  if FRange = cnfrKey then
+  if FRange in [cnfrNone, cnfrKey] then
     FTokenID := tkKey
   else if FRange = cnfrSubKey then
     FTokenID := tkSubKey
@@ -464,7 +473,7 @@ end;
 procedure TSynConfigSyn.ResetRange;
 begin
   inherited;
-  FRange := cnfrKey;
+  FRange := cnfrNone;
 end;
 
 class function TSynConfigSyn.GetLanguageName: string;
