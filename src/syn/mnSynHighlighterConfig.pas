@@ -268,7 +268,10 @@ begin
   else
   begin
     FTokenID := tkText;
-    inc(Run);
+    Inc(Run);
+    while (FLine[Run] in [#128..#191]) OR // continued utf8 subcode
+     ((FLine[Run] <> #0) and (FProcTable[FLine[Run]] = @TextProc)) do
+       Inc(Run);
   end;
 end;
 
