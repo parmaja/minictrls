@@ -208,10 +208,9 @@ begin
   else begin
     FTokenID := tkText;
     inc(Run);
-    while FLine[Run] <> #0 do
-      if FLine[Run] in ['a'..'z', 'A'..'Z', '0'..'9', '_'] then
-        inc(Run)
-      else break;
+    while (FLine[Run] in [#128..#191]) or
+     ((FLine[Run] <> #0) and (FProcTable[FLine[Run]] = @TextProc)) do
+       Inc(Run);
   end;
 end;
 
@@ -233,8 +232,10 @@ begin
   else begin
     inc(Run);
     FTokenID := tkNumber;
-    while FLine[Run] in ['0'..'9', '.', 'e', 'E'] do inc(Run);
-    if FLine[Run] in ['a'..'z','A'..'Z'] then TextProc;
+    while FLine[Run] in ['0'..'9', '.', 'e', 'E'] do
+      inc(Run);
+    if FLine[Run] in ['a'..'z','A'..'Z'] then
+      TextProc;
   end;
 end;
 

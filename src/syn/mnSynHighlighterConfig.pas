@@ -42,6 +42,7 @@ type
     FSpaceAttri: TSynHighlighterAttributes;
     FStringAttri: TSynHighlighterAttributes;
     FSymbolAttri: TSynHighlighterAttributes;
+    procedure TextProc;
     procedure BracketSectionOpenProc;
     procedure BSSectionOpenProc;
     procedure LFProc;
@@ -54,7 +55,6 @@ type
     procedure EqualProc;
     procedure ParamProc;
     procedure DotProc;
-    procedure TextProc;
     procedure NumberProc;
     procedure DQStringProc;  // ""
     procedure SQStringProc; // ''
@@ -438,7 +438,8 @@ begin
     tkString : Result := FStringAttri;
     tkSymbol : Result := FSymbolAttri;
     tkUnknown: Result := FTextAttri;
-    else Result := nil;
+    else
+      Result := nil;
   end;
 end;
 

@@ -19,7 +19,9 @@ function GrayLevelColor(const Color: TColor): Integer;
 function IsDarkColor(const Color: TColor): Boolean;
 
 //Bring Black or White depend on the color passed
-function OppositeColor(const Color: TColor): TColor;
+function ContrastColor(const Color: TColor): TColor;
+//TODO get same color but suite the other brighness amount
+//function OppositeColor(const Color: TColor): TColor;
 
 implementation
 
@@ -58,7 +60,6 @@ var
   W2: Cardinal;
   C1, C2: Cardinal;
 begin
-  Assert(W1 in [0..255]);
   W2 := W1 xor 255;
   C1 := ColorToRgb(Color1);
   C2 := ColorToRgb(Color2);
@@ -107,7 +108,7 @@ begin
 	Result :=  RGBToColor(255 - Red(Color), 255 - Green(Color), 255 - Blue(Color)) ;
 end;
 
-//Taked from http://www.delphigroups.info/2/10/314913.html
+//from http://www.delphigroups.info/2/10/314913.html
 function GrayLevelColor(const Color: TColor): Integer;
 begin
   Result := (77 * (Color and $FF) + 151 * (Color shr 8 and $FF) + 28 * (Color shr 16 and $FF)) shr 8;
@@ -118,7 +119,7 @@ begin
   Result := GrayLevelColor(Color) < 128;
 end;
 
-function OppositeColor(const Color: TColor): TColor;
+function ContrastColor(const Color: TColor): TColor;
 begin
   if IsDarkColor(Color) then
     Result := clWhite
