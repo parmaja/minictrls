@@ -142,9 +142,6 @@ function FindFunctionName(Sender: TObject; Editor: TCustomSynEdit; out AString: 
 
 implementation
 
-const
-    ecSynShowParamsExecute = ecPluginFirstCompletion +  2;
-
 //* ported from Delphi version of SynEdit example
 //TODO need to bypass string " or ' with escape
 function FindFunctionName(Sender: TObject; Editor: TCustomSynEdit; out AString: string; out charIndex, AIndex: Integer; LookupCallback: TLookupCallback): Boolean;
@@ -267,7 +264,7 @@ begin
   inherited;
   FParenChr := '()';
   FShortCut := Menus.ShortCut(Ord(' '), [ssCtrl, ssShift]);
-  FExecCommandID := ecSynShowParamsExecute;
+  FExecCommandID := AllocatePluginKeyRange(1);
   FHint := TSynBaseHint.Create(Self);
   FHint.FParamsHint := Self;
   FHint.FormStyle := fsSystemStayOnTop;
