@@ -68,10 +68,9 @@ type
                              KeyChar: TUTF8Char;
                              Shift: TShiftState) of object;
   TSynBaseCompletionSearchPosition = procedure(var APosition :integer) of object;
-  
-  TSynBaseCompletionForm = class;
+
   TSynVirtualCompletionForm = class;
-  
+
   { TSynBaseCompletionHint }
 
   TSynBaseCompletionHint = class(THintWindow)
@@ -257,39 +256,10 @@ type
 
   TSynVirtualCompletionFormClass = class of TSynVirtualCompletionForm;
 
-  { TSynBaseCompletionForm }
-
-  TSynBaseCompletionForm = class(TSynVirtualCompletionForm)
-  private
-    FItemList: TStrings;
-  protected
-    procedure StringListChange(Sender: TObject);
-
-    function GetItemText(Index: Integer): string; override;
-    function GetItemDisplay(Index: Integer): string; override;
-    function GetItemsCount: Integer; override;
-
-    procedure SetItemList(const Value: TStrings);
-  public
-    constructor Create(AOwner: Tcomponent); override;
-    destructor Destroy; override;
-    property ItemList: TStrings read FItemList write SetItemList;
-  end;
-
-  TSynBaseCompletionFormClass = class of TSynBaseCompletionForm;
-
-  { TSynCompletionForm }
-
-  TSynCompletionForm = class(TSynBaseCompletionForm)
-  protected
-    procedure AddCharAtCursor(AUtf8Char: TUTF8Char); override;
-    procedure DeleteCharAfterCursor; override;
-    procedure DeleteCharBeforeCursor; override;
-  end;
-
   { TSynVirtualCompletion }
 
   TSynVirtualCompletion = class;
+
   TOnBeforeExeucteFlag = (befAbort);
   TOnBeforeExeucteFlags = set of TOnBeforeExeucteFlag;
 
@@ -351,7 +321,7 @@ type
     procedure SetOnKeyPrevChar(const AValue: TNotifyEvent);
   protected
     procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); virtual;
-    function GetFormClass: TSynVirtualCompletionFormClass; virtual; abstract;
+    function GetCompletionFormClass: TSynVirtualCompletionFormClass; virtual; abstract;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -407,6 +377,34 @@ type
 
   TSynBaseCompletion = class;
 
+  { TSynBaseCompletionForm }
+
+  TSynBaseCompletionForm = class(TSynVirtualCompletionForm)
+  private
+    FItemList: TStrings;
+  protected
+    procedure StringListChange(Sender: TObject);
+
+    function GetItemText(Index: Integer): string; override;
+    function GetItemDisplay(Index: Integer): string; override;
+    function GetItemsCount: Integer; override;
+
+    procedure SetItemList(const Value: TStrings);
+  public
+    constructor Create(AOwner: Tcomponent); override;
+    destructor Destroy; override;
+    property ItemList: TStrings read FItemList write SetItemList;
+  end;
+
+  { TSynCompletionForm }
+
+  TSynCompletionForm = class(TSynBaseCompletionForm)
+  protected
+    procedure AddCharAtCursor(AUtf8Char: TUTF8Char); override;
+    procedure DeleteCharAfterCursor; override;
+    procedure DeleteCharBeforeCursor; override;
+  end;
+
   TOnBeforeExecuteEvent = procedure(
     ASender: TSynBaseCompletion;
     var ACurrentString: String;
@@ -416,29 +414,12 @@ type
   ) of object;
 
   { TSynBaseCompletion }
-
-  TSynBaseCompletion = class(TSynVirtualCompletion)
-  private
-    FOnBeforeExecute: TOnBeforeExecuteEvent;
-    function GetItemList: TStrings;
-    procedure SetItemList(AValue: TStrings);
-  protected
-    function GetCompletionFormClass: TSynBaseCompletionFormClass; virtual;
-    function GetFormClass: TSynVirtualCompletionFormClass; override; //* I used that way to keep it work old code in Lazarus IDE to not break any thing
-    procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    procedure AddItem(AText: string);
-    property ItemList: TStrings read GetItemList write SetItemList;
-    property OnBeforeExecute: TOnBeforeExecuteEvent read FOnBeforeExecute write FOnBeforeExecute;
-  end;
-
-  { TSynCompletion }
   {*
     This show dropdown list of available keywords
   *}
-  TSynCompletion = class(TSynBaseCompletion)
+  TSynBaseCompletion = class(TSynVirtualCompletion)
   private
+    FOnBeforeExecute: TOnBeforeExecuteEvent;
     FShortCut: TShortCut;
     FExecCommandID: TSynEditorCommand;
     FEndOfTokenChr: string;
@@ -460,7 +441,7 @@ type
     procedure ProcessSynCommand(Sender: TObject; AfterProcessing: boolean;
               var Handled: boolean; var Command: TSynEditorCommand;
               var AChar: TUTF8Char; Data: pointer; HandlerData: pointer);
-    function GetCompletionFormClass: TSynBaseCompletionFormClass; override;
+    procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); override;
   public
     constructor Create(AOwner: TComponent); override;
     function EditorsCount: integer; deprecated; // use EditorCount
@@ -469,8 +450,8 @@ type
 
     procedure Clear; virtual;
     procedure Sort; virtual;
-    procedure BeginUpdate;
-    procedure EndUpdate;
+    procedure BeginUpdate; virtual;
+    procedure EndUpdate; virtual;
   published
     property ShortCut: TShortCut read FShortCut write SetShortCut;
     property EndOfTokenChr: string read FEndOfTokenChr write FEndOfTokenChr;
@@ -479,6 +460,25 @@ type
     property ExecCommandID: TSynEditorCommand read FExecCommandID write FExecCommandID;
     property Editor;
     property ToggleReplaceWhole: boolean read FToggleReplacesWhole write FToggleReplacesWhole;// false=shift replaces left side, true=shift replaces whole word
+    property OnBeforeExecute: TOnBeforeExecuteEvent read FOnBeforeExecute write FOnBeforeExecute;
+  end;
+
+  { TSynCompletion }
+
+  TSynCompletion = class(TSynBaseCompletion)
+  private
+    function GetItemList: TStrings;
+    procedure SetItemList(AValue: TStrings);
+  protected
+    function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    procedure AddItem(AText: string);
+    procedure Clear; override;
+    procedure Sort; override;
+    procedure BeginUpdate; override;
+    procedure EndUpdate; override;
+    property ItemList: TStrings read GetItemList write SetItemList;
   end;
 
   { Dual }
@@ -514,7 +514,7 @@ type
     function GetInsertList: TStrings;
     procedure SetInsertList(AValue: TStrings);
   protected
-    function GetCompletionFormClass: TSynBaseCompletionFormClass; override;
+    function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
   public
     procedure Clear; override;
     procedure Sort; override;
@@ -611,6 +611,7 @@ type
     property Chunks[Index: Integer]: PFormatChunk read GetChunk; default;
   end;
 
+
 const
   AllCommands = [fcColor..High(TFormatCommand)];
   DefTabChars = 8;
@@ -661,7 +662,7 @@ begin
   (Form as TSynDualCompletionForm).InsertList.Assign(AValue);
 end;
 
-function TSynDualCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
+function TSynDualCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
 begin
   Result := TSynDualCompletionForm;
 end;
@@ -689,40 +690,49 @@ begin
   InsertList.AddObject(AInsertText, AObject);
 end;
 
-{ TSynBaseCompletion }
+{ TSynCompletion }
 
-procedure TSynBaseCompletion.AddItem(AText: string);
+procedure TSynCompletion.AddItem(AText: string);
 begin
   ItemList.Add(AText);
 end;
 
-function TSynBaseCompletion.GetItemList: TStrings;
+procedure TSynCompletion.Clear;
+begin
+  ItemList.Clear;
+end;
+
+procedure TSynCompletion.Sort;
+begin
+  (ItemList as TStringList).Sort;
+end;
+
+procedure TSynCompletion.BeginUpdate;
+begin
+  ItemList.BeginUpdate;
+end;
+
+procedure TSynCompletion.EndUpdate;
+begin
+  ItemList.EndUpdate;
+end;
+
+function TSynCompletion.GetItemList: TStrings;
 begin
   Result := (Form as TSynCompletionForm).ItemList;
 end;
 
-procedure TSynBaseCompletion.SetItemList(AValue: TStrings);
+procedure TSynCompletion.SetItemList(AValue: TStrings);
 begin
   (Form as TSynCompletionForm).ItemList := AValue;
 end;
 
-function TSynBaseCompletion.GetFormClass: TSynVirtualCompletionFormClass;
+function TSynCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
 begin
-  Result := GetCompletionFormClass;
+  Result := TSynCompletionForm;
 end;
 
-function TSynBaseCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
-begin
-  Result := TSynBaseCompletionForm;
-end;
-
-procedure TSynBaseCompletion.DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags);
-begin
-  if Assigned(FOnBeforeExecute) then
-    FOnBeforeExecute(Self, ACurrentString, APosition, AnX, AnY, AnResult);
-end;
-
-constructor TSynBaseCompletion.Create(AOwner: TComponent);
+constructor TSynCompletion.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 end;
@@ -1824,7 +1834,7 @@ procedure TSynVirtualCompletionForm.ScrollChange(Sender: TObject);
 begin
   if Position < Scroll.Position then
     Position := Scroll.Position
-  else 
+  else
   if Position > Scroll.Position + NbLinesInWindow - 1 then
     Position := Scroll.Position + NbLinesInWindow - 1;
   Invalidate;
@@ -2171,7 +2181,7 @@ constructor TSynVirtualCompletion.Create(AOwner: TComponent);
 begin
   FWidth := 262;
   inherited Create(AOwner);
-  Form := GetFormClass.Create(nil);
+  Form := GetCompletionFormClass.Create(nil); // Do not create with owner, or the designer will make it visible
   Form.Width := FWidth;
   FAutoUseSingleIdent := True;
 end;
@@ -2588,14 +2598,14 @@ begin
   c.Font.Style:=OldFontStyle;
 end;
 
-{ TSynCompletion }
+{ TSynBaseCompletion }
 
-procedure TSynCompletion.OnFormPaint(Sender: TObject);
+procedure TSynBaseCompletion.OnFormPaint(Sender: TObject);
 begin
 
 end;
 
-procedure TSynCompletion.Cancel(Sender: TObject);
+procedure TSynBaseCompletion.Cancel(Sender: TObject);
 var
   F: TSynVirtualCompletionForm;
 begin
@@ -2607,7 +2617,7 @@ begin
   end;
 end;
 
-procedure TSynCompletion.Validate(Sender: TObject; KeyChar: TUTF8Char;
+procedure TSynBaseCompletion.Validate(Sender: TObject; KeyChar: TUTF8Char;
   Shift: TShiftState);
 var
   F: TSynVirtualCompletionForm;
@@ -2616,12 +2626,12 @@ var
   LogCaret: TPoint;
   HighlighterIdentChars: TSynIdentChars;
 begin
-  //debugln('TSynCompletion.Validate ',dbgsName(Sender),' ',dbgs(Shift),' Position=',dbgs(Position));
+  //debugln('TSynBaseCompletion.Validate ',dbgsName(Sender),' ',dbgs(Shift),' Position=',dbgs(Position));
   F := Sender as TSynVirtualCompletionForm;
   // Note: Form.Visible can be false, for example when completion only contains one item
   if F.CurrentEditor is TCustomSynEdit then
     with TCustomSynEdit(F.CurrentEditor) do begin
-      BeginUndoBlock{$IFDEF SynUndoDebugBeginEnd}('TSynCompletion.Validate'){$ENDIF};
+      BeginUndoBlock{$IFDEF SynUndoDebugBeginEnd}('TSynBaseCompletion.Validate'){$ENDIF};
       BeginUpdate;
       try
         if Editor.Highlighter<>nil then
@@ -2650,7 +2660,7 @@ begin
           // replace only prefix
           NewBlockEnd := LogCaret;
         end;
-        //debugln('TSynCompletion.Validate B Position=',dbgs(Position));
+        //debugln('TSynBaseCompletion.Validate B Position=',dbgs(Position));
         if Position>=0 then begin
           if Assigned(FOnCodeCompletion) then
           begin
@@ -2673,12 +2683,12 @@ begin
           Cancel(Sender);
       finally
         EndUpdate;
-        EndUndoBlock{$IFDEF SynUndoDebugBeginEnd}('TSynCompletion.Validate'){$ENDIF};
+        EndUndoBlock{$IFDEF SynUndoDebugBeginEnd}('TSynBaseCompletion.Validate'){$ENDIF};
       end;
     end;
 end;
 
-constructor TSynCompletion.Create(AOwner: TComponent);
+constructor TSynBaseCompletion.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Form.OnValidate := @Validate;
@@ -2689,12 +2699,12 @@ begin
   FExecCommandID := ecSynCompletionExecute;
 end;
 
-procedure TSynCompletion.SetShortCut(Value: TShortCut);
+procedure TSynBaseCompletion.SetShortCut(Value: TShortCut);
 begin
   FShortCut := Value;
 end;
 
-procedure TSynCompletion.TranslateKey(Sender: TObject; Code: word; SState: TShiftState;
+procedure TSynBaseCompletion.TranslateKey(Sender: TObject; Code: word; SState: TShiftState;
   var Data: pointer; var IsStartOfCombo: boolean; var Handled: boolean;
   var Command: TSynEditorCommand; FinishComboOnly: Boolean;
   var ComboKeyStrokes: TSynEditKeyStrokes);
@@ -2716,7 +2726,7 @@ begin
 
 end;
 
-procedure TSynCompletion.ProcessSynCommand(Sender: TObject; AfterProcessing: boolean;
+procedure TSynBaseCompletion.ProcessSynCommand(Sender: TObject; AfterProcessing: boolean;
   var Handled: boolean; var Command: TSynEditorCommand; var AChar: TUTF8Char; Data: pointer;
   HandlerData: pointer);
 var
@@ -2740,12 +2750,13 @@ begin
 
 end;
 
-function TSynCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
+procedure TSynBaseCompletion.DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags);
 begin
-  Result := TSynCompletionForm;
+  if Assigned(FOnBeforeExecute) then
+    FOnBeforeExecute(Self, ACurrentString, APosition, AnX, AnY, AnResult);
 end;
 
-function TSynCompletion.GetPreviousToken(FEditor: TCustomSynEdit): string;
+function TSynBaseCompletion.GetPreviousToken(FEditor: TCustomSynEdit): string;
 var
   s: string;
   i: integer;
@@ -2767,7 +2778,7 @@ begin
     result := '';
 end;
 
-procedure TSynCompletion.DoEditorAdded(AValue: TCustomSynEdit);
+procedure TSynBaseCompletion.DoEditorAdded(AValue: TCustomSynEdit);
 begin
   inherited DoEditorAdded(AValue);
 
@@ -2775,7 +2786,7 @@ begin
   AValue.RegisterKeyTranslationHandler(@TranslateKey);
 end;
 
-procedure TSynCompletion.DoEditorRemoving(AValue: TCustomSynEdit);
+procedure TSynBaseCompletion.DoEditorRemoving(AValue: TCustomSynEdit);
 begin
   inherited DoEditorRemoving(AValue);
   if Form.CurrentEditor = AValue then
@@ -2785,45 +2796,41 @@ begin
   AValue.UnRegisterKeyTranslationHandler(@TranslateKey);
 end;
 
-procedure TSynCompletion.SetEditor(const Value: TCustomSynEdit);
+procedure TSynBaseCompletion.SetEditor(const Value: TCustomSynEdit);
 begin
   inherited SetEditor(Value);
   Form.SetCurrentEditor(Value);
 end;
 
-function TSynCompletion.EditorsCount: integer;
+function TSynBaseCompletion.EditorsCount: integer;
 begin
   result := EditorCount;
 end;
 
-procedure TSynCompletion.AddCharAtCursor(AUtf8Char: TUTF8Char);
+procedure TSynBaseCompletion.AddCharAtCursor(AUtf8Char: TUTF8Char);
 begin
   Form.AddCharAtCursor(AUtf8Char);
 end;
 
-procedure TSynCompletion.DeleteCharBeforeCursor;
+procedure TSynBaseCompletion.DeleteCharBeforeCursor;
 begin
   Form.DeleteCharBeforeCursor;
 end;
 
-procedure TSynCompletion.Clear;
+procedure TSynBaseCompletion.Clear;
 begin
-  ItemList.Clear;
 end;
 
-procedure TSynCompletion.Sort;
+procedure TSynBaseCompletion.Sort;
 begin
-  (ItemList as TStringList).Sort;
 end;
 
-procedure TSynCompletion.BeginUpdate;
+procedure TSynBaseCompletion.BeginUpdate;
 begin
-  ItemList.BeginUpdate;
 end;
 
-procedure TSynCompletion.EndUpdate;
+procedure TSynBaseCompletion.EndUpdate;
 begin
-  ItemList.EndUpdate;
 end;
 
 { TSynAutoComplete }
@@ -3027,7 +3034,7 @@ begin
     Canvas.Brush.Color := FCompletionForm.ClSelect
   else
     Canvas.Brush.Color := Color;
-    
+
   Canvas.Pen.Width := 1;
   R := ClientRect;
   Canvas.FillRect(R);
@@ -3108,3 +3115,4 @@ initialization
                            @SynCompletionCommandToIdent);
   RegisterExtraGetEditorCommandValues(@GetEditorCommandValues);
 end.
+
