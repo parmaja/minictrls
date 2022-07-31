@@ -105,97 +105,97 @@
         <UnitName Value="mnSynHighlighterBVH"/>
       </Item21>
       <Item22>
-        <Filename Value="ntvBoard.pas"/>
-        <UnitName Value="ntvBoard"/>
+        <Filename Value="syn/mnSynParamsHint.pas"/>
+        <UnitName Value="mnSynParamsHint"/>
       </Item22>
       <Item23>
-        <Filename Value="ntvCtrls.pas"/>
-        <UnitName Value="ntvCtrls"/>
+        <Filename Value="syn/mnSynCompletion.pas"/>
+        <UnitName Value="mnSynCompletion"/>
       </Item23>
       <Item24>
-        <Filename Value="ntvCtrlsLib.lrs"/>
-        <Type Value="LRS"/>
+        <Filename Value="ntvBoard.pas"/>
+        <UnitName Value="ntvBoard"/>
       </Item24>
       <Item25>
-        <Filename Value="ntvDotMatrix.pas"/>
-        <UnitName Value="ntvDotMatrix"/>
+        <Filename Value="ntvCtrls.pas"/>
+        <UnitName Value="ntvCtrls"/>
       </Item25>
       <Item26>
-        <Filename Value="ntvGrids.pas"/>
-        <UnitName Value="ntvGrids"/>
+        <Filename Value="ntvCtrlsLib.lrs"/>
+        <Type Value="LRS"/>
       </Item26>
       <Item27>
-        <Filename Value="ntvImgBtns.pas"/>
-        <UnitName Value="ntvImgBtns"/>
+        <Filename Value="ntvDotMatrix.pas"/>
+        <UnitName Value="ntvDotMatrix"/>
       </Item27>
       <Item28>
-        <Filename Value="ntvPageControls.pas"/>
-        <UnitName Value="ntvPageControls"/>
+        <Filename Value="ntvGrids.pas"/>
+        <UnitName Value="ntvGrids"/>
       </Item28>
       <Item29>
-        <Filename Value="ntvPanels.pas"/>
-        <UnitName Value="ntvPanels"/>
+        <Filename Value="ntvImgBtns.pas"/>
+        <UnitName Value="ntvImgBtns"/>
       </Item29>
       <Item30>
-        <Filename Value="ntvPixelGrids.pas"/>
-        <UnitName Value="ntvPixelGrids"/>
+        <Filename Value="ntvPageControls.pas"/>
+        <UnitName Value="ntvPageControls"/>
       </Item30>
       <Item31>
-        <Filename Value="ntvProgressBars.pas"/>
-        <UnitName Value="ntvProgressBars"/>
+        <Filename Value="ntvPanels.pas"/>
+        <UnitName Value="ntvPanels"/>
       </Item31>
       <Item32>
+        <Filename Value="ntvPixelGrids.pas"/>
+        <UnitName Value="ntvPixelGrids"/>
+      </Item32>
+      <Item33>
+        <Filename Value="ntvProgressBars.pas"/>
+        <UnitName Value="ntvProgressBars"/>
+      </Item33>
+      <Item34>
         <Filename Value="ntvRegCtrls.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="ntvRegCtrls"/>
-      </Item32>
-      <Item33>
-        <Filename Value="ntvSplitters.pas"/>
-        <UnitName Value="ntvSplitters"/>
-      </Item33>
-      <Item34>
-        <Filename Value="ntvStdThemes.pas"/>
-        <UnitName Value="ntvStdThemes"/>
       </Item34>
       <Item35>
-        <Filename Value="ntvTabs.pas"/>
-        <UnitName Value="ntvTabs"/>
+        <Filename Value="ntvSplitters.pas"/>
+        <UnitName Value="ntvSplitters"/>
       </Item35>
       <Item36>
-        <Filename Value="ntvTabSets.pas"/>
-        <UnitName Value="ntvTabSets"/>
+        <Filename Value="ntvStdThemes.pas"/>
+        <UnitName Value="ntvStdThemes"/>
       </Item36>
       <Item37>
-        <Filename Value="ntvThemes.pas"/>
-        <UnitName Value="ntvThemes"/>
+        <Filename Value="ntvTabs.pas"/>
+        <UnitName Value="ntvTabs"/>
       </Item37>
       <Item38>
-        <Filename Value="ntvUtils.pas"/>
-        <UnitName Value="ntvUtils"/>
+        <Filename Value="ntvTabSets.pas"/>
+        <UnitName Value="ntvTabSets"/>
       </Item38>
       <Item39>
-        <Filename Value="db/CSVOptionsForms.lfm"/>
-        <Type Value="LFM"/>
+        <Filename Value="ntvThemes.pas"/>
+        <UnitName Value="ntvThemes"/>
       </Item39>
       <Item40>
-        <Filename Value="db/CSVOptionsForms.pas"/>
-        <UnitName Value="CSVOptionsForms"/>
+        <Filename Value="ntvUtils.pas"/>
+        <UnitName Value="ntvUtils"/>
       </Item40>
       <Item41>
-        <Filename Value="db/ParamsForms.lfm"/>
+        <Filename Value="db/CSVOptionsForms.lfm"/>
         <Type Value="LFM"/>
       </Item41>
       <Item42>
-        <Filename Value="db/ParamsForms.pas"/>
-        <UnitName Value="ParamsForms"/>
+        <Filename Value="db/CSVOptionsForms.pas"/>
+        <UnitName Value="CSVOptionsForms"/>
       </Item42>
       <Item43>
-        <Filename Value="mnSynParamsHint.pas"/>
-        <UnitName Value="mnSynParamsHint"/>
+        <Filename Value="db/ParamsForms.lfm"/>
+        <Type Value="LFM"/>
       </Item43>
       <Item44>
-        <Filename Value="mnSynCompletion.pas"/>
-        <UnitName Value="mnSynCompletion"/>
+        <Filename Value="db/ParamsForms.pas"/>
+        <UnitName Value="ParamsForms"/>
       </Item44>
     </Files>
     <CompatibilityMode Value="True"/>

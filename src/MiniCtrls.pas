@@ -13,11 +13,11 @@ uses
   mnSynHighlighterApache, mnSynHighlighterConfig, mnSynHighlighterCpp, 
   mnSynHighlighterD, mnSynHighlighterFirebird, mnSynHighlighterLua, 
   mnSynHighlighterMultiProc, mnSynHighlighterGo, mnSynHighlighterSARD, 
-  mnSynHighlighterLSL, mnSynHighlighterBVH, ntvBoard, ntvCtrls, ntvDotMatrix, 
-  ntvGrids, ntvImgBtns, ntvPageControls, ntvPanels, ntvPixelGrids, 
-  ntvProgressBars, ntvRegCtrls, ntvSplitters, ntvStdThemes, ntvTabs, 
-  ntvTabSets, ntvThemes, ntvUtils, CSVOptionsForms, ParamsForms, 
-  mnSynParamsHint, mnSynCompletion, LazarusPackageIntf;
+  mnSynHighlighterLSL, mnSynHighlighterBVH, mnSynParamsHint, mnSynCompletion, 
+  ntvBoard, ntvCtrls, ntvDotMatrix, ntvGrids, ntvImgBtns, ntvPageControls, 
+  ntvPanels, ntvPixelGrids, ntvProgressBars, ntvRegCtrls, ntvSplitters, 
+  ntvStdThemes, ntvTabs, ntvTabSets, ntvThemes, ntvUtils, CSVOptionsForms, 
+  ParamsForms, LazarusPackageIntf;
 
 implementation
 
