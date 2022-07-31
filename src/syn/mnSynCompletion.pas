@@ -70,12 +70,13 @@ type
   TSynBaseCompletionSearchPosition = procedure(var APosition :integer) of object;
   
   TSynBaseCompletionForm = class;
+  TSynVirtualCompletionForm = class;
   
   { TSynBaseCompletionHint }
 
   TSynBaseCompletionHint = class(THintWindow)
   private
-    FCompletionForm: TSynBaseCompletionForm;
+    FCompletionForm: TSynVirtualCompletionForm;
     FIndex: Integer;
   public
     constructor Create(AOwner: TComponent); override;
@@ -122,9 +123,9 @@ type
   public
   end;
 
-  { TSynBaseCompletionForm }
+  { TSynVirtualCompletionForm }
 
-  TSynBaseCompletionForm = class(TForm)
+  TSynVirtualCompletionForm = class(TForm)
     procedure SDKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure SDKeyPress(Sender: TObject; var Key: char);
     procedure SDUtf8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
@@ -133,8 +134,6 @@ type
     FOnKeyPress: TKeyPressEvent;
     FOnKeyDelete: TNotifyEvent;
     FOnPaintItem: TSynBaseCompletionPaintItem;
-    FItemList: TStrings;
-    FInsertList: TStrings;
     FPosition: Integer;
     FNbLinesInWindow: Integer;
     FFontHeight: integer;
@@ -179,8 +178,6 @@ type
     procedure ScrollGetFocus(Sender: TObject);
     procedure ScrollScroll(Sender: TObject; ScrollCode: TScrollCode;
       var ScrollPos: Integer);
-    procedure SetItemList(const Value: TStrings);
-    procedure SetInsertList(AValue: TStrings);
     procedure SetPosition(Value: Integer);
     procedure SetNbLinesInWindow(const Value: Integer);
     {$IFDEF HintClickWorkaround}
@@ -190,7 +187,6 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
       X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X,Y: Integer); override;
-    procedure StringListChange(Sender: TObject);
     procedure DoOnResize; override;
     procedure SetBackgroundColor(const AValue: TColor);
     procedure FontChanged(Sender: TObject); override;
@@ -217,6 +213,10 @@ type
     procedure DecHintLock;
     procedure DoOnDragResize(Sender: TObject);
     procedure ClearCurrentString;
+    //Callback functions
+    function GetItemText(Index: Integer): string; virtual; abstract;
+    function GetItemDisplay(Index: Integer): string; virtual; abstract;
+    function GetItemsCount: Integer; virtual; abstract;
   public
     constructor Create(AOwner: Tcomponent); override;
     destructor Destroy; override;
@@ -225,6 +225,9 @@ type
     procedure OnHintTimer(Sender: TObject);
     // Must only be set via TSynCompletion.SetEditor
     property CurrentEditor: TCustomSynEdit read FCurrentEditor;
+    property InsertList[Index: Integer]: string read GetItemText;
+    property ItemList[Index: Integer]: string read GetItemDisplay;
+    property ItemsCount: Integer read GetItemsCount;
   published
     property CurrentString: string read FCurrentString write SetCurrentString;
     property OnKeyPress: TKeyPressEvent read FOnKeyPress write FOnKeyPress;
@@ -235,8 +238,6 @@ type
       write FOnMeasureItem;
     property OnValidate: TValidateEvent read FOnValidate write FOnValidate;
     property OnCancel: TNotifyEvent read FOnCancel write FOnCancel;
-    property ItemList: TStrings read FItemList write SetItemList;
-    property InsertList: TStrings read FInsertList write SetInsertList;
     property Position: Integer read FPosition write SetPosition;
     property NbLinesInWindow: Integer read FNbLinesInWindow write SetNbLinesInWindow;
     property ClSelect: TColor read FClSelect write FClSelect;
@@ -265,6 +266,30 @@ type
     property OnDragResized: TNotifyEvent read FOnDragResized write FOnDragResized;
   end;
 
+  TSynVirtualCompletionFormClass = class of TSynVirtualCompletionForm;
+
+  { TSynBaseCompletionForm }
+
+  TSynBaseCompletionForm = class(TSynVirtualCompletionForm)
+  private
+    FInsertList: TStrings;
+    FItemList: TStrings;
+  protected
+    procedure StringListChange(Sender: TObject);
+
+    function GetItemText(Index: Integer): string; override;
+    function GetItemDisplay(Index: Integer): string; override;
+    function GetItemsCount: Integer; override;
+
+    procedure SetItemList(const Value: TStrings);
+    procedure SetInsertList(AValue: TStrings);
+  public
+    constructor Create(AOwner: Tcomponent); override;
+    destructor Destroy; override;
+    property ItemList: TStrings read FItemList write SetItemList;
+    property InsertList: TStrings read FInsertList write SetInsertList;
+  end;
+
   TSynBaseCompletionFormClass = class of TSynBaseCompletionForm;
 
   { TSynCompletionForm }
@@ -278,23 +303,23 @@ type
 
   { TSynBaseCompletion }
 
-  TSynBaseCompletion = class;
+  TSynVirtualCompletion = class;
   TOnBeforeExeucteFlag = (befAbort);
   TOnBeforeExeucteFlags = set of TOnBeforeExeucteFlag;
 
   TOnBeforeExecuteEvent = procedure(
-    ASender: TSynBaseCompletion;
+    ASender: TSynVirtualCompletion;
     var ACurrentString: String;
     var APosition: Integer; // Defaults to -1. If left at -1 position will be calculated from CurrentString
     var AnX, AnY: Integer;        // Coordinates for the form
     var AnResult: TOnBeforeExeucteFlags
   ) of object;
 
-  TSynBaseCompletion = class(TLazSynMultiEditPlugin)
+  TSynVirtualCompletion = class(TLazSynMultiEditPlugin)
   private
     FAutoUseSingleIdent: Boolean;
     FOnBeforeExecute: TOnBeforeExecuteEvent;
-    Form: TSynBaseCompletionForm;
+    Form: TSynVirtualCompletionForm;
     FAddedPersistentCaret, FChangedNoneBlink: boolean;
     FOnExecute: TNotifyEvent;
     FWidth: Integer;
@@ -314,8 +339,7 @@ type
     procedure SetUsePrettyText(const AValue: boolean);
     procedure SetClSelect(const Value: TColor);
     function GetCurrentString: string;
-    function GetItemList: TStrings;
-    function GetInsertList: TStrings;
+
     function GetNbLinesInWindow: Integer;
     function GetOnCancel: TNotifyEvent;
     function GetOnKeyPress: TKeyPressEvent;
@@ -353,22 +377,16 @@ type
     function GetOnKeyPrevChar: TNotifyEvent;
     procedure SetOnKeyPrevChar(const AValue: TNotifyEvent);
   protected
-    function GetCompletionFormClass: TSynBaseCompletionFormClass; virtual;
+    function GetCompletionFormClass: TSynVirtualCompletionFormClass; virtual; abstract;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure Clear;
-    procedure Sort;
-    procedure BeginUpdate;
-    procedure EndUpdate;
     procedure Execute(s: string; x, y: integer); overload;
     procedure Execute(s: string; TopLeft: TPoint); overload;
     procedure Execute(s: string; TokenRect: TRect); overload; // Excute below or above the token // may be extended to adjust left corner too
-    procedure AddItem(ADisplayText: string; AInsertText: string; AObject: TObject = nil);
-    procedure AddItem(AText: string);
     procedure Deactivate;
     function IsActive: boolean;
-    function TheForm: TSynBaseCompletionForm;
+    function TheForm: TSynVirtualCompletionForm;
     property OnKeyDown: TKeyEvent read GetOnKeyDown write SetOnKeyDown;
     property OnUTF8KeyPress: TUTF8KeyPressEvent read GetOnUTF8KeyPress
                                                 write SetOnUTF8KeyPress;
@@ -387,8 +405,6 @@ type
              read GetOnPaintItem write SetOnPaintItem;
     property OnMeasureItem: TSynBaseCompletionMeasureItem read GetOnMeasureItem
              write SetOnMeasureItem;
-    property ItemList: TStrings read GetItemList write SetItemList;
-    property InsertList: TStrings read GetInsertList write SetInsertList;
 
     property Position: Integer read GetPosition write SetPosition;
     property LinesInWindow: Integer read GetNbLinesInWindow
@@ -415,6 +431,19 @@ type
     property DoubleClickSelects: Boolean read GetDoubleClickSelects write SetDoubleClickSelects default True;
     property ShowSizeDrag: Boolean read GetShowSizeDrag write SetShowSizeDrag default False;
     property AutoUseSingleIdent: Boolean read FAutoUseSingleIdent write FAutoUseSingleIdent;
+  end;
+
+  TSynBaseCompletion = class(TSynVirtualCompletion)
+  private
+    function GetItemList: TStrings;
+    function GetInsertList: TStrings;
+  protected
+    function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
+  public
+    procedure AddItem(ADisplayText: string; AInsertText: string; AObject: TObject = nil);
+    procedure AddItem(AText: string);
+    property ItemList: TStrings read GetItemList write SetItemList;
+    property InsertList: TStrings read GetInsertList write SetInsertList;
   end;
 
   { TSynCompletion }
@@ -444,12 +473,17 @@ type
     procedure ProcessSynCommand(Sender: TObject; AfterProcessing: boolean;
               var Handled: boolean; var Command: TSynEditorCommand;
               var AChar: TUTF8Char; Data: pointer; HandlerData: pointer);
-    function GetCompletionFormClass: TSynBaseCompletionFormClass; override;
+    function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
   public
     constructor Create(AOwner: TComponent); override;
     function EditorsCount: integer; deprecated; // use EditorCount
     procedure AddCharAtCursor(AUtf8Char: TUTF8Char);
     procedure DeleteCharBeforeCursor;
+
+    procedure Clear;
+    procedure Sort;
+    procedure BeginUpdate;
+    procedure EndUpdate;
   published
     property ShortCut: TShortCut read FShortCut write SetShortCut;
     property EndOfTokenChr: string read FEndOfTokenChr write FEndOfTokenChr;
@@ -553,6 +587,93 @@ type
 const
   AllCommands = [fcColor..High(TFormatCommand)];
   DefTabChars = 8;
+
+{ TSynBaseCompletion }
+
+procedure TSynBaseCompletion.AddItem(ADisplayText: string; AInsertText: string; AObject: TObject);
+begin
+  ItemList.AddObject(ADisplayText, AObject);
+  InsertList.AddObject(AInsertText, AObject);
+end;
+
+procedure TSynBaseCompletion.AddItem(AText: string);
+begin
+  ItemList.Add(AText);
+end;
+
+function TSynBaseCompletion.GetItemList: TStrings;
+begin
+  Result := (Form as TSynCompletionForm).ItemList;
+end;
+
+function TSynBaseCompletion.GetInsertList: TStrings;
+begin
+  Result := (Form as TSynCompletionForm).InsertList;
+end;
+
+function TSynBaseCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
+begin
+  Result := TSynBaseCompletionForm;
+end;
+
+{ TSynBaseCompletionForm }
+
+procedure TSynBaseCompletionForm.StringListChange(Sender: TObject);
+begin
+  if ItemList.Count - NbLinesInWindow < 0 then
+    Scroll.Max := 0
+  else
+    Scroll.Max := ItemList.Count - NbLinesInWindow;
+  Position := Position;
+end;
+
+function TSynBaseCompletionForm.GetItemText(Index: Integer): string;
+begin
+  if (FInsertList.Count > 0) then
+    Result := FInsertList[Index]
+  else
+    Result := FItemList[Index];
+end;
+
+function TSynBaseCompletionForm.GetItemDisplay(Index: Integer): string;
+begin
+  Result := FItemList[Index];
+end;
+
+function TSynBaseCompletionForm.GetItemsCount: Integer;
+begin
+  Result := FItemList.Count;
+end;
+
+procedure TSynBaseCompletionForm.SetItemList(const Value: TStrings);
+begin
+  FItemList.Assign(Value);
+  if Position>=ItemsCount then Position:=-1;
+  Invalidate;
+end;
+
+procedure TSynBaseCompletionForm.SetInsertList(AValue: TStrings);
+begin
+  FInsertList.Assign(AValue);
+end;
+
+constructor TSynBaseCompletionForm.Create(AOwner: Tcomponent);
+begin
+  inherited Create(AOwner);
+  FItemList := TStringList.Create;
+  FInsertList := TSynItemList.Create;
+  (FInsertList as TSynItemList).FItemList := FItemList;
+
+  TStringList(FItemList).OnChange := @StringListChange;
+  TStringList(FInsertList).OnChange := @StringListChange;
+end;
+
+destructor TSynBaseCompletionForm.Destroy;
+begin
+  FInsertList.Free;
+  FItemList.Free;
+  inherited Destroy;
+end;
 
 { TSynItemList }
 
@@ -1096,15 +1217,15 @@ begin
   FMouseDownPos.y := y + Top;
   FMouseLastPos.x := x + Left;
   FMouseLastPos.y := y + Top;
-  FWinSize.x := TSynBaseCompletionForm(Owner).Width;
-  FWinSize.y := TSynBaseCompletionForm(Owner).Height;
-  TSynBaseCompletionForm(Owner).IncHintLock;
+  FWinSize.x := TSynVirtualCompletionForm(Owner).Width;
+  FWinSize.y := TSynVirtualCompletionForm(Owner).Height;
+  TSynVirtualCompletionForm(Owner).IncHintLock;
   MouseCapture := True;
 end;
 
 procedure TSynBaseCompletionFormSizeDrag.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  F: TSynBaseCompletionForm;
+  F: TSynVirtualCompletionForm;
 begin
   inherited MouseMove(Shift, X, Y);
   x := x + Left;
@@ -1116,7 +1237,7 @@ begin
   FMouseLastPos.x := x;
   FMouseLastPos.y := y;
 
-  F := TSynBaseCompletionForm(Owner);
+  F := TSynVirtualCompletionForm(Owner);
   F.Width :=
     Max(FWinSize.x + x - FMouseDownPos.x, 100);
   F.NbLinesInWindow :=
@@ -1129,12 +1250,12 @@ begin
   inherited MouseUp(Button, Shift, X, Y);
   FMouseDownPos.y := -1;
   MouseCapture := False;
-  TSynBaseCompletionForm(Owner).DecHintLock;
+  TSynVirtualCompletionForm(Owner).DecHintLock;
 
-  if (FWinSize.x <> TSynBaseCompletionForm(Owner).Width) or
-     (FWinSize.y <> TSynBaseCompletionForm(Owner).Height)
+  if (FWinSize.x <> TSynVirtualCompletionForm(Owner).Width) or
+     (FWinSize.y <> TSynVirtualCompletionForm(Owner).Height)
   then
-    TSynBaseCompletionForm(Owner).DoOnDragResize(Owner);
+    TSynVirtualCompletionForm(Owner).DoOnDragResize(Owner);
 end;
 
 constructor TSynBaseCompletionFormSizeDrag.Create(TheOwner: TComponent);
@@ -1172,9 +1293,9 @@ begin
   end;
 end;
 
-{ TSynBaseCompletionForm }
+{ TSynVirtualCompletionForm }
 
-constructor TSynBaseCompletionForm.Create(AOwner: Tcomponent);
+constructor TSynVirtualCompletionForm.Create(AOwner: Tcomponent);
 begin
   ControlStyle := ControlStyle + [csNoDesignVisible];
   FResizeLock := 1; // prevent DoResize (on Handle Creation) do reset LinesInWindow
@@ -1184,9 +1305,6 @@ begin
   KeyPreview:= True;
   // we have no resource => must be constructed using CreateNew
   inherited CreateNew(AOwner, 1);
-  FItemList := TStringList.Create;
-  FInsertList := TSynItemList.Create;
-  (FInsertList as TSynItemList).FItemList := FItemList;
   Scroll := TSynBaseCompletionFormScrollBar.Create(self);
   Scroll.Kind := sbVertical;
   Scroll.OnChange := @ScrollChange;
@@ -1245,8 +1363,6 @@ begin
   FLongLineHintType := sclpExtendRightOnly;
   Visible := false;
   ClSelect := clHighlight;
-  TStringList(FItemList).OnChange := @StringListChange;
-  TStringList(FInsertList).OnChange := @StringListChange;
   FNbLinesInWindow := 6;
   FontChanged(Font);
   ShowHint := False;
@@ -1257,10 +1373,10 @@ begin
   FormStyle := fsSystemStayOnTop;
 end;
 
-procedure TSynBaseCompletionForm.Deactivate;
+procedure TSynVirtualCompletionForm.Deactivate;
 begin
   {$IFDEF VerboseFocus}
-  DebugLnEnter(['>> TSynBaseCompletionForm.Deactivate ']);
+  DebugLnEnter(['>> TSynVirtualCompletionForm.Deactivate ']);
   try
   {$ENDIF}
   // completion box lost focus
@@ -1274,24 +1390,22 @@ begin
     SetCaretRespondToFocus(TCustomSynEdit(FCurrentEditor).Handle,true);
   {$IFDEF VerboseFocus}
   finally
-    DebugLnExit(['<< TSynBaseCompletionForm.Deactivate ']);
+    DebugLnExit(['<< TSynVirtualCompletionForm.Deactivate ']);
   end
   {$ENDIF}
 end;
 
-destructor TSynBaseCompletionForm.Destroy;
+destructor TSynVirtualCompletionForm.Destroy;
 begin
   UnRegisterHandlers;
   FreeAndNil(Scroll);
   FreeAndNil(SizeDrag);
-  FInsertList.Free;
-  FItemList.Free;
   FHintTimer.Free;
   FHint.Free;
   inherited destroy;
 end;
 
-procedure TSynBaseCompletionForm.ShowItemHint(AIndex: Integer);
+procedure TSynVirtualCompletionForm.ShowItemHint(AIndex: Integer);
 var
   R: TRect;
   P: TPoint;
@@ -1300,7 +1414,7 @@ var
   AHint: string;
 begin
   FHintTimer.Enabled := False;
-  if Visible and (AIndex >= 0) and (AIndex < ItemList.Count) and
+  if Visible and (AIndex >= 0) and (AIndex < ItemsCount) and
      (FLongLineHintType <> sclpNone) and
      (FHintLock = 0)
   then begin
@@ -1356,23 +1470,23 @@ begin
   end;
 end;
 
-procedure TSynBaseCompletionForm.OnHintTimer(Sender: TObject);
+procedure TSynVirtualCompletionForm.OnHintTimer(Sender: TObject);
 begin
   FHintTimer.Enabled := False;
   FHint.ActivateHint(ItemList[FHint.Index]);
   FHint.Invalidate;
 end;
 
-procedure TSynBaseCompletionForm.KeyDown(var Key: Word; Shift: TShiftState);
+procedure TSynVirtualCompletionForm.KeyDown(var Key: Word; Shift: TShiftState);
 var
   i: integer;
   Handled: Boolean;
 begin
   {$IFDEF VerboseKeys}
-  DebugLnEnter(['TSynBaseCompletionForm.KeyDown ',Key,' Shift=',ssShift in Shift,' Ctrl=',ssCtrl in Shift,' Alt=',ssAlt in Shift]);
+  DebugLnEnter(['TSynVirtualCompletionForm.KeyDown ',Key,' Shift=',ssShift in Shift,' Ctrl=',ssCtrl in Shift,' Alt=',ssAlt in Shift]);
   try
   {$ENDIF}
-  //debugln('TSynBaseCompletionForm.KeyDown A Key=',dbgs(Key));
+  //debugln('TSynVirtualCompletionForm.KeyDown A Key=',dbgs(Key));
   inherited KeyDown(Key,Shift);
   if Key=VK_UNKNOWN then exit;
   Handled:=true;
@@ -1391,7 +1505,7 @@ begin
       for i := 1 to NbLinesInWindow do
         SelectNext;
     VK_END:
-      Position := ItemList.count - 1;
+      Position := ItemsCount - 1;
     VK_HOME:
       Position := 0;
     VK_UP:
@@ -1401,7 +1515,7 @@ begin
         SelectPrec;
     VK_DOWN:
       if ssCtrl in Shift then
-        Position := ItemList.count - 1
+        Position := ItemsCount - 1
       else
         SelectNext;
     VK_BACK:
@@ -1435,17 +1549,17 @@ begin
   Invalidate;
   {$IFDEF VerboseKeys}
   finally
-    DebugLnExit(['TSynBaseCompletionForm.KeyDown ',Key,' Shift=',ssShift in Shift,' Ctrl=',ssCtrl in Shift,' Alt=',ssAlt in Shift]);
+    DebugLnExit(['TSynVirtualCompletionForm.KeyDown ',Key,' Shift=',ssShift in Shift,' Ctrl=',ssCtrl in Shift,' Alt=',ssAlt in Shift]);
   end;
   {$ENDIF}
 end;
 
-procedure TSynBaseCompletionForm.KeyPress(var Key: char);
+procedure TSynVirtualCompletionForm.KeyPress(var Key: char);
 begin
-  debugln('TSynBaseCompletionForm.KeyPress A Key="',DbgStr(Key),'"');
+  debugln('TSynVirtualCompletionForm.KeyPress A Key="',DbgStr(Key),'"');
   if Assigned(OnKeyPress) then
     OnKeyPress(Self, Key);
-  debugln('TSynBaseCompletionForm.KeyPress B Key="',DbgStr(Key),'"');
+  debugln('TSynVirtualCompletionForm.KeyPress B Key="',DbgStr(Key),'"');
   if Key=#0 then exit;
   case key of //
     #33..'z':
@@ -1465,21 +1579,21 @@ begin
     end;
   end; // case
   Invalidate;
-  //debugln('TSynBaseCompletionForm.KeyPress END Key="',DbgStr(Key),'"');
+  //debugln('TSynVirtualCompletionForm.KeyPress END Key="',DbgStr(Key),'"');
 end;
 
-procedure TSynBaseCompletionForm.AddCharAtCursor(AUtf8Char: TUTF8Char);
+procedure TSynVirtualCompletionForm.AddCharAtCursor(AUtf8Char: TUTF8Char);
 begin
   CurrentString := CurrentString + AUtf8Char;
 end;
 
-procedure TSynBaseCompletionForm.DeleteCharBeforeCursor;
+procedure TSynVirtualCompletionForm.DeleteCharBeforeCursor;
 begin
   CurrentString := UTF8Copy(CurrentString, 1, UTF8Length(CurrentString) - 1);
 end;
 
 {$IFDEF HintClickWorkaround}
-procedure TSynBaseCompletionForm.HintWindowMouseDown(Sender: TObject;
+procedure TSynVirtualCompletionForm.HintWindowMouseDown(Sender: TObject;
   Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   p: TPoint;
@@ -1489,7 +1603,7 @@ begin
 end;
 {$ENDIF}
 
-procedure TSynBaseCompletionForm.MouseDown(Button: TMouseButton;
+procedure TSynVirtualCompletionForm.MouseDown(Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 var
   OldPosition: Integer;
@@ -1503,7 +1617,7 @@ begin
     OnValidate(Self, '', Shift);
 end;
 
-procedure TSynBaseCompletionForm.MouseMove(Shift: TShiftState; X,Y: Integer);
+procedure TSynVirtualCompletionForm.MouseMove(Shift: TShiftState; X,Y: Integer);
 begin
   if ((Scroll.Visible) and (x > Scroll.Left)) or
      (y  < DrawBorderWidth) or (y >= ClientHeight - DrawBorderWidth)
@@ -1513,22 +1627,22 @@ begin
   ShowItemHint(Scroll.Position + Y);
 end;
 
-procedure TSynBaseCompletionForm.Paint;
+procedure TSynVirtualCompletionForm.Paint;
 var
   i, Ind: integer;
   PaintWidth, YYY, LeftC, RightC, BottomC: Integer;
   Capt: String;
   lSelected: Boolean;
 begin
-//Writeln('[TSynBaseCompletionForm.Paint]');
+//Writeln('[TSynVirtualCompletionForm.Paint]');
 
   // update scroll bar
-  Scroll.Enabled := ItemList.Count > NbLinesInWindow;
-  Scroll.Visible := (ItemList.Count > NbLinesInWindow) or ShowSizeDrag;
+  Scroll.Enabled := ItemsCount > NbLinesInWindow;
+  Scroll.Visible := (ItemsCount > NbLinesInWindow) or ShowSizeDrag;
 
   if Scroll.Visible and Scroll.Enabled then
   begin
-    Scroll.Max := ItemList.Count - 1;
+    Scroll.Max := ItemsCount - 1;
     Scroll.LargeChange := NbLinesInWindow;
     Scroll.PageSize := NbLinesInWindow;
   end
@@ -1542,8 +1656,8 @@ begin
   LeftC := DrawBorderWidth;
   RightC := LeftC + PaintWidth;
 
-  //DebugLn(['TSynBaseCompletionForm.Paint NbLinesInWindow=',NbLinesInWindow,' ItemList.Count=',ItemList.Count]);
-  for i := 0 to Min(NbLinesInWindow - 1, ItemList.Count - Scroll.Position - 1) do
+  //DebugLn(['TSynVirtualCompletionForm.Paint NbLinesInWindow=',NbLinesInWindow,' ItemsCount=',ItemsCount]);
+  for i := 0 to Min(NbLinesInWindow - 1, ItemsCount - Scroll.Position - 1) do
   begin
     YYY := LeftC + FFontHeight * i;
     BottomC := (FFontHeight * (i + 1))+1;
@@ -1566,7 +1680,7 @@ begin
       Canvas.Font.Color := TextColor;
       Canvas.FillRect(Rect(LeftC, YYY, RightC, BottomC));
     end;
-    //DebugLn(['TSynBaseCompletionForm.Paint ',i,' ',ItemList[Scroll.Position + i]]);
+    //DebugLn(['TSynVirtualCompletionForm.Paint ',i,' ',ItemList[Scroll.Position + i]]);
     Ind := i + Scroll.Position;
     Capt := ItemList[Scroll.Position + i];
     if not Assigned(OnPaintItem)
@@ -1578,10 +1692,10 @@ begin
         Canvas.TextOut(LeftC+2, YYY, Capt);
   end;
   // paint the rest of the background
-  if NbLinesInWindow > ItemList.Count - Scroll.Position then
+  if NbLinesInWindow > ItemsCount - Scroll.Position then
   begin
     Canvas.brush.color := color;
-    i:=(FFontHeight * ItemList.Count)+1;
+    i:=(FFontHeight * ItemsCount)+1;
     Canvas.FillRect(Rect(LeftC, i, RightC, Height));
   end;
   // draw a rectangle around the window
@@ -1595,20 +1709,20 @@ begin
   end;
 end;
 
-function TSynBaseCompletionForm.Focused: Boolean;
+function TSynVirtualCompletionForm.Focused: Boolean;
 begin
   Result:=(inherited Focused) or SizeDrag.Focused;
 end;
 
-procedure TSynBaseCompletionForm.AppDeactivated(Sender: TObject);
+procedure TSynVirtualCompletionForm.AppDeactivated(Sender: TObject);
 begin
   {$IFDEF VerboseFocus}
-  DebugLn(['>> TSynBaseCompletionForm.AppDeactivated ']);
+  DebugLn(['>> TSynVirtualCompletionForm.AppDeactivated ']);
   {$ENDIF}
   Deactivate;
 end;
 
-procedure TSynBaseCompletionForm.ScrollChange(Sender: TObject);
+procedure TSynVirtualCompletionForm.ScrollChange(Sender: TObject);
 begin
   if Position < Scroll.Position then
     Position := Scroll.Position
@@ -1618,12 +1732,12 @@ begin
   Invalidate;
 end;
 
-procedure TSynBaseCompletionForm.ScrollGetFocus(Sender: TObject);
+procedure TSynVirtualCompletionForm.ScrollGetFocus(Sender: TObject);
 begin
   ActiveControl := nil;
 end;
 
-procedure TSynBaseCompletionForm.ScrollScroll(Sender: TObject; ScrollCode: TScrollCode;
+procedure TSynVirtualCompletionForm.ScrollScroll(Sender: TObject; ScrollCode: TScrollCode;
   var ScrollPos: Integer);
 begin
   if ScrollPos > (Scroll.Max - Scroll.PageSize) + 1 then
@@ -1632,19 +1746,19 @@ begin
   ShowItemHint(Position);
 end;
 
-procedure TSynBaseCompletionForm.SelectNext;
+procedure TSynVirtualCompletionForm.SelectNext;
 begin
-  if Position < ItemList.Count - 1 then
+  if Position < ItemsCount - 1 then
     Position := Position + 1;
 end;
 
-procedure TSynBaseCompletionForm.SelectPrec;
+procedure TSynVirtualCompletionForm.SelectPrec;
 begin
   if Position > 0 then
     Position := Position - 1;
 end;
 
-procedure TSynBaseCompletionForm.DoEditorKeyDown(Sender: TObject; var Key: Word;
+procedure TSynVirtualCompletionForm.DoEditorKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   if (not Visible) or (FCurrentEditor = nil) or (Sender <> FCurrentEditor) then exit;
@@ -1652,41 +1766,41 @@ begin
   Key := 0;
 end;
 
-procedure TSynBaseCompletionForm.DoEditorKeyPress(Sender: TObject; var Key: char);
+procedure TSynVirtualCompletionForm.DoEditorKeyPress(Sender: TObject; var Key: char);
 begin
   if (not Visible) or (FCurrentEditor = nil) or (Sender <> FCurrentEditor) then exit;
   KeyPress(Key);
   Key := #0;
 end;
 
-procedure TSynBaseCompletionForm.DoEditorUtf8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
+procedure TSynVirtualCompletionForm.DoEditorUtf8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
 begin
   if (not Visible) or (FCurrentEditor = nil) or (Sender <> FCurrentEditor) then exit;
   UTF8KeyPress(UTF8Key);
   UTF8Key := '';
 end;
 
-procedure TSynBaseCompletionForm.SDKeyDown(Sender: TObject; var Key: Word;
+procedure TSynVirtualCompletionForm.SDKeyDown(Sender: TObject; var Key: Word;
   Shift: TShiftState);
 begin
   KeyDown(key,shift);
 end;
 
-procedure TSynBaseCompletionForm.SDKeyPress(Sender: TObject; var Key: char);
+procedure TSynVirtualCompletionForm.SDKeyPress(Sender: TObject; var Key: char);
 begin
   KeyPress(key);
 end;
 
-procedure TSynBaseCompletionForm.SDUtf8KeyPress(Sender: TObject;
+procedure TSynVirtualCompletionForm.SDUtf8KeyPress(Sender: TObject;
   var UTF8Key: TUTF8Char);
 begin
   UTF8KeyPress(UTF8Key);
 end;
 
-procedure TSynBaseCompletionForm.UTF8KeyPress(var UTF8Key: TUTF8Char);
+procedure TSynVirtualCompletionForm.UTF8KeyPress(var UTF8Key: TUTF8Char);
 begin
   {$IFDEF VerboseKeys}
-  debugln('TSynBaseCompletionForm.UTF8KeyPress A UTF8Key="',DbgStr(UTF8Key),'" ',dbgsName(TObject(TMethod(OnUTF8KeyPress).Data)));
+  debugln('TSynVirtualCompletionForm.UTF8KeyPress A UTF8Key="',DbgStr(UTF8Key),'" ',dbgsName(TObject(TMethod(OnUTF8KeyPress).Data)));
   {$ENDIF}
   if Assigned(OnUTF8KeyPress) then
     OnUTF8KeyPress(Self, UTF8Key);
@@ -1720,38 +1834,33 @@ begin
     UTF8Key := '';
   end;
   {$IFDEF VerboseKeys}
-  debugln('TSynBaseCompletionForm.UTF8KeyPress END UTF8Key="',DbgStr(UTF8Key),'"');
+  debugln('TSynVirtualCompletionForm.UTF8KeyPress END UTF8Key="',DbgStr(UTF8Key),'"');
   {$ENDIF}
 end;
 
-procedure TSynBaseCompletionForm.SetCurrentString(const Value: string);
+procedure TSynVirtualCompletionForm.SetCurrentString(const Value: string);
 var
   i: integer;
-  lList: TStrings;
 begin
-  if UseInsertList then
-    lList := InsertList
-  else
-    lList := ItemList;
   FCurrentString := Value;
-  //debugln('TSynBaseCompletionForm.SetCurrentString FCurrentString=',FCurrentString);
+  //debugln('TSynVirtualCompletionForm.SetCurrentString FCurrentString=',FCurrentString);
   if Assigned(FOnSearchPosition) then begin
     i:=Position;
     FOnSearchPosition(i);
     Position:=i;
   end else begin
     if FCaseSensitive then begin
-      for i := 0 to Pred(lList.Count) do
+      for i := 0 to Pred(ItemsCount) do
         if 0 = CompareStr(fCurrentString,
-          Copy(lList[i], 1, Length(fCurrentString)))
+          Copy(InsertList[i], 1, Length(fCurrentString)))
         then begin
           Position := i;
           break;
         end;
     end else begin
-      for i := 0 to Pred(lList.Count) do
+      for i := 0 to Pred(ItemsCount) do
         if 0 = UTF8CompareLatinTextFast(fCurrentString,
-                                    Copy(lList[i], 1, Length(fCurrentString)))
+                                    Copy(InsertList[i], 1, Length(fCurrentString)))
         then begin
           Position := i;
           break;
@@ -1760,7 +1869,7 @@ begin
   end;
 end;
 
-procedure TSynBaseCompletionForm.DoOnResize;
+procedure TSynVirtualCompletionForm.DoOnResize;
 begin
   inherited DoOnResize;
   if ([csLoading,csDestroying]*ComponentState<>[]) or (Scroll=nil) then exit;
@@ -1771,7 +1880,7 @@ begin
   end;
 end;
 
-procedure TSynBaseCompletionForm.SetBackgroundColor(const AValue: TColor);
+procedure TSynVirtualCompletionForm.SetBackgroundColor(const AValue: TColor);
 begin
   if FBackgroundColor <> AValue then
   begin
@@ -1781,7 +1890,7 @@ begin
   end;
 end;
 
-procedure TSynBaseCompletionForm.FontChanged(Sender: TObject);
+procedure TSynVirtualCompletionForm.FontChanged(Sender: TObject);
 var
   TextMetric: TTextMetric;
 begin
@@ -1799,7 +1908,7 @@ begin
   end;
 end;
 
-procedure TSynBaseCompletionForm.WMMouseWheel(var Msg: TLMMouseEvent);
+procedure TSynVirtualCompletionForm.WMMouseWheel(var Msg: TLMMouseEvent);
 const
   WHEEL_DELTA = 120;
 var
@@ -1809,24 +1918,24 @@ begin
   WheelClicks := FMouseWheelAccumulator div WHEEL_DELTA;
   FMouseWheelAccumulator := FMouseWheelAccumulator - WheelClicks * WHEEL_DELTA;
   WheelClicks := WheelClicks * Mouse.WheelScrollLines;
-  Scroll.Position := Max(0, Min(FItemList.Count - NbLinesInWindow, Scroll.Position - WheelClicks));
+  Scroll.Position := Max(0, Min(ItemsCount - NbLinesInWindow, Scroll.Position - WheelClicks));
 end;
 
-procedure TSynBaseCompletionForm.SetLongLineHintTime(const AValue: Integer);
+procedure TSynVirtualCompletionForm.SetLongLineHintTime(const AValue: Integer);
 begin
   if FLongLineHintTime = AValue then exit;
   FLongLineHintTime := AValue;
   FHintTimer.Interval := AValue;
 end;
 
-procedure TSynBaseCompletionForm.EditorStatusChanged(Sender: TObject;
+procedure TSynVirtualCompletionForm.EditorStatusChanged(Sender: TObject;
   Changes: TSynStatusChanges);
 begin
   if (scTopLine in Changes) and Assigned(OnCancel) then
     OnCancel(Self);
 end;
 
-procedure TSynBaseCompletionForm.SetShowSizeDrag(const AValue: Boolean);
+procedure TSynVirtualCompletionForm.SetShowSizeDrag(const AValue: Boolean);
 begin
   if FShowSizeDrag = AValue then exit;
   FShowSizeDrag := AValue;
@@ -1837,7 +1946,7 @@ begin
     Scroll.BorderSpacing.Bottom := FDrawBorderWidth;
 end;
 
-procedure TSynBaseCompletionForm.RegisterHandlers(EditOnly: Boolean);
+procedure TSynVirtualCompletionForm.RegisterHandlers(EditOnly: Boolean);
 begin
   if FCurrentEditor <> nil then begin
     FCurrentEditor.RegisterStatusChangedHandler
@@ -1852,7 +1961,7 @@ begin
     Application.AddOnDeactivateHandler(@AppDeactivated);
 end;
 
-procedure TSynBaseCompletionForm.UnRegisterHandlers(EditOnly: Boolean);
+procedure TSynVirtualCompletionForm.UnRegisterHandlers(EditOnly: Boolean);
 begin
   if FCurrentEditor <> nil then begin
     FCurrentEditor.UnRegisterStatusChangedHandler(@EditorStatusChanged);
@@ -1864,7 +1973,7 @@ begin
     Application.RemoveOnDeactivateHandler(@AppDeactivated);
 end;
 
-procedure TSynBaseCompletionForm.SetCurrentEditor(const AValue: TCustomSynEdit);
+procedure TSynVirtualCompletionForm.SetCurrentEditor(const AValue: TCustomSynEdit);
 begin
   if FCurrentEditor = AValue then exit;
   UnRegisterHandlers(True);
@@ -1873,7 +1982,7 @@ begin
     RegisterHandlers(True);
 end;
 
-procedure TSynBaseCompletionForm.SetDrawBorderWidth(const AValue: Integer);
+procedure TSynVirtualCompletionForm.SetDrawBorderWidth(const AValue: Integer);
 begin
   if FDrawBorderWidth = AValue then exit;
   FDrawBorderWidth := AValue;
@@ -1888,12 +1997,7 @@ begin
   SizeDrag.BorderSpacing.Bottom := FDrawBorderWidth;
 end;
 
-procedure TSynBaseCompletionForm.SetInsertList(AValue: TStrings);
-begin
-  FInsertList.Assign(AValue);
-end;
-
-procedure TSynBaseCompletionForm.SetVisible(Value: Boolean);
+procedure TSynVirtualCompletionForm.SetVisible(Value: Boolean);
 begin
   if Visible = Value then exit;;
 
@@ -1905,44 +2009,37 @@ begin
   inherited SetVisible(Value);
 end;
 
-procedure TSynBaseCompletionForm.IncHintLock;
+procedure TSynVirtualCompletionForm.IncHintLock;
 begin
   inc(FHintLock);
   FHint.Hide
 end;
 
-procedure TSynBaseCompletionForm.DecHintLock;
+procedure TSynVirtualCompletionForm.DecHintLock;
 begin
   dec(FHintLock);
   if FHintLock = 0 then
     ShowItemHint(Position);
 end;
 
-procedure TSynBaseCompletionForm.DeleteCharAfterCursor;
+procedure TSynVirtualCompletionForm.DeleteCharAfterCursor;
 begin
   // do nothing
 end;
 
-procedure TSynBaseCompletionForm.DoOnDragResize(Sender: TObject);
+procedure TSynVirtualCompletionForm.DoOnDragResize(Sender: TObject);
 begin
   if assigned(FOnDragResized) then
     FOnDragResized(Sender);
 end;
 
-procedure TSynBaseCompletionForm.ClearCurrentString;
+procedure TSynVirtualCompletionForm.ClearCurrentString;
 begin
   FCurrentString := '';
   FPosition := 0;
 end;
 
-procedure TSynBaseCompletionForm.SetItemList(const Value: TStrings);
-begin
-  FItemList.Assign(Value);
-  if Position>=FItemList.Count then Position:=-1;
-  Invalidate;
-end;
-
-procedure TSynBaseCompletionForm.SetNbLinesInWindow(
+procedure TSynVirtualCompletionForm.SetNbLinesInWindow(
   const Value: Integer);
 begin
   inc(FResizeLock);   // prevent DoResize from recalculating NbLinesInWindow
@@ -1954,9 +2051,9 @@ begin
   end;
 end;
 
-procedure TSynBaseCompletionForm.SetPosition(Value: Integer);
+procedure TSynVirtualCompletionForm.SetPosition(Value: Integer);
 begin
-  Value := MinMax(Value, 0, ItemList.Count - 1);
+  Value := MinMax(Value, 0, ItemsCount - 1);
   if FPosition <> Value then begin
     FPosition := Value;
     if Position < Scroll.Position then
@@ -1970,18 +2067,9 @@ begin
     ShowItemHint(Position);
 end;
 
-procedure TSynBaseCompletionForm.StringListChange(Sender: TObject);
-begin
-  if ItemList.Count - NbLinesInWindow < 0 then
-    Scroll.Max := 0
-  else
-    Scroll.Max := ItemList.Count - NbLinesInWindow;
-  Position := Position;
-end;
+{ TSynVirtualCompletion }
 
-{ TSynBaseCompletion }
-
-constructor TSynBaseCompletion.Create(AOwner: TComponent);
+constructor TSynVirtualCompletion.Create(AOwner: TComponent);
 begin
   FWidth := 262;
   inherited Create(AOwner);
@@ -1990,109 +2078,76 @@ begin
   FAutoUseSingleIdent := True;
 end;
 
-destructor TSynBaseCompletion.Destroy;
+destructor TSynVirtualCompletion.Destroy;
 begin
   inherited Destroy;
   FreeAndNil(Form);
 end;
 
-procedure TSynBaseCompletion.Clear;
-begin
-  ItemList.Clear;
-  InsertList.Clear;
-end;
-
-procedure TSynBaseCompletion.Sort;
-begin
-  if (InsertList.Count > 0) then
-  begin
-    if InsertList.Count <> ItemList.Count then
-      raise Exception.Create('ItemList and InsertList must same count');
-    (InsertList as TStringList).Sort;
-  end
-  else
-    (ItemList as TStringList).Sort;
-end;
-
-procedure TSynBaseCompletion.BeginUpdate;
-begin
-  ItemList.BeginUpdate;
-end;
-
-procedure TSynBaseCompletion.EndUpdate;
-begin
-  ItemList.EndUpdate;
-end;
-
-function TSynBaseCompletion.GetOnUTF8KeyPress: TUTF8KeyPressEvent;
+function TSynVirtualCompletion.GetOnUTF8KeyPress: TUTF8KeyPressEvent;
 begin
   Result:=Form.OnUTF8KeyPress;
 end;
 
-procedure TSynBaseCompletion.SetOnUTF8KeyPress(
+procedure TSynVirtualCompletion.SetOnUTF8KeyPress(
   const AValue: TUTF8KeyPressEvent);
 begin
   Form.OnUTF8KeyPress:=AValue;
 end;
 
-function TSynBaseCompletion.GetFontHeight:integer;
+function TSynVirtualCompletion.GetFontHeight:integer;
 begin
   Result:=Form.FontHeight;
 end;
 
-function TSynBaseCompletion.GetOnSearchPosition:TSynBaseCompletionSearchPosition;
+function TSynVirtualCompletion.GetOnSearchPosition:TSynBaseCompletionSearchPosition;
 begin
   Result:=Form.OnSearchPosition;
 end;
 
-procedure TSynBaseCompletion.SetOnSearchPosition(
+procedure TSynVirtualCompletion.SetOnSearchPosition(
   NewValue :TSynBaseCompletionSearchPosition);
 begin
   Form.OnSearchPosition:=NewValue;
 end;
 
-function TSynBaseCompletion.GetOnKeyCompletePrefix: TNotifyEvent;
+function TSynVirtualCompletion.GetOnKeyCompletePrefix: TNotifyEvent;
 begin
   Result:=Form.OnKeyCompletePrefix;
 end;
 
-procedure TSynBaseCompletion.SetOnKeyCompletePrefix(const AValue: TNotifyEvent);
+procedure TSynVirtualCompletion.SetOnKeyCompletePrefix(const AValue: TNotifyEvent);
 begin
   Form.OnKeyCompletePrefix:=AValue;
 end;
 
-function TSynBaseCompletion.GetOnKeyNextChar: TNotifyEvent;
+function TSynVirtualCompletion.GetOnKeyNextChar: TNotifyEvent;
 begin
   Result:=Form.OnKeyNextChar;
 end;
 
-procedure TSynBaseCompletion.SetOnKeyNextChar(const AValue: TNotifyEvent);
+procedure TSynVirtualCompletion.SetOnKeyNextChar(const AValue: TNotifyEvent);
 begin
   Form.OnKeyNextChar:=AValue;
 end;
 
-function TSynBaseCompletion.GetOnKeyPrevChar: TNotifyEvent;
+function TSynVirtualCompletion.GetOnKeyPrevChar: TNotifyEvent;
 begin
   Result:=Form.OnKeyPrevChar;
 end;
 
-procedure TSynBaseCompletion.SetOnKeyPrevChar(const AValue: TNotifyEvent);
+procedure TSynVirtualCompletion.SetOnKeyPrevChar(const AValue: TNotifyEvent);
 begin
   Form.OnKeyPrevChar:=AValue;
 end;
 
-function TSynBaseCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
-begin
-  Result := TSynBaseCompletionForm;
-end;
-
-procedure TSynBaseCompletion.Execute(s: string; x, y: integer);
+procedure TSynVirtualCompletion.Execute(s: string; x, y: integer);
 var
   CurSynEdit: TCustomSynEdit;
   p: Integer;
   r: TOnBeforeExeucteFlags;
 begin
-  //writeln('TSynBaseCompletion.Execute ',Form.CurrentEditor.Name);
+  //writeln('TSynVirtualCompletion.Execute ',Form.CurrentEditor.Name);
 
   //Todo: This is dangerous, if other plugins also change/changed the flag.
   FAddedPersistentCaret := False;
@@ -2113,11 +2168,11 @@ begin
 
   if Assigned(OnExecute) then
     OnExecute(Self);
-  if (ItemList.Count=1) and Assigned(OnValidate) and FAutoUseSingleIdent then begin
+  if (Form.ItemsCount=1) and Assigned(OnValidate) and FAutoUseSingleIdent then begin
     OnValidate(Form, '', []);
     exit;
   end;
-  if (ItemList.Count=0) and Assigned(OnCancel) then begin
+  if (Form.ItemsCount=0) and Assigned(OnCancel) then begin
     OnCancel(Form);
     exit;
   end;
@@ -2136,12 +2191,12 @@ begin
   Form.Position := Form.Position;
 end;
 
-procedure TSynBaseCompletion.Execute(s: string; TopLeft: TPoint);
+procedure TSynVirtualCompletion.Execute(s: string; TopLeft: TPoint);
 begin
   Execute(s, TopLeft.x, TopLeft.y);
 end;
 
-procedure TSynBaseCompletion.Execute(s: string; TokenRect: TRect);
+procedure TSynVirtualCompletion.Execute(s: string; TokenRect: TRect);
 var
   SpaceBelow, SpaceAbove: Integer;
   Mon: TMonitor;
@@ -2175,236 +2230,215 @@ begin
   end;
 end;
 
-procedure TSynBaseCompletion.AddItem(ADisplayText: string; AInsertText: string; AObject: TObject);
-begin
-  ItemList.AddObject(ADisplayText, AObject);
-  InsertList.AddObject(AInsertText, AObject);
-end;
-
-procedure TSynBaseCompletion.AddItem(AText: string);
-begin
-  ItemList.Add(AText);
-end;
-
-function TSynBaseCompletion.GetCurrentString: string;
+function TSynVirtualCompletion.GetCurrentString: string;
 begin
   result := Form.CurrentString;
 end;
 
-function TSynBaseCompletion.GetItemList: TStrings;
-begin
-  Result := Form.ItemList;
-end;
-
-function TSynBaseCompletion.GetInsertList: TStrings;
-begin
-  Result := Form.InsertList;
-end;
-
-function TSynBaseCompletion.GetNbLinesInWindow: Integer;
+function TSynVirtualCompletion.GetNbLinesInWindow: Integer;
 begin
   Result := Form.NbLinesInWindow;
 end;
 
-function TSynBaseCompletion.GetOnCancel: TNotifyEvent;
+function TSynVirtualCompletion.GetOnCancel: TNotifyEvent;
 begin
   Result := Form.OnCancel;
 end;
 
-function TSynBaseCompletion.GetOnKeyPress: TKeyPressEvent;
+function TSynVirtualCompletion.GetOnKeyPress: TKeyPressEvent;
 begin
   Result := Form.OnKeyPress;
 end;
 
-function TSynBaseCompletion.GetOnPaintItem: TSynBaseCompletionPaintItem;
+function TSynVirtualCompletion.GetOnPaintItem: TSynBaseCompletionPaintItem;
 begin
   Result := Form.OnPaintItem;
 end;
 
-function TSynBaseCompletion.GetOnValidate: TValidateEvent;
+function TSynVirtualCompletion.GetOnValidate: TValidateEvent;
 begin
   Result := Form.OnValidate;
 end;
 
-function TSynBaseCompletion.GetPosition: Integer;
+function TSynVirtualCompletion.GetPosition: Integer;
 begin
   Result := Form.Position;
 end;
 
-procedure TSynBaseCompletion.SetCurrentString(const Value: string);
+procedure TSynVirtualCompletion.SetCurrentString(const Value: string);
 begin
   form.CurrentString := Value;
 end;
 
-procedure TSynBaseCompletion.SetDoubleClickSelects(const AValue: Boolean);
+procedure TSynVirtualCompletion.SetDoubleClickSelects(const AValue: Boolean);
 begin
   Form.DoubleClickSelects := AValue;
 end;
 
-procedure TSynBaseCompletion.SetItemList(const Value: TStrings);
+procedure TSynVirtualCompletion.SetItemList(const Value: TStrings);
 begin
-  Form.ItemList := Value;
+  (Form as TSynCompletionForm).ItemList := Value;
 end;
 
-procedure TSynBaseCompletion.SetInsertList(const Value: TStrings);
+procedure TSynVirtualCompletion.SetInsertList(const Value: TStrings);
 begin
-  Form.InsertList := Value;
+  (Form as TSynCompletionForm).InsertList := Value;
 end;
 
-procedure TSynBaseCompletion.SetLongLineHintTime(const AValue: Integer);
+procedure TSynVirtualCompletion.SetLongLineHintTime(const AValue: Integer);
 begin
   Form.LongLineHintTime := AValue;
 end;
 
-procedure TSynBaseCompletion.SetLongLineHintType(const AValue: TSynCompletionLongHintType);
+procedure TSynVirtualCompletion.SetLongLineHintType(const AValue: TSynCompletionLongHintType);
 begin
   Form.LongLineHintType := AValue;
 end;
 
-procedure TSynBaseCompletion.SetNbLinesInWindow(const Value: Integer);
+procedure TSynVirtualCompletion.SetNbLinesInWindow(const Value: Integer);
 begin
   form.NbLinesInWindow := Value;
 end;
 
-procedure TSynBaseCompletion.SetOnCancel(const Value: TNotifyEvent);
+procedure TSynVirtualCompletion.SetOnCancel(const Value: TNotifyEvent);
 begin
   form.OnCancel := Value;
 end;
 
-procedure TSynBaseCompletion.SetOnKeyDown(const AValue: TKeyEvent);
+procedure TSynVirtualCompletion.SetOnKeyDown(const AValue: TKeyEvent);
 begin
   Form.OnKeyDown:=AValue;
 end;
 
-procedure TSynBaseCompletion.SetOnKeyPress(const Value: TKeyPressEvent);
+procedure TSynVirtualCompletion.SetOnKeyPress(const Value: TKeyPressEvent);
 begin
   form.OnKeyPress := Value;
 end;
 
-procedure TSynBaseCompletion.SetOnMeasureItem(
+procedure TSynVirtualCompletion.SetOnMeasureItem(
   const AValue: TSynBaseCompletionMeasureItem);
 begin
   Form.OnMeasureItem := AValue;
 end;
 
-procedure TSynBaseCompletion.SetOnPositionChanged(const AValue: TNotifyEvent);
+procedure TSynVirtualCompletion.SetOnPositionChanged(const AValue: TNotifyEvent);
 begin
   Form.OnPositionChanged :=  AValue;
 end;
 
-procedure TSynBaseCompletion.SetOnPaintItem(const Value: TSynBaseCompletionPaintItem);
+procedure TSynVirtualCompletion.SetOnPaintItem(const Value: TSynBaseCompletionPaintItem);
 begin
   form.OnPaintItem := Value;
 end;
 
-procedure TSynBaseCompletion.SetPosition(const Value: Integer);
+procedure TSynVirtualCompletion.SetPosition(const Value: Integer);
 begin
   form.Position := Value;
 end;
 
-procedure TSynBaseCompletion.SetOnValidate(const Value: TValidateEvent);
+procedure TSynVirtualCompletion.SetOnValidate(const Value: TValidateEvent);
 begin
   form.OnValidate := Value;
 end;
 
-function TSynBaseCompletion.GetClSelect: TColor;
+function TSynVirtualCompletion.GetClSelect: TColor;
 begin
   Result := Form.ClSelect;
 end;
 
-function TSynBaseCompletion.GetDoubleClickSelects: Boolean;
+function TSynVirtualCompletion.GetDoubleClickSelects: Boolean;
 begin
   Result := Form.DoubleClickSelects;
 end;
 
-function TSynBaseCompletion.GetLongLineHintTime: Integer;
+function TSynVirtualCompletion.GetLongLineHintTime: Integer;
 begin
   Result := Form.LongLineHintTime;
 end;
 
-function TSynBaseCompletion.GetLongLineHintType: TSynCompletionLongHintType;
+function TSynVirtualCompletion.GetLongLineHintType: TSynCompletionLongHintType;
 begin
   Result := Form.LongLineHintType;
 end;
 
-function TSynBaseCompletion.GetOnKeyDown: TKeyEvent;
+function TSynVirtualCompletion.GetOnKeyDown: TKeyEvent;
 begin
   Result:=Form.OnKeyDown;
 end;
 
-function TSynBaseCompletion.GetCaseSensitive: boolean;
+function TSynVirtualCompletion.GetCaseSensitive: boolean;
 begin
   Result := Form.CaseSensitive;
 end;
 
-function TSynBaseCompletion.GetUseInsertList: boolean;
+function TSynVirtualCompletion.GetUseInsertList: boolean;
 begin
   Result := Form.UseInsertList;
 end;
 
-function TSynBaseCompletion.GetUsePrettyText: boolean;
+function TSynVirtualCompletion.GetUsePrettyText: boolean;
 begin
   Result := Form.UsePrettyText;
 end;
 
-function TSynBaseCompletion.GetOnMeasureItem: TSynBaseCompletionMeasureItem;
+function TSynVirtualCompletion.GetOnMeasureItem: TSynBaseCompletionMeasureItem;
 begin
   Result := Form.OnMeasureItem;
 end;
 
-function TSynBaseCompletion.GetOnPositionChanged: TNotifyEvent;
+function TSynVirtualCompletion.GetOnPositionChanged: TNotifyEvent;
 begin
   Result := Form.OnPositionChanged;
 end;
 
-function TSynBaseCompletion.GetShowSizeDrag: Boolean;
+function TSynVirtualCompletion.GetShowSizeDrag: Boolean;
 begin
   Result := Form.ShowSizeDrag;
 end;
 
-procedure TSynBaseCompletion.SetCaseSensitive(const AValue: boolean);
+procedure TSynVirtualCompletion.SetCaseSensitive(const AValue: boolean);
 begin
   Form.CaseSensitive := AValue;
 end;
 
-procedure TSynBaseCompletion.SetUseInsertList(AValue: boolean);
+procedure TSynVirtualCompletion.SetUseInsertList(AValue: boolean);
 begin
   Form.UseInsertList := AValue;
 end;
 
-procedure TSynBaseCompletion.SetUsePrettyText(const AValue: boolean);
+procedure TSynVirtualCompletion.SetUsePrettyText(const AValue: boolean);
 begin
   Form.UsePrettyText := AValue;
 end;
 
-procedure TSynBaseCompletion.SetClSelect(const Value: TColor);
+procedure TSynVirtualCompletion.SetClSelect(const Value: TColor);
 begin
   Form.ClSelect := Value;
 end;
 
-function TSynBaseCompletion.GetOnKeyDelete: TNotifyEvent;
+function TSynVirtualCompletion.GetOnKeyDelete: TNotifyEvent;
 begin
   result := Form.OnKeyDelete;
 end;
 
-procedure TSynBaseCompletion.SetOnKeyDelete(const Value: TNotifyEvent);
+procedure TSynVirtualCompletion.SetOnKeyDelete(const Value: TNotifyEvent);
 begin
   form.OnKeyDelete := Value;
 end;
 
-procedure TSynBaseCompletion.SetShowSizeDrag(const AValue: Boolean);
+procedure TSynVirtualCompletion.SetShowSizeDrag(const AValue: Boolean);
 begin
   Form.ShowSizeDrag := AValue;
 end;
 
-procedure TSynBaseCompletion.SetWidth(Value: Integer);
+procedure TSynVirtualCompletion.SetWidth(Value: Integer);
 begin
   FWidth := Value;
   Form.Width := FWidth;
   Form.SetNbLinesInWindow(Form.FNbLinesInWindow);
 end;
 
-procedure TSynBaseCompletion.Deactivate;
+procedure TSynVirtualCompletion.Deactivate;
 var
   CurSynEdit: TCustomSynEdit;
 begin
@@ -2419,12 +2453,12 @@ begin
   if Assigned(Form) then Form.Deactivate;
 end;
 
-function TSynBaseCompletion.IsActive: boolean;
+function TSynVirtualCompletion.IsActive: boolean;
 begin
   Result:=(Form<>nil) and (Form.Visible);
 end;
 
-function TSynBaseCompletion.TheForm: TSynBaseCompletionForm;
+function TSynVirtualCompletion.TheForm: TSynVirtualCompletionForm;
 begin
   Result:=Form;
 end;
@@ -2482,9 +2516,9 @@ end;
 
 procedure TSynCompletion.Cancel(Sender: TObject);
 var
-  F: TSynBaseCompletionForm;
+  F: TSynVirtualCompletionForm;
 begin
-  F := Sender as TSynBaseCompletionForm;
+  F := Sender as TSynVirtualCompletionForm;
   if F.CurrentEditor <> nil then begin
     if (F.CurrentEditor as TCustomSynEdit).Owner is TWinControl then
       TWinControl((F.CurrentEditor as TCustomSynEdit).Owner).SetFocus;
@@ -2495,14 +2529,14 @@ end;
 procedure TSynCompletion.Validate(Sender: TObject; KeyChar: TUTF8Char;
   Shift: TShiftState);
 var
-  F: TSynBaseCompletionForm;
+  F: TSynVirtualCompletionForm;
   Value, CurLine: string;
   NewBlockBegin, NewBlockEnd: TPoint;
   LogCaret: TPoint;
   HighlighterIdentChars: TSynIdentChars;
 begin
   //debugln('TSynCompletion.Validate ',dbgsName(Sender),' ',dbgs(Shift),' Position=',dbgs(Position));
-  F := Sender as TSynBaseCompletionForm;
+  F := Sender as TSynVirtualCompletionForm;
   // Note: Form.Visible can be false, for example when completion only contains one item
   if F.CurrentEditor is TCustomSynEdit then
     with TCustomSynEdit(F.CurrentEditor) do begin
@@ -2560,7 +2594,7 @@ begin
           end;
         end
         else
-        if (ItemList.Count = 0) then
+        if (Form.ItemsCount = 0) then
           Cancel(Sender);
       finally
         EndUpdate;
@@ -2631,7 +2665,7 @@ begin
 
 end;
 
-function TSynCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
+function TSynCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
 begin
   Result := TSynCompletionForm;
 end;
@@ -2696,6 +2730,35 @@ procedure TSynCompletion.DeleteCharBeforeCursor;
 begin
   Form.DeleteCharBeforeCursor;
 end;
+
+procedure TSynCompletion.Clear;
+begin
+  ItemList.Clear;
+  InsertList.Clear;
+end;
+
+procedure TSynCompletion.Sort;
+begin
+  if (InsertList.Count > 0) then
+  begin
+    if InsertList.Count <> ItemList.Count then
+      raise Exception.Create('ItemList and InsertList must same count');
+    (InsertList as TStringList).Sort;
+  end
+  else
+    (ItemList as TStringList).Sort;
+end;
+
+procedure TSynCompletion.BeginUpdate;
+begin
+  ItemList.BeginUpdate;
+end;
+
+procedure TSynCompletion.EndUpdate;
+begin
+  ItemList.EndUpdate;
+end;
+
 
 { TSynAutoComplete }
 
@@ -2924,7 +2987,7 @@ constructor TSynBaseCompletionHint.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Canvas.Brush.Style := bsSolid;
-  FCompletionForm := AOwner as TSynBaseCompletionForm;
+  FCompletionForm := AOwner as TSynVirtualCompletionForm;
   Color := FCompletionForm.BackgroundColor;
   AutoHide := False;
   Visible := False;
