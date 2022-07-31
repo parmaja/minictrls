@@ -351,6 +351,7 @@ type
     procedure SetOnKeyPrevChar(const AValue: TNotifyEvent);
   protected
     procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); virtual;
+    function GetFormClass: TSynVirtualCompletionFormClass; virtual; abstract;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -423,6 +424,7 @@ type
     procedure SetItemList(AValue: TStrings);
   protected
     function GetCompletionFormClass: TSynBaseCompletionFormClass; virtual;
+    function GetFormClass: TSynVirtualCompletionFormClass; override; //* I used that way to keep it work old code in Lazarus IDE to not break any thing
     procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -609,7 +611,6 @@ type
     property Chunks[Index: Integer]: PFormatChunk read GetChunk; default;
   end;
 
-
 const
   AllCommands = [fcColor..High(TFormatCommand)];
   DefTabChars = 8;
@@ -705,6 +706,11 @@ begin
   (Form as TSynCompletionForm).ItemList := AValue;
 end;
 
+function TSynBaseCompletion.GetFormClass: TSynVirtualCompletionFormClass;
+begin
+  Result := GetCompletionFormClass;
+end;
+
 function TSynBaseCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
 begin
   Result := TSynBaseCompletionForm;
@@ -719,8 +725,6 @@ end;
 constructor TSynBaseCompletion.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Form := GetCompletionFormClass.Create(nil); // Do not create with owner, or the designer will make it visible
-  Form.Width := FWidth;
 end;
 
 { TSynBaseCompletionForm }
@@ -2167,6 +2171,8 @@ constructor TSynVirtualCompletion.Create(AOwner: TComponent);
 begin
   FWidth := 262;
   inherited Create(AOwner);
+  Form := GetFormClass.Create(nil);
+  Form.Width := FWidth;
   FAutoUseSingleIdent := True;
 end;
 
