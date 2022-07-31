@@ -114,15 +114,6 @@ type
       const AXProportion, AYProportion: Double); override;
   end;
 
-  { TSynItemList }
-
-  TSynItemList = class(TStringList)
-  protected
-    FItemList: TStrings; //Link only to other list to sort
-    procedure ExchangeItems(Index1, Index2: Integer); override;
-  public
-  end;
-
   { TSynVirtualCompletionForm }
 
   TSynVirtualCompletionForm = class(TForm)
@@ -144,7 +135,6 @@ type
     FOnCancel: TNotifyEvent;
     FClSelect: TColor;
     FCaseSensitive: Boolean;
-    FUseInsertList: Boolean;
     FUsePrettyText: Boolean;
     FBackgroundColor: TColor;
     FDrawBorderColor: TColor;
@@ -242,7 +232,6 @@ type
     property NbLinesInWindow: Integer read FNbLinesInWindow write SetNbLinesInWindow;
     property ClSelect: TColor read FClSelect write FClSelect;
     property CaseSensitive: boolean read FCaseSensitive write FCaseSensitive;
-    property UseInsertList: Boolean read FUseInsertList write FUseInsertList;
     property UsePrettyText: Boolean read FUsePrettyText write FUsePrettyText;
     property FontHeight:integer read FFontHeight;
     property OnSearchPosition:TSynBaseCompletionSearchPosition
@@ -272,7 +261,6 @@ type
 
   TSynBaseCompletionForm = class(TSynVirtualCompletionForm)
   private
-    FInsertList: TStrings;
     FItemList: TStrings;
   protected
     procedure StringListChange(Sender: TObject);
@@ -282,12 +270,10 @@ type
     function GetItemsCount: Integer; override;
 
     procedure SetItemList(const Value: TStrings);
-    procedure SetInsertList(AValue: TStrings);
   public
     constructor Create(AOwner: Tcomponent); override;
     destructor Destroy; override;
     property ItemList: TStrings read FItemList write SetItemList;
-    property InsertList: TStrings read FInsertList write SetInsertList;
   end;
 
   TSynBaseCompletionFormClass = class of TSynBaseCompletionForm;
@@ -301,30 +287,20 @@ type
     procedure DeleteCharBeforeCursor; override;
   end;
 
-  { TSynBaseCompletion }
+  { TSynVirtualCompletion }
 
   TSynVirtualCompletion = class;
   TOnBeforeExeucteFlag = (befAbort);
   TOnBeforeExeucteFlags = set of TOnBeforeExeucteFlag;
 
-  TOnBeforeExecuteEvent = procedure(
-    ASender: TSynVirtualCompletion;
-    var ACurrentString: String;
-    var APosition: Integer; // Defaults to -1. If left at -1 position will be calculated from CurrentString
-    var AnX, AnY: Integer;        // Coordinates for the form
-    var AnResult: TOnBeforeExeucteFlags
-  ) of object;
-
   TSynVirtualCompletion = class(TLazSynMultiEditPlugin)
   private
     FAutoUseSingleIdent: Boolean;
-    FOnBeforeExecute: TOnBeforeExecuteEvent;
     Form: TSynVirtualCompletionForm;
     FAddedPersistentCaret, FChangedNoneBlink: boolean;
     FOnExecute: TNotifyEvent;
     FWidth: Integer;
     function GetCaseSensitive: boolean;
-    function GetUseInsertList: boolean;
     function GetUsePrettyText: boolean;
     function GetClSelect: TColor;
     function GetDoubleClickSelects: Boolean;
@@ -335,7 +311,6 @@ type
     function GetOnPositionChanged: TNotifyEvent;
     function GetShowSizeDrag: Boolean;
     procedure SetCaseSensitive(const AValue: boolean);
-    procedure SetUseInsertList(AValue: boolean);
     procedure SetUsePrettyText(const AValue: boolean);
     procedure SetClSelect(const Value: TColor);
     function GetCurrentString: string;
@@ -348,8 +323,6 @@ type
     function GetPosition: Integer;
     procedure SetCurrentString(const Value: string);
     procedure SetDoubleClickSelects(const AValue: Boolean);
-    procedure SetItemList(const Value: TStrings);
-    procedure SetInsertList(const Value: TStrings);
     procedure SetLongLineHintTime(const AValue: Integer);
     procedure SetLongLineHintType(const AValue: TSynCompletionLongHintType);
     procedure SetNbLinesInWindow(const Value: Integer);
@@ -378,6 +351,7 @@ type
     procedure SetOnKeyPrevChar(const AValue: TNotifyEvent);
   protected
     function GetCompletionFormClass: TSynVirtualCompletionFormClass; virtual; abstract;
+    procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -399,7 +373,6 @@ type
     property ClSelect: TColor read GetClSelect write SetClSelect; deprecated; // use SelectedColor
     property NbLinesInWindow: Integer read GetNbLinesInWindow write SetNbLinesInWindow; deprecated;
   published
-    property OnBeforeExecute: TOnBeforeExecuteEvent read FOnBeforeExecute write FOnBeforeExecute;
     property OnExecute: TNotifyEvent read FOnExecute write FOnExecute;
     property OnPaintItem: TSynBaseCompletionPaintItem
              read GetOnPaintItem write SetOnPaintItem;
@@ -421,7 +394,6 @@ type
                                              write SetOnPositionChanged;
     property SelectedColor: TColor read GetClSelect write SetClSelect;
     property CaseSensitive: boolean read GetCaseSensitive write SetCaseSensitive;
-    property UseInsertList: boolean read GetUseInsertList write SetUseInsertList;
     property UsePrettyText: boolean read GetUsePrettyText write SetUsePrettyText;
     property Width: Integer read FWidth write SetWidth;
     property LongLineHintTime: Integer read GetLongLineHintTime
@@ -433,17 +405,30 @@ type
     property AutoUseSingleIdent: Boolean read FAutoUseSingleIdent write FAutoUseSingleIdent;
   end;
 
+  TSynBaseCompletion = class;
+
+  TOnBeforeExecuteEvent = procedure(
+    ASender: TSynBaseCompletion;
+    var ACurrentString: String;
+    var APosition: Integer; // Defaults to -1. If left at -1 position will be calculated from CurrentString
+    var AnX, AnY: Integer;        // Coordinates for the form
+    var AnResult: TOnBeforeExeucteFlags
+  ) of object;
+
+  { TSynBaseCompletion }
+
   TSynBaseCompletion = class(TSynVirtualCompletion)
   private
+    FOnBeforeExecute: TOnBeforeExecuteEvent;
     function GetItemList: TStrings;
-    function GetInsertList: TStrings;
+    procedure SetItemList(AValue: TStrings);
   protected
     function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
+    procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); override;
   public
-    procedure AddItem(ADisplayText: string; AInsertText: string; AObject: TObject = nil);
     procedure AddItem(AText: string);
     property ItemList: TStrings read GetItemList write SetItemList;
-    property InsertList: TStrings read GetInsertList write SetInsertList;
+    property OnBeforeExecute: TOnBeforeExecuteEvent read FOnBeforeExecute write FOnBeforeExecute;
   end;
 
   { TSynCompletion }
@@ -480,8 +465,8 @@ type
     procedure AddCharAtCursor(AUtf8Char: TUTF8Char);
     procedure DeleteCharBeforeCursor;
 
-    procedure Clear;
-    procedure Sort;
+    procedure Clear; virtual;
+    procedure Sort; virtual;
     procedure BeginUpdate;
     procedure EndUpdate;
   published
@@ -492,6 +477,47 @@ type
     property ExecCommandID: TSynEditorCommand read FExecCommandID write FExecCommandID;
     property Editor;
     property ToggleReplaceWhole: boolean read FToggleReplacesWhole write FToggleReplacesWhole;// false=shift replaces left side, true=shift replaces whole word
+  end;
+
+  { Dual }
+
+  { TSynItemList }
+
+  TSynItemList = class(TStringList)
+  protected
+    FItemList: TStrings; //Link only to other list to sort
+    procedure ExchangeItems(Index1, Index2: Integer); override;
+  public
+  end;
+
+  { TSynDualCompletionForm }
+
+  TSynDualCompletionForm = class(TSynCompletionForm)
+  private
+    FInsertList: TStrings;
+    procedure SetInsertList(AValue: TStrings);
+  protected
+    function GetItemText(Index: Integer): string; override;
+    function GetItemDisplay(Index: Integer): string; override;
+  public
+    constructor Create(AOwner: Tcomponent); override;
+    destructor Destroy; override;
+    property InsertList: TStrings read FInsertList write SetInsertList;
+  end;
+
+  { TSynDualCompletion }
+
+  TSynDualCompletion = class(TSynCompletion)
+  private
+    function GetInsertList: TStrings;
+    procedure SetInsertList(AValue: TStrings);
+  protected
+    function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
+  public
+    procedure Clear; override;
+    procedure Sort; override;
+    procedure AddItem(ADisplayText: string; AInsertText: string; AObject: TObject = nil);
+    property InsertList: TStrings read GetInsertList write SetInsertList;
   end;
 
   { TSynAutoComplete }
@@ -588,13 +614,81 @@ const
   AllCommands = [fcColor..High(TFormatCommand)];
   DefTabChars = 8;
 
-{ TSynBaseCompletion }
+{ TSynDualCompletionForm }
 
-procedure TSynBaseCompletion.AddItem(ADisplayText: string; AInsertText: string; AObject: TObject);
+procedure TSynDualCompletionForm.SetInsertList(AValue: TStrings);
+begin
+  FInsertList.Assign(AValue);
+end;
+
+function TSynDualCompletionForm.GetItemText(Index: Integer): string;
+begin
+  if (FInsertList.Count > 0) then
+    Result := FInsertList[Index]
+  else
+    Result := FItemList[Index];
+end;
+
+function TSynDualCompletionForm.GetItemDisplay(Index: Integer): string;
+begin
+  Result :=inherited GetItemDisplay(Index);
+end;
+
+constructor TSynDualCompletionForm.Create(AOwner: Tcomponent);
+begin
+  inherited Create(AOwner);
+  FInsertList := TSynItemList.Create;
+  (FInsertList as TSynItemList).FItemList := FItemList;
+  TStringList(FInsertList).OnChange := @StringListChange;
+end;
+
+destructor TSynDualCompletionForm.Destroy;
+begin
+  FInsertList.Free;
+  inherited Destroy;
+end;
+
+{ TSynDualCompletion }
+
+function TSynDualCompletion.GetInsertList: TStrings;
+begin
+  Result := (Form as TSynDualCompletionForm).InsertList;
+end;
+
+procedure TSynDualCompletion.SetInsertList(AValue: TStrings);
+begin
+  (Form as TSynDualCompletionForm).InsertList.Assign(AValue);
+end;
+
+function TSynDualCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
+begin
+  Result := TSynDualCompletionForm;
+end;
+
+procedure TSynDualCompletion.Clear;
+begin
+  inherited Clear;
+  InsertList.Clear;
+end;
+
+procedure TSynDualCompletion.Sort;
+begin
+  //inherited DO NOT
+  if (InsertList.Count > 0) then
+  begin
+    if InsertList.Count <> ItemList.Count then
+      raise Exception.Create('ItemList and InsertList must same count');
+    (InsertList as TStringList).Sort;
+  end;
+end;
+
+procedure TSynDualCompletion.AddItem(ADisplayText: string; AInsertText: string; AObject: TObject);
 begin
   ItemList.AddObject(ADisplayText, AObject);
   InsertList.AddObject(AInsertText, AObject);
 end;
+
+{ TSynBaseCompletion }
 
 procedure TSynBaseCompletion.AddItem(AText: string);
 begin
@@ -606,14 +700,20 @@ begin
   Result := (Form as TSynCompletionForm).ItemList;
 end;
 
-function TSynBaseCompletion.GetInsertList: TStrings;
+procedure TSynBaseCompletion.SetItemList(AValue: TStrings);
 begin
-  Result := (Form as TSynCompletionForm).InsertList;
+  (Form as TSynCompletionForm).ItemList := AValue;
 end;
 
 function TSynBaseCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
 begin
   Result := TSynBaseCompletionForm;
+end;
+
+procedure TSynBaseCompletion.DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags);
+begin
+  if Assigned(FOnBeforeExecute) then
+    FOnBeforeExecute(Self, ACurrentString, APosition, AnX, AnY, AnResult);
 end;
 
 { TSynBaseCompletionForm }
@@ -629,10 +729,7 @@ end;
 
 function TSynBaseCompletionForm.GetItemText(Index: Integer): string;
 begin
-  if (FInsertList.Count > 0) then
-    Result := FInsertList[Index]
-  else
-    Result := FItemList[Index];
+  Result := FItemList[Index];
 end;
 
 function TSynBaseCompletionForm.GetItemDisplay(Index: Integer): string;
@@ -652,25 +749,15 @@ begin
   Invalidate;
 end;
 
-procedure TSynBaseCompletionForm.SetInsertList(AValue: TStrings);
-begin
-  FInsertList.Assign(AValue);
-end;
-
 constructor TSynBaseCompletionForm.Create(AOwner: Tcomponent);
 begin
   inherited Create(AOwner);
   FItemList := TStringList.Create;
-  FInsertList := TSynItemList.Create;
-  (FInsertList as TSynItemList).FItemList := FItemList;
-
   TStringList(FItemList).OnChange := @StringListChange;
-  TStringList(FInsertList).OnChange := @StringListChange;
 end;
 
 destructor TSynBaseCompletionForm.Destroy;
 begin
-  FInsertList.Free;
   FItemList.Free;
   inherited Destroy;
 end;
@@ -2141,6 +2228,10 @@ begin
   Form.OnKeyPrevChar:=AValue;
 end;
 
+procedure TSynVirtualCompletion.DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags);
+begin
+end;
+
 procedure TSynVirtualCompletion.Execute(s: string; x, y: integer);
 var
   CurSynEdit: TCustomSynEdit;
@@ -2156,8 +2247,8 @@ begin
   Form.ClearCurrentString;
   p := -1;
   r := [];
-  if Assigned(OnBeforeExecute) then
-    OnBeforeExecute(Self, s, p, x, y, r);
+
+  DoBeforeExecute(s, p, x, y, r);
   if befAbort in r then
     exit;
 
@@ -2275,16 +2366,6 @@ begin
   Form.DoubleClickSelects := AValue;
 end;
 
-procedure TSynVirtualCompletion.SetItemList(const Value: TStrings);
-begin
-  (Form as TSynCompletionForm).ItemList := Value;
-end;
-
-procedure TSynVirtualCompletion.SetInsertList(const Value: TStrings);
-begin
-  (Form as TSynCompletionForm).InsertList := Value;
-end;
-
 procedure TSynVirtualCompletion.SetLongLineHintTime(const AValue: Integer);
 begin
   Form.LongLineHintTime := AValue;
@@ -2371,11 +2452,6 @@ begin
   Result := Form.CaseSensitive;
 end;
 
-function TSynVirtualCompletion.GetUseInsertList: boolean;
-begin
-  Result := Form.UseInsertList;
-end;
-
 function TSynVirtualCompletion.GetUsePrettyText: boolean;
 begin
   Result := Form.UsePrettyText;
@@ -2399,11 +2475,6 @@ end;
 procedure TSynVirtualCompletion.SetCaseSensitive(const AValue: boolean);
 begin
   Form.CaseSensitive := AValue;
-end;
-
-procedure TSynVirtualCompletion.SetUseInsertList(AValue: boolean);
-begin
-  Form.UseInsertList := AValue;
 end;
 
 procedure TSynVirtualCompletion.SetUsePrettyText(const AValue: boolean);
@@ -2573,10 +2644,7 @@ begin
         if Position>=0 then begin
           if Assigned(FOnCodeCompletion) then
           begin
-            if UseInsertList then
-              Value := InsertList[Position]
-            else
-              Value := ItemList[Position];
+            Value := Form.InsertList[Position];
             FOnCodeCompletion(Value, TextBetweenPoints[NewBlockBegin, NewBlockEnd],
                               NewBlockBegin, NewBlockEnd, KeyChar, Shift);
             if (CompareCarets(NewBlockBegin, NewBlockEnd) <> 0) or (Value <> '') then
@@ -2586,10 +2654,7 @@ begin
             end;
           end else
           begin
-            if UseInsertList then
-              TextBetweenPointsEx[NewBlockBegin, NewBlockEnd, scamEnd] := InsertList[Position]
-            else
-              TextBetweenPointsEx[NewBlockBegin, NewBlockEnd, scamEnd] := ItemList[Position];
+            TextBetweenPointsEx[NewBlockBegin, NewBlockEnd, scamEnd] := Form.InsertList[Position];
             TCustomSynEdit(F.CurrentEditor).SetFocus;
           end;
         end
@@ -2734,19 +2799,11 @@ end;
 procedure TSynCompletion.Clear;
 begin
   ItemList.Clear;
-  InsertList.Clear;
 end;
 
 procedure TSynCompletion.Sort;
 begin
-  if (InsertList.Count > 0) then
-  begin
-    if InsertList.Count <> ItemList.Count then
-      raise Exception.Create('ItemList and InsertList must same count');
-    (InsertList as TStringList).Sort;
-  end
-  else
-    (ItemList as TStringList).Sort;
+  (ItemList as TStringList).Sort;
 end;
 
 procedure TSynCompletion.BeginUpdate;
@@ -2758,7 +2815,6 @@ procedure TSynCompletion.EndUpdate;
 begin
   ItemList.EndUpdate;
 end;
-
 
 { TSynAutoComplete }
 
