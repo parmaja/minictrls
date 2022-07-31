@@ -350,7 +350,6 @@ type
     function GetOnKeyPrevChar: TNotifyEvent;
     procedure SetOnKeyPrevChar(const AValue: TNotifyEvent);
   protected
-    function GetCompletionFormClass: TSynVirtualCompletionFormClass; virtual; abstract;
     procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); virtual;
   public
     constructor Create(AOwner: TComponent); override;
@@ -423,9 +422,10 @@ type
     function GetItemList: TStrings;
     procedure SetItemList(AValue: TStrings);
   protected
-    function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
+    function GetCompletionFormClass: TSynBaseCompletionFormClass; virtual;
     procedure DoBeforeExecute(var ACurrentString: String; var APosition: Integer; var AnX, AnY: Integer; var AnResult: TOnBeforeExeucteFlags); override;
   public
+    constructor Create(AOwner: TComponent); override;
     procedure AddItem(AText: string);
     property ItemList: TStrings read GetItemList write SetItemList;
     property OnBeforeExecute: TOnBeforeExecuteEvent read FOnBeforeExecute write FOnBeforeExecute;
@@ -458,7 +458,7 @@ type
     procedure ProcessSynCommand(Sender: TObject; AfterProcessing: boolean;
               var Handled: boolean; var Command: TSynEditorCommand;
               var AChar: TUTF8Char; Data: pointer; HandlerData: pointer);
-    function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
+    function GetCompletionFormClass: TSynBaseCompletionFormClass; override;
   public
     constructor Create(AOwner: TComponent); override;
     function EditorsCount: integer; deprecated; // use EditorCount
@@ -512,7 +512,7 @@ type
     function GetInsertList: TStrings;
     procedure SetInsertList(AValue: TStrings);
   protected
-    function GetCompletionFormClass: TSynVirtualCompletionFormClass; override;
+    function GetCompletionFormClass: TSynBaseCompletionFormClass; override;
   public
     procedure Clear; override;
     procedure Sort; override;
@@ -660,7 +660,7 @@ begin
   (Form as TSynDualCompletionForm).InsertList.Assign(AValue);
 end;
 
-function TSynDualCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
+function TSynDualCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
 begin
   Result := TSynDualCompletionForm;
 end;
@@ -705,7 +705,7 @@ begin
   (Form as TSynCompletionForm).ItemList := AValue;
 end;
 
-function TSynBaseCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
+function TSynBaseCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
 begin
   Result := TSynBaseCompletionForm;
 end;
@@ -714,6 +714,13 @@ procedure TSynBaseCompletion.DoBeforeExecute(var ACurrentString: String; var APo
 begin
   if Assigned(FOnBeforeExecute) then
     FOnBeforeExecute(Self, ACurrentString, APosition, AnX, AnY, AnResult);
+end;
+
+constructor TSynBaseCompletion.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Form := GetCompletionFormClass.Create(nil); // Do not create with owner, or the designer will make it visible
+  Form.Width := FWidth;
 end;
 
 { TSynBaseCompletionForm }
@@ -2160,8 +2167,6 @@ constructor TSynVirtualCompletion.Create(AOwner: TComponent);
 begin
   FWidth := 262;
   inherited Create(AOwner);
-  Form := GetCompletionFormClass.Create(nil); // Do not create with owner, or the designer will make it visible
-  Form.Width := FWidth;
   FAutoUseSingleIdent := True;
 end;
 
@@ -2251,7 +2256,6 @@ begin
   DoBeforeExecute(s, p, x, y, r);
   if befAbort in r then
     exit;
-
 
   CurrentString := s;
   if p >= 0 then
@@ -2730,7 +2734,7 @@ begin
 
 end;
 
-function TSynCompletion.GetCompletionFormClass: TSynVirtualCompletionFormClass;
+function TSynCompletion.GetCompletionFormClass: TSynBaseCompletionFormClass;
 begin
   Result := TSynCompletionForm;
 end;
