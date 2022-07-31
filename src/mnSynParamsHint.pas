@@ -35,7 +35,7 @@ located at http://SynEdit.SourceForge.net
 Known Issues:
 -------------------------------------------------------------------------------}
 
-unit mnSynCompletion;
+unit mnSynParamsHint;
 
 {$DEFINE HintClickWorkaround} // Workaround for issue 21952
 
@@ -575,4 +575,3 @@ begin
 end;
 
 end.
-

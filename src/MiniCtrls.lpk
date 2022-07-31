@@ -190,8 +190,8 @@
         <UnitName Value="ParamsForms"/>
       </Item42>
       <Item43>
-        <Filename Value="mnSynCompletion.pas"/>
-        <UnitName Value="mnSynCompletion"/>
+        <Filename Value="mnSynParamsHint.pas"/>
+        <UnitName Value="mnSynParamsHint"/>
       </Item43>
     </Files>
     <CompatibilityMode Value="True"/>
