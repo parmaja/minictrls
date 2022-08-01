@@ -189,6 +189,7 @@ type
     FOnPositionChanged: TNotifyEvent;
     FShowSizeDrag: Boolean;
     FHintLock: Integer;
+    FSmartEdit: Boolean;
     procedure SetCurrentEditor(const AValue: TCustomSynEdit);
     procedure SetDrawBorderWidth(const AValue: Integer);
     procedure SetLongLineHintTime(const AValue: Integer);
@@ -252,6 +253,7 @@ type
     property DoubleClickSelects: Boolean read FDoubleClickSelects write FDoubleClickSelects default True;
     property ShowSizeDrag: Boolean read FShowSizeDrag write SetShowSizeDrag default False;
     property OnDragResized: TNotifyEvent read FOnDragResized write FOnDragResized;
+    property SmartEdit: Boolean read FSmartEdit write FSmartEdit;
   end;
 
   TSynVirtualCompletionFormClass = class of TSynVirtualCompletionForm;
@@ -400,9 +402,8 @@ type
 
   TSynCompletionForm = class(TSynBaseCompletionForm)
   protected
-    procedure AddCharAtCursor(AUtf8Char: TUTF8Char); override;
-    procedure DeleteCharAfterCursor; override;
-    procedure DeleteCharBeforeCursor; override;
+  public
+    constructor Create(AOwner: Tcomponent); override;
   end;
 
   TOnBeforeExecuteEvent = procedure(
@@ -1294,25 +1295,10 @@ end;
 
 { TSynCompletionForm }
 
-procedure TSynCompletionForm.AddCharAtCursor(AUtf8Char: TUTF8Char);
+constructor TSynCompletionForm.Create(AOwner: Tcomponent);
 begin
-  inherited AddCharAtCursor(AUtf8Char);
-  if CurrentEditor <> nil then
-    (CurrentEditor as TCustomSynEdit).CommandProcessor(ecChar, AUtf8Char, nil);
-end;
-
-procedure TSynCompletionForm.DeleteCharAfterCursor;
-begin
-  if CurrentEditor <> nil then
-    (CurrentEditor as TCustomSynEdit).CommandProcessor(ecDeleteChar, #0, nil);
-  inherited DeleteCharAfterCursor;
-end;
-
-procedure TSynCompletionForm.DeleteCharBeforeCursor;
-begin
-  if CurrentEditor <> nil then
-    (CurrentEditor as TCustomSynEdit).CommandProcessor(ecDeleteLastChar, #0, nil);
-  inherited DeleteCharBeforeCursor;
+  inherited Create(AOwner);
+  SmartEdit := True;
 end;
 
 { TSynBaseCompletionFormSizeDrag }
@@ -1693,10 +1679,16 @@ end;
 procedure TSynVirtualCompletionForm.AddCharAtCursor(AUtf8Char: TUTF8Char);
 begin
   CurrentString := CurrentString + AUtf8Char;
+  if SmartEdit then
+    if CurrentEditor <> nil then
+      (CurrentEditor as TCustomSynEdit).CommandProcessor(ecChar, AUtf8Char, nil);
 end;
 
 procedure TSynVirtualCompletionForm.DeleteCharBeforeCursor;
 begin
+  if SmartEdit then
+    if CurrentEditor <> nil then
+      (CurrentEditor as TCustomSynEdit).CommandProcessor(ecDeleteLastChar, #0, nil);
   CurrentString := UTF8Copy(CurrentString, 1, UTF8Length(CurrentString) - 1);
 end;
 
@@ -2132,7 +2124,9 @@ end;
 
 procedure TSynVirtualCompletionForm.DeleteCharAfterCursor;
 begin
-  // do nothing
+  if SmartEdit then
+    if CurrentEditor <> nil then
+      (CurrentEditor as TCustomSynEdit).CommandProcessor(ecDeleteChar, #0, nil);
 end;
 
 procedure TSynVirtualCompletionForm.DoOnDragResize(Sender: TObject);
@@ -2413,7 +2407,7 @@ end;
 
 procedure TSynVirtualCompletion.SetOnKeyPress(const Value: TKeyPressEvent);
 begin
-  form.OnKeyPress := Value;
+  Form.OnKeyPress := Value;
 end;
 
 procedure TSynVirtualCompletion.SetOnMeasureItem(

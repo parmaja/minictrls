@@ -23,7 +23,7 @@ uses
   // LazUtils
   LazUTF8,
   // SynEdit
-  SynEditMiscProcs, SynEditKeyCmds, SynEdit, SynEditTypes, SynEditPlugins, SynCompletion;
+  SynEditMiscProcs, SynEditKeyCmds, SynEdit, SynEditTypes, SynEditPlugins, mnSynCompletion;
 
 type
   TSynShowParamsHint = class;
