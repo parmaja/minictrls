@@ -203,6 +203,7 @@ type
     procedure DecHintLock;
     procedure DoOnDragResize(Sender: TObject);
     procedure ClearCurrentString;
+    procedure ListChanged;
     //Callback functions
     function GetItemText(Index: Integer): string; virtual; abstract;
     function GetItemDisplay(Index: Integer): string; virtual; abstract;
@@ -742,11 +743,7 @@ end;
 
 procedure TSynBaseCompletionForm.StringListChange(Sender: TObject);
 begin
-  if ItemList.Count - NbLinesInWindow < 0 then
-    Scroll.Max := 0
-  else
-    Scroll.Max := ItemList.Count - NbLinesInWindow;
-  Position := Position;
+  ListChanged;
 end;
 
 function TSynBaseCompletionForm.GetItemText(Index: Integer): string;
@@ -2141,6 +2138,15 @@ begin
   FPosition := 0;
 end;
 
+procedure TSynVirtualCompletionForm.ListChanged;
+begin
+  if ItemsCount - NbLinesInWindow < 0 then
+    Scroll.Max := 0
+  else
+    Scroll.Max := ItemsCount - NbLinesInWindow;
+  Position := Position;
+end;
+
 procedure TSynVirtualCompletionForm.SetNbLinesInWindow(
   const Value: Integer);
 begin
@@ -2267,6 +2273,7 @@ begin
   if befAbort in r then
     exit;
 
+  Form.ListChanged; //To set max and min of new keyword after beforeexecute triggered
   CurrentString := s;
   if p >= 0 then
     Position := p;
