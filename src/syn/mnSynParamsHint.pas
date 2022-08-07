@@ -42,7 +42,8 @@ type
     property BorderColor: TColor read FBorderColor write FBorderColor;
   end;
 
-  TOnGetHintString = procedure(Token: string; ParamIndex: Integer; out AHint: String) of object;
+  TOnGetHintString = procedure(AEditor: TCustomSynEdit; Token: string; ParamIndex: Integer; out AHint: String) of object;
+  TOnGetHintExists = procedure(AEditor: TCustomSynEdit; Token: string; var Exists: Boolean) of object;
 
   { TSynShowParamsHint }
 
@@ -52,6 +53,7 @@ type
     FHint: TSynBaseHint;
     FExecCommandID: TSynEditorCommand;
     FOnGetHintString: TOnGetHintString;
+    FOnGetHintExists: TOnGetHintExists;
     FShortCut: TShortCut;
     FParenChr: string;
     FLongLineHintTime: Integer;
@@ -72,7 +74,16 @@ type
 
     procedure ShowHint(AEditor: TCustomSynEdit);
     function HideHint: Boolean;
-    function FindToken(AEditor: TCustomSynEdit; out AString: string; out charIndex, AIndex: Integer): Boolean; virtual;
+
+    procedure DoGetHintString(AEditor: TCustomSynEdit; Token: string; ParamIndex: Integer; out AHint: String); virtual;
+    function GetHintString(AEditor: TCustomSynEdit; Token: string; ParamIndex: Integer): string;
+
+    function DoGetHintExists(AEditor: TCustomSynEdit; Token: string): Boolean; virtual;
+    function GetHintExists(AEditor: TCustomSynEdit; Token: string): Boolean;
+
+    function FindFunction(AEditor: TCustomSynEdit; out charIndex, AIndex: Integer; out AString: string): Boolean;
+    function FindToken(AEditor: TCustomSynEdit; out charIndex, AIndex: Integer; out AString: string): Boolean;
+
 
     procedure KeyDown(Sender: TObject; var Key: Word; Shift: TShiftState); virtual;
     procedure StatusChange(Sender: TObject; Changes: TSynStatusChanges); virtual;
@@ -90,9 +101,6 @@ type
     procedure ProcessSynCommand(Sender: TObject; AfterProcessing: boolean;
               var Handled: boolean; var Command: TSynEditorCommand;
               var AChar: TUTF8Char; Data: pointer; HandlerData: pointer);
-
-    procedure DoGetHintString(Token: string; ParamIndex: Integer; out AHint: String); virtual;
-    function GetHintString(Token: string; ParamIndex: Integer): string;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -107,93 +115,10 @@ type
     property UsePrettyText: Boolean read FUsePrettyText write FUsePrettyText;
     property EndOfTokenChr: string read FEndOfTokenChr write FEndOfTokenChr;
     property OnGetHintString: TOnGetHintString read FOnGetHintString write FOnGetHintString;
+    property OnGetHintExists: TOnGetHintExists read FOnGetHintExists write FOnGetHintExists;
   end;
-
-type
-  TLookupCallback = function(Sender: TObject; S: string): Boolean;
-
-function FindFunctionName(Sender: TObject; Editor: TCustomSynEdit; out AString: string; out charIndex, AIndex: Integer; LookupCallback: TLookupCallback = nil): Boolean;
 
 implementation
-
-//* ported from Delphi version of SynEdit example
-//TODO need to bypass string " or ' with escape
-function FindFunctionName(Sender: TObject; Editor: TCustomSynEdit; out AString: string; out charIndex, AIndex: Integer; LookupCallback: TLookupCallback): Boolean;
-var
-  aLine, lookup: string;
-  SavePos, X, StartX,
-  ParenCounter,
-  lLocation    : Integer;
-  FoundMatch     : Boolean;
-begin
-  with Editor do
-  begin
-    aLine := LineText;
-
-    //go back from the cursor and find the first open paren
-    X := CaretX;
-    if X > length(aLine) then
-      X := length(aLine)
-    else
-      Dec(X);
-    AIndex := 0;
-    charIndex := 0;
-    FoundMatch := False;
-    lLocation := 0;
-    while (X > 0) and not(FoundMatch) do
-    begin
-      if aLine[X] = ',' then
-      begin
-        Inc(lLocation);
-        Dec(X);
-      end else if aLine[X] = ')' then
-      begin
-        //We found a close, go till it's opening paren
-        ParenCounter := 1;
-        dec(X);
-        while (X > 0) and (ParenCounter > 0) do
-        begin
-          if aLine[X] = ')' then inc(ParenCounter)
-          else if aLine[X] = '(' then dec(ParenCounter);
-          dec(X);
-        end;
-        if X > 0 then dec(X);  //eat the open paren
-      end else if aLine[X] = '(' then
-      begin
-        //we have a valid open paren, lets see what the word before it is
-        StartX := X;
-        while (X > 0) and not IsIdentChar(aLine[X])do
-          Dec(X);
-        if X > 0 then
-        begin
-          SavePos := X;
-          While (X > 0) and IsIdentChar(aLine[X]) do
-            Dec(X);
-          Inc(X);
-          lookup := Copy(aLine, X, SavePos - X + 1);
-          if LookupCallback <> nil then
-            FoundMatch := LookupCallback(Sender, lookup)
-          else
-            FoundMatch := True; //ok how do i know if not exists
-          if FoundMatch then
-          begin
-            AString := lookup;
-            AIndex := lLocation;
-            charIndex := X;
-          end
-          else
-          begin
-            X := StartX;
-            dec(X);
-          end;
-        end;
-      end
-      else
-        Dec(X)
-    end;
-  end;
-  Result := FoundMatch;
-end;
 
 { TSynBaseHint }
 
@@ -205,8 +130,14 @@ begin
 end;
 
 function TSynBaseHint.CalcHintRect(MaxWidth: Integer; const AHint: string; AData: pointer): TRect;
+var
+  S: string;
 begin
-  Result := Rect(0, 0, Canvas.TextWidth(AHint) + BorderWidth * 2 + 4, Canvas.TextHeight(AHint) + BorderWidth * 2 + 4); //4 margines
+  if FParamsHint.UsePrettyText then
+    S := StripFormatCommands(Hint)
+  else
+    S := AHint;
+  Result := Rect(0, 0, Canvas.TextWidth(S) + BorderWidth * 2 + 4, Canvas.TextHeight(S) + BorderWidth * 2 + 4); //4 margines
 end;
 
 procedure TSynBaseHint.Paint;
@@ -316,31 +247,113 @@ begin
   end;
 end;
 
-procedure TSynShowParamsHint.DoGetHintString(Token: string; ParamIndex: Integer; out AHint: String);
+procedure TSynShowParamsHint.DoGetHintString(AEditor: TCustomSynEdit; Token: string; ParamIndex: Integer; out AHint: String);
 begin
 end;
 
-function TSynShowParamsHint.GetHintString(Token: string; ParamIndex: Integer): string;
+function TSynShowParamsHint.GetHintString(AEditor: TCustomSynEdit; Token: string; ParamIndex: Integer): string;
 begin
-  DoGetHintString(Token, ParamIndex, Result);
+  DoGetHintString(AEditor, Token, ParamIndex, Result);
   if Assigned(FOnGetHintString) then
-    FOnGetHintString(Token, ParamIndex, Result);
+    FOnGetHintString(AEditor, Token, ParamIndex, Result);
   if Result = '' then
     Result := Token;
 end;
 
-
-function SynHintParamLookupCallback(Sender: TObject; S: string): Boolean;
+function TSynShowParamsHint.DoGetHintExists(AEditor: TCustomSynEdit; Token: string): Boolean;
 begin
   Result := True;
 end;
 
-function TSynShowParamsHint.FindToken(AEditor: TCustomSynEdit; out AString: string; out charIndex, AIndex: Integer): Boolean;
+function TSynShowParamsHint.GetHintExists(AEditor: TCustomSynEdit; Token: string): Boolean;
+begin
+  Result := DoGetHintExists(AEditor, Token);
+  if Assigned(FOnGetHintExists) then
+    FOnGetHintExists(AEditor, Token, Result);
+end;
+
+//* ported from Delphi version of SynEdit example
+//TODO need to bypass string " or ' with escape
+function TSynShowParamsHint.FindFunction(AEditor: TCustomSynEdit; out charIndex, AIndex: Integer; out AString: string): Boolean;
+var
+  aLine, lookup: string;
+  SavePos, X, StartX,
+  ParenCounter,
+  lLocation    : Integer;
+  FoundMatch     : Boolean;
+begin
+  with Editor do
+  begin
+    aLine := LineText;
+
+    //go back from the cursor and find the first open paren
+    X := CaretX;
+    if X > length(aLine) then
+      X := length(aLine)
+    else
+      Dec(X);
+    AIndex := 0;
+    charIndex := 0;
+    FoundMatch := False;
+    lLocation := 0;
+    while (X > 0) and not(FoundMatch) do
+    begin
+      if aLine[X] = ',' then
+      begin
+        Inc(lLocation);
+        Dec(X);
+      end else if aLine[X] = ')' then
+      begin
+        //We found a close, go till it's opening paren
+        ParenCounter := 1;
+        dec(X);
+        while (X > 0) and (ParenCounter > 0) do
+        begin
+          if aLine[X] = ')' then inc(ParenCounter)
+          else if aLine[X] = '(' then dec(ParenCounter);
+          dec(X);
+        end;
+        if X > 0 then dec(X);  //eat the open paren
+      end else if aLine[X] = '(' then
+      begin
+        //we have a valid open paren, lets see what the word before it is
+        StartX := X;
+        while (X > 0) and not IsIdentChar(aLine[X])do
+          Dec(X);
+        if X > 0 then
+        begin
+          SavePos := X;
+          While (X > 0) and IsIdentChar(aLine[X]) do
+            Dec(X);
+          Inc(X);
+          lookup := Copy(aLine, X, SavePos - X + 1);
+          FoundMatch := GetHintExists(AEditor, Lookup);
+          if FoundMatch then
+          begin
+            AString := lookup;
+            AIndex := lLocation;
+            charIndex := X;
+          end
+          else
+          begin
+            X := StartX;
+            dec(X);
+          end;
+        end;
+      end
+      else
+        Dec(X)
+    end;
+  end;
+  Result := FoundMatch;
+end;
+
+function TSynShowParamsHint.FindToken(AEditor: TCustomSynEdit; out charIndex, AIndex: Integer; out AString: string): Boolean;
 var
   StartX, EndX: integer;
   Line: string;
 begin
-  Result := FindFunctionName(Self, AEditor, AString, charIndex, AIndex, @SynHintParamLookupCallback);
+  Result := FindFunction(AEditor, charIndex, AIndex, AString);
   if not Result then
   begin
     AEditor.GetWordBoundsAtRowCol(AEditor.LogicalCaretXY, StartX, EndX);
@@ -348,7 +361,7 @@ begin
     AString := Copy(Line, StartX, EndX - StartX);
     charIndex := StartX;
     AIndex := 0;
-    Result := AString <> '';
+    Result := (AString <> '') and GetHintExists(AEditor, AString);
     //Result := AEditor.GetWordAtRowCol(AEditor.LogicalCaretXY);
     //Result := GetPreviousToken(AEditor, Astring, charIndex);
   end;
@@ -361,43 +374,45 @@ var
   charIndex, paramIndex: Integer;
   AToken: string;
 begin
-  if FindToken(aEditor, AToken, charIndex, paramIndex) then
+  if FindToken(aEditor, charIndex, paramIndex, AToken) then
   begin
     FHintTimer.Enabled := False;
     if AToken <> '' then
     begin
-      FHint.Font.Assign(AEditor.Font);
-      //* https://gitlab.com/freepascal.org/lazarus/lazarus/-/issues/32260
-      FHint.Font.PixelsPerInch := Screen.PixelsPerInch;
-
-      FHint.Color := AEditor.Color;
       if (FLastToken = AToken) and (FLastParamIndex = paramIndex) then //reduce recall huge find in list
         FHint.Hint := FLastHint
       else
       begin
-        FHint.Hint := GetHintString(AToken, paramIndex);
+        FHint.Hint := GetHintString(AEditor, AToken, paramIndex);
         FLastToken := AToken;
         FLastParamIndex := paramIndex;
         FLastHint := FHint.Hint;
       end;
+      if FHint.Hint <> '' then
+      begin
+        FHint.Font.Assign(AEditor.Font);
+        //* https://gitlab.com/freepascal.org/lazarus/lazarus/-/issues/32260
+        FHint.Font.PixelsPerInch := Screen.PixelsPerInch;
 
-      P := Point(charIndex, AEditor.LogicalCaretXY.Y);
-      P := AEditor.LogicalToPhysicalPos(P);
-      //charIndex := AEditor.LogicalToPhysicalPos(Point(charIndex, AEditor.LogicalCaretXY.Y));
-      P := AEditor.RowColumnToPixels(P);
-      P := AEditor.ClientToScreen(P);
-      P.Y := P.Y + AEditor.LineHeight + 1;
-      //P := AEditor.ClientToScreen(Point(AEditor.CaretXPix, AEditor.CaretYPix + AEditor.LineHeight + 1));
-      R := FHint.CalcHintRect(Application.MainForm.Monitor.Width, FHint.Hint, nil);
-      OffsetRect(R, P.X, P.Y);
-      //InflateRect(R, 2, 2);
+        FHint.Color := AEditor.Color;
+        P := Point(charIndex, AEditor.LogicalCaretXY.Y);
+        P := AEditor.LogicalToPhysicalPos(P);
+        //charIndex := AEditor.LogicalToPhysicalPos(Point(charIndex, AEditor.LogicalCaretXY.Y));
+        P := AEditor.RowColumnToPixels(P);
+        P := AEditor.ClientToScreen(P);
+        P.Y := P.Y + AEditor.LineHeight + 1;
+        //P := AEditor.ClientToScreen(Point(AEditor.CaretXPix, AEditor.CaretYPix + AEditor.LineHeight + 1));
+        R := FHint.CalcHintRect(Application.MainForm.Monitor.Width, FHint.Hint, nil);
+        OffsetRect(R, P.X, P.Y);
+        //InflateRect(R, 2, 2);
 
-      FHint.HintRect := R;
+        FHint.HintRect := R;
 
-      if (not FHint.IsVisible) and (FLongLineHintTime > 0) then
-        FHintTimer.Enabled := True
-      else
-        OnHintTimer(nil);
+        if (not FHint.IsVisible) and (FLongLineHintTime > 0) then
+          FHintTimer.Enabled := True
+        else
+          OnHintTimer(nil);
+      end;
     end
     else
       FHint.Hide;
