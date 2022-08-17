@@ -265,7 +265,7 @@ begin
   FIdentifierAttri := TSynHighlighterAttributes.Create(SYNS_AttrIdentifier);
   FIdentifierAttri.Foreground := clBlack;
   AddAttribute(FIdentifierAttri);
-  FKeyAttri := TSynHighlighterAttributes.Create(SYNS_AttrReservedWord);
+  FKeyAttri := TSynHighlighterAttributes.Create('Keyword');
   FKeyAttri.Style := [fsBold];
   FKeyAttri.Foreground := $00C56A31;
   AddAttribute(FKeyAttri);

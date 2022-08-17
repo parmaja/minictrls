@@ -353,17 +353,17 @@ var
   StartX, EndX: integer;
   Line: string;
 begin
-  Result := FindFunction(AEditor, charIndex, AIndex, AString);
+  AEditor.GetWordBoundsAtRowCol(AEditor.LogicalCaretXY, StartX, EndX);
+  Line := AEditor.LineText;
+  AString := Copy(Line, StartX, EndX - StartX);
+  charIndex := StartX;
+  AIndex := 0;
+  Result := (AString <> '') and GetHintExists(AEditor, AString);
+  //Result := AEditor.GetWordAtRowCol(AEditor.LogicalCaretXY);
+  //Result := GetPreviousToken(AEditor, Astring, charIndex);
   if not Result then
   begin
-    AEditor.GetWordBoundsAtRowCol(AEditor.LogicalCaretXY, StartX, EndX);
-    Line := AEditor.LineText;
-    AString := Copy(Line, StartX, EndX - StartX);
-    charIndex := StartX;
-    AIndex := 0;
-    Result := (AString <> '') and GetHintExists(AEditor, AString);
-    //Result := AEditor.GetWordAtRowCol(AEditor.LogicalCaretXY);
-    //Result := GetPreviousToken(AEditor, Astring, charIndex);
+    Result := FindFunction(AEditor, charIndex, AIndex, AString);
   end;
 end;
 
