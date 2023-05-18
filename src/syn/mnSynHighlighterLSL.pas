@@ -900,6 +900,7 @@ const
     'TOUCH_INVALID_TEXCOORD,'+
     'TOUCH_INVALID_VECTOR,'+
     'ZERO_ROTATION';
+
   sLSLFunctions =
     'llSin,'+
     'llCos,'+

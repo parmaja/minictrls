@@ -14,7 +14,7 @@ interface
 
 uses
   SysUtils, Controls, Graphics,
-  Classes, SynEditTypes, SynEditHighlighter, SynHighlighterHashEntries, mnSynUtils;
+  Classes, SynEditTypes, SynEditHighlighter, mnSynUtils, SynHighlighterHashEntries;
 
 type
   TtkTokenKind = (tkComment, tkDatatype, tkObject,
@@ -205,7 +205,6 @@ begin
   EnumerateKeywords(Ord(tkFunction), StdSQLFunctions, TSynValidStringChars, @DoAddKeyword);
   EnumerateKeywords(Ord(tkKey), StdSQLKeywords, TSynValidStringChars, @DoAddKeyword);
 end;
-
 
 procedure TmnSynStdSQLSyn.MakeProcTables;
 var

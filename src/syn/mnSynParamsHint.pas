@@ -43,7 +43,7 @@ type
   end;
 
   TOnGetHintString = procedure(AEditor: TCustomSynEdit; Token: string; ParamIndex: Integer; out AHint: String) of object;
-  TOnGetHintExists = procedure(AEditor: TCustomSynEdit; Token: string; var Exists: Boolean) of object;
+  TOnGetHintExists = procedure(AEditor: TCustomSynEdit; Token: string; FunctionsOnly: Boolean; var Exists: Boolean) of object;
 
   { TSynShowParamsHint }
 
@@ -269,7 +269,7 @@ function TSynShowParamsHint.GetHintExists(AEditor: TCustomSynEdit; Token: string
 begin
   Result := DoGetHintExists(AEditor, Token);
   if Assigned(FOnGetHintExists) then
-    FOnGetHintExists(AEditor, Token, Result);
+    FOnGetHintExists(AEditor, Token, True, Result);
 end;
 
 //* ported from Delphi version of SynEdit example
@@ -353,17 +353,20 @@ var
   StartX, EndX: integer;
   Line: string;
 begin
+  //if (agent == llGetOwner() || llGetPermiss|ions())  //* must return llGetPermissions
+
   AEditor.GetWordBoundsAtRowCol(AEditor.LogicalCaretXY, StartX, EndX);
   Line := AEditor.LineText;
   AString := Copy(Line, StartX, EndX - StartX);
   charIndex := StartX;
   AIndex := 0;
   Result := (AString <> '') and GetHintExists(AEditor, AString);
-  //Result := AEditor.GetWordAtRowCol(AEditor.LogicalCaretXY);
-  //Result := GetPreviousToken(AEditor, Astring, charIndex);
+
   if not Result then
   begin
     Result := FindFunction(AEditor, charIndex, AIndex, AString);
+    //Result := AEditor.GetWordAtRowCol(AEditor.LogicalCaretXY);
+    //Result := GetPreviousToken(AEditor, Astring, charIndex);
   end;
 end;
 

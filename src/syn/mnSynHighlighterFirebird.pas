@@ -14,7 +14,7 @@ interface
 
 uses
   SysUtils, Classes, Graphics,
-  SynEditTypes, SynEditHighlighter, SynHighlighterHashEntries, mnSynUtils;
+  SynEditTypes, SynEditHighlighter, mnSynUtils, SynHighlighterHashEntries;
 
 type
   TtkTokenKind = (tkComment, tkDatatype, tkObject, tkException,

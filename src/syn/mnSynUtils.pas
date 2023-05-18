@@ -52,7 +52,20 @@ type
      destructor Destroy; override;
    end;
 
+procedure EnumerateKeywords(AKind: integer; KeywordList: TStringList;
+  Identifiers: TSynIdentChars; AKeywordProc: TEnumerateKeywordEvent);
+
 implementation
+
+procedure EnumerateKeywords(AKind: integer; KeywordList: TStringList;
+  Identifiers: TSynIdentChars; AKeywordProc: TEnumerateKeywordEvent);
+var
+  i: Integer;
+begin
+  if Assigned(AKeywordProc) then
+    for i := 0 to KeywordList.Count -1 do
+      AKeywordProc(KeywordList[i], AKind);
+end;
 
 procedure TSynPersistent.MakeIdentifiers;
 var
