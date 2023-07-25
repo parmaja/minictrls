@@ -60,7 +60,7 @@ type
 const
 
   SYNS_LangLua = 'Lua';
-  SYNS_FilterLua = 'Lua Lang Files (*.c;*.lua)|*.c;*.lua';
+  SYNS_FilterLua = 'Lua Lang Files (*.lua)|*.lua';
 
   cLuaSample =
       '-- defines a factorial function'#13#10+

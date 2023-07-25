@@ -23,8 +23,7 @@ uses
   SysUtils, Variants, Messages, Classes, Graphics, Controls,
   LCLType, LCLIntf, LMessages, fgl, mnLogs, ntvThemes,
   StdCtrls, Dialogs, Math, Menus, Forms, ImgList, Contnrs,
-  ColorUtils, mnClasses, UniDates, mnFields,
-  ntvCtrls;
+  ColorUtils, mnClasses, UniDates, mnFields, ntvCtrls;
 
 const
   sGridVersion = 'NativeGrid=v1.0';
@@ -328,8 +327,6 @@ type
   protected
     Info: TntvColumnInfo;
     FEditControl: TControl;
-
-    function GetIsEmpty: Boolean; override;
 
     procedure SetIsNull(const AValue: Boolean); override;
     function GetIsNull: Boolean; override;
@@ -6688,17 +6685,6 @@ begin
     if FEnabled then
       Visible := False;
   end;
-end;
-
-function TntvColumn.GetIsEmpty: Boolean;
-var
-  aCell: TntvCell;
-begin
-  aCell := GetCell(ActiveIndex);
-  if aCell <> nil then
-    Result := aCell.Text = ''
-  else
-    Result := True;
 end;
 
 procedure TntvColumn.CurrentRowChanged;
