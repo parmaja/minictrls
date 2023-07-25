@@ -19,7 +19,7 @@
     </CompilerOptions>
     <Description Value="MiniCtrls Lazarus library"/>
     <Version Major="1"/>
-    <Files Count="44">
+    <Files Count="45">
       <Item1>
         <Filename Value="PHPUtils.pas"/>
         <UnitName Value="PHPUtils"/>
@@ -197,6 +197,10 @@
         <Filename Value="db/ParamsForms.pas"/>
         <UnitName Value="ParamsForms"/>
       </Item44>
+      <Item45>
+        <Filename Value="syn/mnSynHighlighterNim.pas"/>
+        <UnitName Value="mnSynHighlighterNim"/>
+      </Item45>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="4">
