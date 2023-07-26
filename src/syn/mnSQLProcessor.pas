@@ -1,7 +1,6 @@
-unit mnSynHighlighterSARD;
+unit mnSQLProcessor;
 {$mode objfpc}{$H+}
 {**
- * NOT COMPLETED
  *
  *  This file is part of the "Mini Library"
  *
@@ -9,88 +8,77 @@ unit mnSynHighlighterSARD;
  * @license   modifiedLGPL (modified of http://www.gnu.org/licenses/lgpl.html)
  *            See the file COPYING.MLGPL, included in this distribution,
  * @author    Zaher Dirkey
- *
  *}
 
 interface
 
 uses
-  Classes, SysUtils,
-  SynEdit, SynEditTypes,
-  SynEditHighlighter, mnSynHighlighterMultiProc;
+  SysUtils, Controls, Graphics,
+  Classes, SynEditTypes, SynEditHighlighter,
+	mnSynUtils, mnSynHighlighterMultiProc,
+	SynHighlighterHashEntries;
 
 type
-
   { TSardProcessor }
 
   TSardProcessor = class(TCommonSynProcessor)
   private
   protected
-    function GetIdentChars: TSynIdentChars; override;
-    function GetEndOfLineAttribute: TSynHighlighterAttributes; override;
+   function GetIdentChars: TSynIdentChars; override;
+   function GetEndOfLineAttribute: TSynHighlighterAttributes; override;
   public
-    procedure Created; override;
-    procedure QuestionProc;
-    procedure SlashProc;
-    procedure BlockProc;
+   procedure Created; override;
+   procedure QuestionProc;
+   procedure SlashProc;
+   procedure MinusProc;
 
-    procedure GreaterProc;
-    procedure LowerProc;
-    procedure DeclareProc;
+   procedure GreaterProc;
+   procedure LowerProc;
+   procedure DeclareProc;
+   procedure VariableProc;
 
-    procedure Next; override;
+   procedure Next; override;
 
-    procedure Prepare; override;
-    procedure MakeProcTable; override;
-  end;
-
-  { TSynSardSyn }
-
-  TSynSardSyn = class(TSynMultiProcSyn)
-  private
-  protected
-    function GetSampleSource: string; override;
-  public
-    class function GetLanguageName: string; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    procedure InitProcessors; override;
-  published
+   procedure Prepare; override;
+   procedure MakeProcTable; override;
   end;
 
 const
+  // keywords
+  StdSQLKeywords: string =
+    'abort,add,after,all,alter,analyze,and,as,asc,attach,autoincrement,'+
+    'before,begin,between,by,cascade,case,cast,check,collate,column,commit,'+
+    'conflict,constraint,create,cross,current_date,current_time,current_timestamp,'+
+    'database,default,deferrable,deferred,delete,desc,detach,distinct,drop,each,'+
+    'else,end,escape,except,exclusive,exists,explain,fail,for,foreign,from,full,'+
+    'glob,group,having,if,ignore,immediate,in,index,indexed,initially,inner,insert,'+
+    'instead,intersect,into,is,isnull,join,key,left,like,limit,match,natural,not,'+
+    'notnull,null,of,offset,on,or,order,outer,plan,pragma,primary,query,raise,'+
+    'references,regexp,reindex,release,rename,replace,restrict,right,rollback,'+
+    'row,savepoint,select,set,table,temp,temporary,then,to,transaction,trigger,'+
+    'union,unique,update,using,vacuum,values,view,virtual,with,when,where';
 
-  SYNS_LangSard = 'Sard';
-  SYNS_FilterSard = 'Sard Lang Files (*.sard)|*.sard';
+  // functions
+  StdSQLFunctions =
+    'avg,count,group_concat,max,min,sum,total,'+
+    'abs,changes,coalesce,ifnull,hex,last_insert_rowid,length,'+
+    'load_extension,lower,ltrim,nullif,quote,random,randomblob,round,rtrim,'+
+    'soundex,StdSQL_version,substr,total_changes,trim,typeof,upper,zeroblob,'+
+    'date,time,datetime,julianday,strftime,split_part,SubString';
 
-  cSardSample =  '/*'
-                +'    This examples are worked, and this comment will ignored, not compiled or parsed as we say.'#13
-                +'  */'#13
-                +''#13
-                +'  //Single Line comment'#13
-                +'  CalcIt:Integer(p1, p2){'#13
-                +'      :=p1 * p2 / 2;'#13
-                +'    };'#13
-                +''#13
-                +'  x := {'#13
-                +'        y := 0;'#13
-                +'        x := CalcIt(x, y);'#13
-                +'        := y + x+ 500 * %10; //this is a result return of the block'#13
-                +'    }; //do not forget to add ; here'#13
-                +''#13
-                +'  f := 10.0;'#13
-                +'  f := z + 5.5;'#13
-                +''#13
-                +'  {* Embeded block comment *};'#13
-                +''#13
-                +'  := "Result:" + x + '' It is an example:'#13
-                +'    Multi Line String'#13
-                +'  '';'#13;
+  // types
+  StdSQLTypes = 'blob,char,character,decimal,double,float,boolean,real,integer,' +
+    'numeric,precision,smallint,timestamp,varchar';
 
 implementation
 
 uses
-  mnUtils;
+  SynEditStrConst;
+
+const
+  SYNS_AttrObjects = 'Objects';
+
+{ TStdSQLSyn }
 
 procedure TSardProcessor.GreaterProc;
 begin
@@ -151,14 +139,29 @@ begin
   end;
 end;
 
-procedure TSardProcessor.BlockProc;
+procedure TSardProcessor.MinusProc;
 begin
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
-    '*': SpecialCommentProc;
+    '-':
+      begin
+        SLCommentProc;
+      end;
   else
     Parent.FTokenID := tkSymbol;
   end;
+end;
+
+procedure TSardProcessor.VariableProc;
+var
+  i: integer;
+begin
+  Parent.FTokenID := tkVariable;
+  i := Parent.Run;
+  repeat
+    Inc(i);
+  until not (IdentTable[Parent.FLine[i]]);
+  Parent.Run := i;
 end;
 
 procedure TSardProcessor.MakeProcTable;
@@ -168,15 +171,15 @@ begin
   inherited;
   for I := #0 to #255 do
     case I of
-      '?': ProcTable[I] := @QuestionProc;
       '''': ProcTable[I] := @StringSQProc;
       '"': ProcTable[I] := @StringDQProc;
-      '`': ProcTable[I] := @StringBQProc;
+      '-': ProcTable[I] := @MinusProc;
       '/': ProcTable[I] := @SlashProc;
-      '{': ProcTable[I] := @BlockProc;
       '>': ProcTable[I] := @GreaterProc;
       '<': ProcTable[I] := @LowerProc;
-      ':': ProcTable[I] := @DeclareProc;
+      ':': ProcTable[I] := @VariableProc;
+      '@': ProcTable[I] := @VariableProc;
+      '?': ProcTable[I] := @VariableProc;
       '0'..'9':
         ProcTable[I] := @NumberProc;
     //else
@@ -227,8 +230,9 @@ end;
 procedure TSardProcessor.Prepare;
 begin
   inherited;
-//  EnumerateKeywords(Ord(tkKeyword), sSardKeywords, TSynValidStringChars, @DoAddKeyword);
-//  EnumerateKeywords(Ord(tkFunction), sSardFunctions, TSynValidStringChars, @DoAddKeyword);
+  EnumerateKeywords(Ord(tkKeyword), StdSQLKeywords, TSynValidStringChars, @DoAddKeyword);
+  EnumerateKeywords(Ord(tkFunction), StdSQLFunctions, TSynValidStringChars, @DoAddKeyword);
+  EnumerateKeywords(Ord(tkType), StdSQLTypes, TSynValidStringChars, @DoAddKeyword);
   SetRange(rscUnknown);
 end;
 
@@ -243,7 +247,6 @@ end;
 procedure TSardProcessor.Created;
 begin
   inherited Created;
-  CloseSpecialComment := '*}';
 end;
 
 function TSardProcessor.GetIdentChars: TSynIdentChars;
@@ -251,35 +254,4 @@ begin
   Result := TSynValidStringChars;
 end;
 
-{ TSynSardSyn }
-
-constructor TSynSardSyn.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  FDefaultFilter := SYNS_FilterSard;
-end;
-
-procedure TSynSardSyn.InitProcessors;
-begin
-  inherited;
-  Processors.Add(TSardProcessor.Create(Self, 'Sard'));
-
-  Processors.MainProcessor := 'Sard';
-  Processors.DefaultProcessor := 'Sard';
-end;
-
-class function TSynSardSyn.GetLanguageName: string;
-begin
-  Result := SYNS_LangSard;
-end;
-
-function TSynSardSyn.GetSampleSource: string;
-begin
-  Result := cSardSample;
-end;
-
-initialization
-  RegisterPlaceableHighlighter(TSynSardSyn);
-finalization
 end.
-
