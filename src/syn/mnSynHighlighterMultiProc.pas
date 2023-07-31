@@ -21,7 +21,7 @@ type
     tkString, tkText, tkProcessor);
 
   //Common range used for some syntax
-  TCommonRangeState = (rscUnknown, rscComment, rscSpecialComment, rscDocument, rscSpecialDocument, rscStringSQ, rscStringDQ, rscStringBQ {BackQuote}, rscSpecialString);
+  TCommonRangeState = (rscUnknown, rscComment, rscSpecialComment, rscDocument, rscSpecialDocument, rscStringSQ, rscStringDQ, rscStringBQ {BackQuote ` }, rscSpecialString);
   TCommonRangeStates = set of TCommonRangeState;
 
   TProcTableProc = procedure of object;

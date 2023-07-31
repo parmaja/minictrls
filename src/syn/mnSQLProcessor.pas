@@ -75,9 +75,6 @@ implementation
 uses
   SynEditStrConst;
 
-const
-  SYNS_AttrObjects = 'Objects';
-
 { TStdSQLSyn }
 
 procedure TSardProcessor.GreaterProc;
@@ -182,7 +179,8 @@ begin
       '?': ProcTable[I] := @VariableProc;
       '0'..'9':
         ProcTable[I] := @NumberProc;
-    //else
+      '{', '}', '.', ',', ';', '(', ')', '[', ']', '~':
+        ProcTable[I] := @SymbolProc;
       'A'..'Z', 'a'..'z', '_':
         ProcTable[I] := @IdentProc;
     end;
