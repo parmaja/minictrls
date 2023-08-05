@@ -32,7 +32,6 @@ type
     procedure DirectiveProc;
     procedure DashProc;
     procedure BracketProc;
-    procedure SpecialStringProc;
 
     procedure GreaterProc;
     procedure LowerProc;
@@ -144,21 +143,6 @@ begin
 
 end;
 
-procedure TLuaProcessor.SpecialStringProc;
-begin
-  Parent.FTokenID := tkString;
-  SetRange(rscSpecialString);
-  while not (Parent.FLine[Parent.Run] in [#0, #10, #13]) do
-  begin
-    if ScanMatch(']]') then
-    begin
-      SetRange(rscUnKnown);
-      break;
-    end;
-    Inc(Parent.Run);
-  end;
-end;
-
 procedure TLuaProcessor.MakeProcTable;
 var
   I: Char;
@@ -248,6 +232,7 @@ procedure TLuaProcessor.Created;
 begin
   inherited Created;
   CloseComment := ']]';
+  CloseSpecialString := ']]';
 end;
 
 function TLuaProcessor.GetIdentChars: TSynIdentChars;

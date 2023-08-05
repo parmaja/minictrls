@@ -8,6 +8,9 @@ unit mnSynHighlighterNim;
  * @license   modifiedLGPL (modified of http://www.gnu.org/licenses/lgpl.html)
  *            See the file COPYING.MLGPL, included in this distribution,
  * @author    Zaher Dirkey
+
+ https://github.com/jangko/nppnim/blob/master/nppnim.nim
+
  *}
 
 interface
@@ -30,9 +33,8 @@ type
   public
     procedure QuestionProc;
     procedure DirectiveProc;
-    procedure DashProc;
-    procedure BracketProc;
-    procedure SpecialStringProc;
+    procedure SharpProc;
+    procedure DQProc;
 
     procedure GreaterProc;
     procedure LowerProc;
@@ -98,60 +100,39 @@ begin
   end;
 end;
 
-procedure TNimProcessor.DashProc;
+procedure TNimProcessor.SharpProc;
 begin
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
-    '-':
+    '*':
+      SLDocumentProc;
+    '[':
       begin
         Inc(Parent.Run);
         if Parent.FLine[Parent.Run] = '*' then
-          SLDocumentProc
-        else if ScanMatch('TODO') then
-          SLDocumentProc
-        else if ScanMatch('[[') then
-        begin
-          if Parent.FLine[Parent.Run] = '*' then
-            DocumentProc
-          else
-            CommentProc;
-        end
+          DocumentProc
         else
-          SLCommentProc;
+          CommentProc;
       end;
   else
-    Parent.FTokenID := tkSymbol;
+    SLCommentProc;
   end;
 end;
 
-procedure TNimProcessor.BracketProc;
+procedure TNimProcessor.DQProc;
 begin
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
-    '[':
+    '"':
       begin
-        SetRange(rscSpecialString);
         Inc(Parent.Run);
-        SpecialStringProc;
-      end
+        if Parent.FLine[Parent.Run] = '"' then
+          SpecialStringProc
+        else
+          StringDQProc;
+      end;
   else
-    Parent.FTokenID := tkSymbol;
-  end;
-
-end;
-
-procedure TNimProcessor.SpecialStringProc;
-begin
-  Parent.FTokenID := tkString;
-  SetRange(rscSpecialString);
-  while not (Parent.FLine[Parent.Run] in [#0, #10, #13]) do
-  begin
-    if ScanMatch(']]') then
-    begin
-      SetRange(rscUnKnown);
-      break;
-    end;
-    Inc(Parent.Run);
+    StringDQProc;
   end;
 end;
 
@@ -164,9 +145,8 @@ begin
     case I of
       '?': ProcTable[I] := @QuestionProc;
       '''': ProcTable[I] := @StringSQProc;
-      '"': ProcTable[I] := @StringDQProc;
-      '[': ProcTable[I] := @BracketProc;
-      '-': ProcTable[I] := @DashProc;
+      '"': ProcTable[I] := @DQProc;
+      '#': ProcTable[I] := @SharpProc;
       '>': ProcTable[I] := @GreaterProc;
       '<': ProcTable[I] := @LowerProc;
       '0'..'9':
@@ -243,7 +223,7 @@ end;
 procedure TNimProcessor.Created;
 begin
   inherited Created;
-  CloseComment := ']]';
+  CloseComment := ']#';
 end;
 
 function TNimProcessor.GetIdentChars: TSynIdentChars;

@@ -51,7 +51,6 @@ type
     FParent: TSynMultiProcSyn;
   protected
     StringCEscaped: TCommonRangeStates;
-    StringMultiLine: TCommonRangeStates;
     function GetIdentChars: TSynIdentChars; virtual;
     procedure ResetRange; virtual;
     function GetRange: Byte; virtual;
@@ -93,8 +92,9 @@ type
   protected
     //LastRange: Bad Idea but let us try
     LastRange: TCommonRangeState;
-    CloseComment: string;
+    CloseComment: string; //close multi line comment
     CloseSpecialComment: string;
+    CloseSpecialString: string;
     procedure Created; override;
   public
     procedure ResetRange; override;
@@ -122,6 +122,7 @@ type
     procedure StringSQProc;
     procedure StringDQProc;
     procedure StringBQProc;
+    procedure SpecialStringProc;
 
     procedure NullProc;
     procedure CRProc;
@@ -374,7 +375,8 @@ procedure TCommonSynProcessor.Created;
 begin
   inherited Created;
   CloseComment := '*/';
-  CloseSpecialComment := '+/';//for D but u can change it
+  CloseSpecialComment := '+/';//for D but you can change it
+  CloseSpecialString := '"""';
 end;
 
 procedure TCommonSynProcessor.ResetRange;
@@ -525,6 +527,21 @@ begin
   SetRange(rscStringBQ);
   Inc(Parent.Run);
   StringProc;
+end;
+
+procedure TCommonSynProcessor.SpecialStringProc;
+begin
+  Parent.FTokenID := tkString;
+  SetRange(rscSpecialString);
+  while not (Parent.FLine[Parent.Run] in [#0, #10, #13]) do
+  begin
+    if ScanMatch(CloseSpecialString) then
+    begin
+      SetRange(rscUnKnown);
+      break;
+    end;
+    Inc(Parent.Run);
+  end;
 end;
 
 procedure TCommonSynProcessor.NullProc;
@@ -862,7 +879,6 @@ begin
   FParent := AParent;
   FKeywords := TFPObjectHashTable.Create;
   StringCEscaped := [rscStringSQ, rscStringDQ, rscStringBQ];
-  StringMultiLine := [];
   Created;
 end;
 
