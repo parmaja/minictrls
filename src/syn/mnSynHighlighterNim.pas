@@ -10,6 +10,7 @@ unit mnSynHighlighterNim;
  * @author    Zaher Dirkey
 
  https://github.com/jangko/nppnim/blob/master/nppnim.nim
+ https://github.com/saem/vscode-nim/blob/main/snippets/nim.json
 
  *}
 
@@ -104,23 +105,24 @@ procedure TNimProcessor.SharpProc;
 begin
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
-    '*':
-      SLDocumentProc;
     '[':
+      CommentMLProc;
+    '#':
       begin
         Inc(Parent.Run);
-        if Parent.FLine[Parent.Run] = '*' then
-          DocumentProc
+        if Parent.FLine[Parent.Run] = '[' then
+          SpecialDocumentMLProc
         else
-          CommentProc;
+          DocumentSLProc
       end;
   else
-    SLCommentProc;
+    CommentSLProc;
   end;
 end;
 
 procedure TNimProcessor.DQProc;
 begin
+  SetRange(rscStringDQ);
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
     '"':
@@ -129,11 +131,11 @@ begin
         if Parent.FLine[Parent.Run] = '"' then
           SpecialStringProc
         else
-          StringDQProc;
+          StringProc;
       end;
   else
-    StringDQProc;
-  end;
+    StringProc;
+	end;
 end;
 
 procedure TNimProcessor.MakeProcTable;
@@ -184,13 +186,13 @@ begin
     ProcTable[Parent.FLine[Parent.Run]]
   else case Range of
     rscComment:
-    begin
-      CommentProc;
-    end;
+      CommentMLProc;
     rscDocument:
-    begin
-      DocumentProc;
-    end;
+      DocumentMLProc;
+    rscSpecialComment:
+      SpecialCommentMLProc;
+    rscSpecialDocument:
+      SpecialDocumentMLProc;
     rscStringSQ, rscStringDQ, rscStringBQ:
       StringProc;
     rscSpecialString:
@@ -208,7 +210,8 @@ begin
   inherited;
   EnumerateKeywords(Ord(tkKeyword), sNimKeywords, TSynValidStringChars, @DoAddKeyword);
   EnumerateKeywords(Ord(tkType), sNimTypes, TSynValidStringChars, @DoAddKeyword);
-  EnumerateKeywords(Ord(tkFunction), sNimFunctions, TSynValidStringChars + ['.'], @DoAddKeyword);
+  EnumerateKeywords(Ord(tkValue), sNimValues, TSynValidStringChars, @DoAddKeyword);
+  EnumerateKeywords(Ord(tkFunction), sNimFunctions, TSynValidStringChars, @DoAddKeyword);
   SetRange(rscUnknown);
 end;
 
@@ -223,7 +226,9 @@ end;
 procedure TNimProcessor.Created;
 begin
   inherited Created;
+  CloseSpecialString := '"""';
   CloseComment := ']#';
+  CloseSpecialDocument := ']##';
 end;
 
 function TNimProcessor.GetIdentChars: TSynIdentChars;

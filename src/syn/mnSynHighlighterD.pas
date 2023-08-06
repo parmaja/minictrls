@@ -118,27 +118,27 @@ begin
       begin
         Inc(Parent.Run);
         if Parent.FLine[Parent.Run] = '*' then
-          SLDocumentProc
+          DocumentSLProc
         else if ScanMatch('TODO') then
-          SLDocumentProc
+          DocumentSLProc
         else
-          SLCommentProc;
+          CommentSLProc;
       end;
     '*':
       begin
         Inc(Parent.Run);
         if Parent.FLine[Parent.Run] = '*' then
-          DocumentProc
+          DocumentMLProc
         else
-          CommentProc;
+          CommentMLProc;
       end;
     '+':
       begin
         Inc(Parent.Run);
         if Parent.FLine[Parent.Run] = '+' then
-          SpecialDocumentProc
+          SpecialDocumentMLProc
         else
-          SpecialCommentProc;
+          SpecialCommentMLProc;
       end
   else
     Parent.FTokenID := tkSymbol;
@@ -197,19 +197,19 @@ begin
   else case Range of
     rscComment:
     begin
-      CommentProc;
+      CommentMLProc;
     end;
     rscSpecialComment:
     begin
-      SpecialCommentProc;
+      SpecialCommentMLProc;
     end;
     rscDocument:
     begin
-      DocumentProc;
+      DocumentMLProc;
     end;
     rscSpecialDocument:
     begin
-      SpecialDocumentProc;
+      SpecialDocumentMLProc;
     end;
     rscStringSQ, rscStringDQ, rscStringBQ:
       StringProc;

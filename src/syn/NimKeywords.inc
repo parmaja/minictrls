@@ -9,8 +9,9 @@
  *}
 
 {
-  ref: https://www.Nim.org/manual/5.1/manual.html
-       https://www.Nim.org/manual/5.3/manual.html
+  ref:
+	    https://www.Nim.org/manual/5.1/manual.html
+      https://www.Nim.org/manual/5.3/manual.html
 }
 
   sNimKeywords =
@@ -55,13 +56,13 @@
     'method,'+
     'mixin,'+
     'mod,'+
-    'nil,'+
     'not,'+
     'notin,'+
     'object,'+
     'of,'+
     'or,'+
     'out,'+
+
     'proc,'+
     'ptr,'+
     'raise,'+
@@ -71,23 +72,76 @@
     'shr,'+
     'static,'+
     'template,'+
+
     'try,'+
-    'tuple,'+
     'type,'+
     'using,'+
     'var,'+
     'when,'+
     'while,'+
+
     'xor,'+
-    'yield'
-;
+    'yield,'+
+    'range,'+
+		'array,'+
+		'seq,'+
+		'set,'+
+		'pointer,'+
+		'tuple';
 
   sNimTypes =
-  'integer,'+
-  'string,'+
-  'boolean,'+
-  'char';
+    'uint,'+
+		'int,'+
+    'int8,'+
+    'int16,'+
+    'int32,'+
+    'int64,'+
+		'cint,'+
+		'float,'+
+		'float32,'+
+		'float64),'+
+		'bool,'+
+		'string,'+
+		'auto,'+
+		'cstring,'+
+		'char,'+
+		'byte,'+
+		'tobject,'+
+		'typedesc,'+
+		'stmt,'+
+		'expr,'+
+		'any,'+
+		'untyped,'+
+		'typed,'+
+    'openArray,'+
+		'varargs,'+
+		'void';
+
+  sNimValues =
+    'true,'+
+		'false,'+
+		'Inf,'+
+		'NegInf,'+
+		'NaN,'+
+		'nil';
 
   sNimFunctions =
-    'echo';
+    'new,'+
+		'await,'+
+		'assert,'+
+		'echo,'+
+		'defined,'+
+		'declared,'+
+		'newException,'+
+		'countup,'+
+		'countdown,'+
+		'high,'+
+		'low,'+
+		'ord,'+
+		'chr,'+
+		'inc,'+
+		'dec,'+
+		'succ,'+
+		'pred';
+
 

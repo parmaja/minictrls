@@ -95,8 +95,10 @@ type
     CloseComment: string; //close multi line comment
     CloseSpecialComment: string;
     CloseSpecialString: string;
+    CloseSpecialDocument: string;
     procedure Created; override;
   public
+    constructor Create(AParent: TSynMultiProcSyn; AName: string); override;
     procedure ResetRange; override;
     function GetRange: Byte; override;
     procedure SetRange(Value: Byte); override;
@@ -108,16 +110,18 @@ type
     //Common procs
     procedure InternalCommentProc; //   /* */
     procedure InternalSpecialCommentProc; //    /+ +/
+    procedure InternalSpecialDocumentProc; //    /**
 
     procedure WordProc; //Identifire started with char like #define
 
-    procedure SLCommentProc; //Single Line Comment //comment or #comment depend on who started
-    procedure CommentProc; //Mutli line comment
-    procedure SLDocumentProc;
-    procedure DocumentProc;
-    procedure SpecialCommentProc;
-    procedure SpecialDocumentProc;
+    procedure CommentSLProc; //Single Line Comment //comment or #comment depend on who started
+    procedure CommentMLProc; //Mutli line comment
+    procedure DocumentSLProc;
+    procedure DocumentMLProc;
+    procedure SpecialCommentMLProc;
+    procedure SpecialDocumentMLProc;
 
+    //depends on Range for multililne or singleline
     procedure StringProc;
     procedure StringSQProc;
     procedure StringDQProc;
@@ -373,10 +377,18 @@ end;
 
 procedure TCommonSynProcessor.Created;
 begin
-  inherited Created;
+  inherited;
   CloseComment := '*/';
   CloseSpecialComment := '+/';//for D but you can change it
   CloseSpecialString := '"""';
+//  CloseSpecialDocument
+end;
+
+constructor TCommonSynProcessor.Create(AParent: TSynMultiProcSyn; AName: string);
+begin
+  inherited;
+  if CloseSpecialDocument = '' then
+    CloseSpecialDocument := CloseSpecialComment;
 end;
 
 procedure TCommonSynProcessor.ResetRange;
@@ -430,50 +442,65 @@ begin
   end;
 end;
 
+procedure TCommonSynProcessor.InternalSpecialDocumentProc;
+begin
+  while not (Parent.FLine[Parent.Run] in [#0, #10, #13]) do
+  begin
+    if ScanMatch(CloseSpecialDocument) then
+    begin
+      SetRange(rscUnknown);
+      break;
+    end;
+    Inc(Parent.Run);
+  end;
+end;
+
 procedure TCommonSynProcessor.WordProc;
 begin
   while not (Parent.FLine[Parent.Run] in [#0, #10, #13]) and IsIdentifier(Parent.FLine[Parent.Run]) do
     Inc(Parent.Run);
 end;
 
-procedure TCommonSynProcessor.SLCommentProc;
+procedure TCommonSynProcessor.CommentSLProc;
 begin
   Parent.FTokenID := tkComment;
   ScanToEOL;
+  SetRange(rscUnKnown);
 end;
 
-procedure TCommonSynProcessor.CommentProc;
+procedure TCommonSynProcessor.CommentMLProc;
 begin
   Parent.FTokenID := tkComment;
   SetRange(rscComment);
   InternalCommentProc;
 end;
 
-procedure TCommonSynProcessor.SLDocumentProc;
+procedure TCommonSynProcessor.DocumentSLProc;
 begin
   Parent.FTokenID := tkDocument;
   ScanToEOL;
+  SetRange(rscUnKnown);
 end;
 
-procedure TCommonSynProcessor.SpecialCommentProc;
+procedure TCommonSynProcessor.SpecialCommentMLProc;
 begin
   Parent.FTokenID := tkComment;
   SetRange(rscSpecialComment);
   InternalSpecialCommentProc;
 end;
 
-procedure TCommonSynProcessor.DocumentProc;
+procedure TCommonSynProcessor.DocumentMLProc;
 begin
   Parent.FTokenID := tkDocument;
   SetRange(rscDocument);
   InternalCommentProc;
 end;
 
-procedure TCommonSynProcessor.SpecialDocumentProc;
+procedure TCommonSynProcessor.SpecialDocumentMLProc;
 begin
   Parent.FTokenID := tkDocument;
   SetRange(rscSpecialDocument);
-  InternalSpecialCommentProc;
+  InternalSpecialDocumentProc;
 end;
 
 procedure TCommonSynProcessor.StringProc;
@@ -517,15 +544,15 @@ end;
 
 procedure TCommonSynProcessor.StringDQProc;
 begin
-  SetRange(rscStringDQ);
   Inc(Parent.Run);
+  SetRange(rscStringDQ);
   StringProc;
 end;
 
 procedure TCommonSynProcessor.StringBQProc;
 begin
-  SetRange(rscStringBQ);
   Inc(Parent.Run);
+  SetRange(rscStringBQ);
   StringProc;
 end;
 

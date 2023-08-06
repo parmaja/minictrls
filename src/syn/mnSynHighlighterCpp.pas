@@ -116,15 +116,15 @@ begin
   case Parent.FLine[Parent.Run] of
     '/':
       begin
-        SLCommentProc;
+        CommentSLProc;
       end;
     '*':
       begin
         Inc(Parent.Run);
         if Parent.FLine[Parent.Run] = '*' then
-          DocumentProc
+          DocumentMLProc
         else
-          CommentProc;
+          CommentMLProc;
       end;
   else
     Parent.FTokenID := tkSymbol;
@@ -182,15 +182,15 @@ begin
   else case Range of
     rscComment:
     begin
-      CommentProc;
+      CommentMLProc;
     end;
     rscSpecialComment:
     begin
-      SpecialCommentProc;
+      SpecialCommentMLProc;
     end;
     rscDocument:
     begin
-      DocumentProc;
+      DocumentMLProc;
     end;
     rscStringSQ, rscStringDQ, rscStringBQ:
       StringProc;
