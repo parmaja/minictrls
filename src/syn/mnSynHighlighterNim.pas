@@ -82,7 +82,7 @@ procedure TNimProcessor.GreaterProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
-  if Parent.FLine[Parent.Run] in ['=', '>'] then
+  if Parent.Peek in ['=', '>'] then
     Inc(Parent.Run);
 end;
 
@@ -90,12 +90,13 @@ procedure TNimProcessor.LowerProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
-    '=': Inc(Parent.Run);
+  case Parent.Peek of
+    '=':
+		  Inc(Parent.Run);
     '<':
       begin
         Inc(Parent.Run);
-        if Parent.FLine[Parent.Run] = '=' then
+        if Parent.Peek = '=' then
           Inc(Parent.Run);
       end;
   end;
@@ -104,14 +105,16 @@ end;
 procedure TNimProcessor.SharpProc;
 begin
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
+  case Parent.Peek of
     '[':
       CommentMLProc;
     '#':
       begin
-        Inc(Parent.Run);
-        if Parent.FLine[Parent.Run] = '[' then
+        if Parent.Peek(1) = '[' then
+        begin
+          Inc(Parent.Run);
           SpecialDocumentMLProc
+        end
         else
           DocumentSLProc
       end;
@@ -124,12 +127,14 @@ procedure TNimProcessor.DQProc;
 begin
   SetRange(rscStringDQ);
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
+  case Parent.Peek of
     '"':
       begin
-        Inc(Parent.Run);
-        if Parent.FLine[Parent.Run] = '"' then
+        if Parent.Peek(1) = '"' then
+        begin
+          Inc(Parent.Run);
           SpecialStringProc
+        end
         else
           StringProc;
       end;
@@ -161,7 +166,7 @@ end;
 procedure TNimProcessor.QuestionProc;
 begin
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
+  case Parent.Peek of
     '>':
       begin
         Parent.Processors.Switch(Parent.Processors.MainProcessor);
@@ -182,8 +187,8 @@ end;
 procedure TNimProcessor.Next;
 begin
   Parent.FTokenPos := Parent.Run;
-  if (Parent.FLine[Parent.Run] in [#0, #10, #13]) then
-    ProcTable[Parent.FLine[Parent.Run]]
+  if (Parent.Peek in [#0, #10, #13]) then
+    ProcTable[Parent.Peek]
   else case Range of
     rscComment:
       CommentMLProc;
@@ -198,10 +203,10 @@ begin
     rscSpecialString:
       SpecialStringProc;
   else
-    if ProcTable[Parent.FLine[Parent.Run]] = nil then
+    if ProcTable[Parent.Peek] = nil then
       UnknownProc
     else
-      ProcTable[Parent.FLine[Parent.Run]];
+      ProcTable[Parent.Peek];
   end;
 end;
 

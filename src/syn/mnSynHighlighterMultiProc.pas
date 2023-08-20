@@ -222,6 +222,7 @@ type
     function GetTokenKind: integer; override;
     function GetTokenPos: integer; override;
     function IsKeyword(const AKeyword: string): boolean; override;
+    function Peek(Offset: Integer = 0): Char; inline;
     procedure Next; override;
     procedure SetLine(const NewValue: string; LineNumber: integer); override;
   published
@@ -749,6 +750,15 @@ end;
 function TSynMultiProcSyn.IsKeyword(const AKeyword: string): boolean;
 begin
   Result := (Processors.Current.FKeywords.Items[AKeyword] as TTokenObject).Kind in [tkKeyword, tkFunction];
+end;
+
+function TSynMultiProcSyn.Peek(Offset: Integer): Char;
+begin
+  Offset := Offset + Run;
+  if Offset<Length(FLine) then
+    Result := FLine[Offset]
+  else
+    Result := #0;
 end;
 
 procedure TSynMultiProcSyn.Next;

@@ -36,6 +36,7 @@ type
     procedure DirectiveProc;
     procedure SharpProc;
     procedure DQProc;
+    procedure SQProc;
 
     procedure GreaterProc;
     procedure LowerProc;
@@ -82,7 +83,7 @@ procedure TPyProcessor.GreaterProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
-  if Parent.FLine[Parent.Run] in ['=', '>'] then
+  if Parent.Peek in ['=', '>'] then
     Inc(Parent.Run);
 end;
 
@@ -90,12 +91,12 @@ procedure TPyProcessor.LowerProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
+  case Parent.Peek of
     '=': Inc(Parent.Run);
     '<':
       begin
         Inc(Parent.Run);
-        if Parent.FLine[Parent.Run] = '=' then
+        if Parent.Peek = '=' then
           Inc(Parent.Run);
       end;
   end;
@@ -104,32 +105,41 @@ end;
 procedure TPyProcessor.SharpProc;
 begin
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
-    '[':
-      CommentMLProc;
-    '#':
-      begin
-        Inc(Parent.Run);
-        if Parent.FLine[Parent.Run] = '[' then
-          SpecialDocumentMLProc
-        else
-          DocumentSLProc
-      end;
-  else
-    CommentSLProc;
-  end;
+  CommentSLProc;
 end;
 
 procedure TPyProcessor.DQProc;
 begin
   SetRange(rscStringDQ);
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
+  case Parent.Peek of
     '"':
       begin
-        Inc(Parent.Run);
-        if Parent.FLine[Parent.Run] = '"' then
-          SpecialStringProc
+        if Parent.Peek(1) = '"' then
+        begin
+          Inc(Parent.Run);
+          SpecialStringProc;
+        end
+        else
+          StringProc;
+      end;
+  else
+    StringProc;
+  end;
+end;
+
+procedure TPyProcessor.SQProc;
+begin
+  SetRange(rscStringSQ);
+  Inc(Parent.Run);
+  case Parent.Peek of
+    '''':
+      begin
+        if Parent.Peek(1) = '''' then
+        begin
+          Inc(Parent.Run);
+          SpecialDocumentMLProc;
+        end
         else
           StringProc;
       end;
@@ -146,7 +156,7 @@ begin
   for I := #0 to #255 do
     case I of
       '?': ProcTable[I] := @QuestionProc;
-      '''': ProcTable[I] := @StringSQProc;
+      '''': ProcTable[I] := @SQProc;
       '"': ProcTable[I] := @DQProc;
       '#': ProcTable[I] := @SharpProc;
       '>': ProcTable[I] := @GreaterProc;
@@ -161,7 +171,7 @@ end;
 procedure TPyProcessor.QuestionProc;
 begin
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
+  case Parent.Peek of
     '>':
       begin
         Parent.Processors.Switch(Parent.Processors.MainProcessor);
@@ -182,8 +192,8 @@ end;
 procedure TPyProcessor.Next;
 begin
   Parent.FTokenPos := Parent.Run;
-  if (Parent.FLine[Parent.Run] in [#0, #10, #13]) then
-    ProcTable[Parent.FLine[Parent.Run]]
+  if (Parent.Peek in [#0, #10, #13]) then
+    ProcTable[Parent.Peek]
   else case Range of
     rscComment:
       CommentMLProc;
@@ -198,10 +208,10 @@ begin
     rscSpecialString:
       SpecialStringProc;
   else
-    if ProcTable[Parent.FLine[Parent.Run]] = nil then
+    if ProcTable[Parent.Peek] = nil then
       UnknownProc
     else
-      ProcTable[Parent.FLine[Parent.Run]];
+      ProcTable[Parent.Peek];
   end;
 end;
 
@@ -227,8 +237,8 @@ procedure TPyProcessor.Created;
 begin
   inherited Created;
   CloseSpecialString := '"""';
-  CloseComment := ']#';
-  CloseSpecialDocument := ']##';
+  CloseComment := '';
+  CloseSpecialDocument := '''''''';
 end;
 
 function TPyProcessor.GetIdentChars: TSynIdentChars;
