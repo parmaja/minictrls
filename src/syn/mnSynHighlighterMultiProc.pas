@@ -32,6 +32,14 @@ type
 
   TSynMultiProcSyn = class;
 
+  { TSynKeywords }
+
+  TSynKeywords = class(TFPObjectHashTable)
+  public
+    procedure Update(AKeyword: string; AKind: TtkTokenKind);
+    procedure Append(AKeyword: string; AKind: TtkTokenKind);
+  end;
+
   { TTokenObject }
 
   TTokenObject = class(TObject)
@@ -45,11 +53,13 @@ type
 
   TSynProcessor = class(TObject)
   private
-    FKeywords: TFPObjectHashTable;
+    FKeywords: TSynKeywords;
     FName: string;
     FIndex: integer;
     FParent: TSynMultiProcSyn;
+    procedure SetKeywords(AValue: TSynKeywords);
   protected
+    FExternalKeywords: Boolean;
     StringCEscaped: TCommonRangeStates;
     function GetIdentChars: TSynIdentChars; virtual;
     procedure ResetRange; virtual;
@@ -67,6 +77,8 @@ type
     procedure Created; virtual;
 
     procedure UnknownProc;
+    function CreateKeywords: TSynKeywords; virtual;
+    property ExternalKeywords: Boolean read FExternalKeywords;
   public
     IdentTable: TIdentifierTable;
     ProcTable: TProcTable;
@@ -78,6 +90,7 @@ type
     procedure MakeProcTable; virtual;
 
     procedure IdentProc; virtual;
+    property Keywords: TSynKeywords read FKeywords write SetKeywords;
 
     property Parent: TSynMultiProcSyn read FParent;
     property Name: string read FName write FName;
@@ -354,14 +367,19 @@ begin
   Parent.FTokenID := tkUnknown;
 end;
 
+function TSynProcessor.CreateKeywords: TSynKeywords;
+begin
+  Result := TSynKeywords.Create;
+end;
+
 function TSynProcessor.GetEndOfLineAttribute: TSynHighlighterAttributes;
 begin
   Result := nil;
 end;
 
-procedure TSynProcessor.DoAddKeyword(AKeyword: string; AKind: integer);
+procedure TSynProcessor.DoAddKeyword(AKeyword: string; AKind: Integer);
 begin
-  FKeywords.Add(AKeyword, TTokenObject.Create(AKeyword, TtkTokenKind(AKind)));
+  Keywords.Append(AKeyword, TtkTokenKind(AKind));
 end;
 
 function TSynProcessor.IsIdentifier(c: AnsiChar): Boolean;
@@ -914,7 +932,7 @@ begin
   inherited Create;
   FName := AName;
   FParent := AParent;
-  FKeywords := TFPObjectHashTable.Create;
+  FKeywords := CreateKeywords;
   StringCEscaped := [rscStringSQ, rscStringDQ, rscStringBQ];
   Created;
 end;
@@ -946,6 +964,18 @@ begin
   chars := GetIdentChars;
   for c in chars do
     IdentTable[c] := True;
+end;
+
+procedure TSynProcessor.SetKeywords(AValue: TSynKeywords);
+begin
+  if FKeywords <> AValue then
+  begin
+    if not ExternalKeywords then
+      FreeAndNil(FKeywords);
+
+    FKeywords := AValue;
+    FExternalKeywords := True;
+  end;
 end;
 
 function TSynProcessor.GetIdentChars: TSynIdentChars;
@@ -1083,6 +1113,24 @@ begin
 
   for i := 0 to Processors.Count - 1 do
     Processors[i].MakeProcTable;
+end;
+
+{ TSynKeywords }
+
+procedure TSynKeywords.Update(AKeyword: string; AKind: TtkTokenKind);
+var
+  aNode: THTCustomNode;
+begin
+  aNode := Find(AKeyword);
+  if aNode = nil then
+    Append(AKeyword, AKind)
+  else
+    TTokenObject(THTDataNode(aNode).Data).Kind := AKind;
+end;
+
+procedure TSynKeywords.Append(AKeyword: string; AKind: TtkTokenKind);
+begin
+  Add(AKeyword, TTokenObject.Create(AKeyword, AKind));
 end;
 
 end.

@@ -18,7 +18,7 @@ unit mnSynHighlighterLSL;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, Contnrs,
   SynEdit, SynEditTypes,
   SynHighlighterHashEntries, SynEditHighlighter, mnSynHighlighterMultiProc;
 
@@ -31,6 +31,7 @@ type
   protected
     function GetIdentChars: TSynIdentChars; override;
     function GetEndOfLineAttribute: TSynHighlighterAttributes; override;
+    function CreateKeywords: TSynKeywords; override;
   public
     procedure Created; override;
     procedure QuestionProc;
@@ -60,6 +61,9 @@ type
     procedure InitProcessors; override;
   published
   end;
+
+var
+  LSLKeywords: TSynKeywords;
 
 const
 
@@ -902,13 +906,13 @@ const
     'ZERO_ROTATION';
 
   sLSLFunctions =
+    'llAbs,'+
     'llSin,'+
     'llCos,'+
     'llTan,'+
     'llAtan2,'+
     'llSqrt,'+
     'llPow,'+
-    'llAbs,'+
     'llFabs,'+
     'llFrand,'+
     'llFloor,'+
@@ -1775,6 +1779,7 @@ begin
   inherited;
   EnumerateKeywords(Ord(tkKeyword), sLSLKeywords, TSynValidStringChars, @DoAddKeyword);
   EnumerateKeywords(Ord(tkType), sLSLTypes, TSynValidStringChars, @DoAddKeyword);
+
   EnumerateKeywords(Ord(tkValue), sLSLValues, TSynValidStringChars, @DoAddKeyword);
   EnumerateKeywords(Ord(tkFunction), sLSLFunctions, TSynValidStringChars, @DoAddKeyword);
   EnumerateKeywords(Ord(tkFunction), sOpenSIMFunctions, TSynValidStringChars, @DoAddKeyword);
@@ -1787,6 +1792,14 @@ begin
     Result := Parent.DocumentAttri
   else
     Result := inherited GetEndOfLineAttribute;
+end;
+
+function TLSLProcessor.CreateKeywords: TSynKeywords;
+begin
+  if LSLKeywords = nil then
+    LSLKeywords := TSynKeywords.Create;
+  Result := LSLKeywords;
+  FExternalKeywords := True;
 end;
 
 procedure TLSLProcessor.Created;
@@ -1828,5 +1841,6 @@ end;
 initialization
   RegisterPlaceableHighlighter(TSynLSLSyn);
 finalization
+  FreeAndNil(LSLKeywords);
 end.
 

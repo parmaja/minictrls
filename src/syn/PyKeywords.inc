@@ -13,6 +13,7 @@
 }
 
   sPyKeywords =
+    'async,'+
     'and,'+
     'assert,'+
     'as,'+
@@ -43,6 +44,8 @@
     'return,'+
     'try,'+
     'while,'+
+    'wait,'+
+    'with,'+
     'yield';
 
   sPyTypes =

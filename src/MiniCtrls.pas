@@ -17,7 +17,7 @@ uses
   ntvBoard, ntvCtrls, ntvDotMatrix, ntvGrids, ntvImgBtns, ntvPageControls, 
   ntvPanels, ntvPixelGrids, ntvProgressBars, ntvRegCtrls, ntvSplitters, 
   ntvStdThemes, ntvTabs, ntvTabSets, ntvThemes, ntvUtils, CSVOptionsForms, 
-  ParamsForms, mnSynHighlighterNim, LazarusPackageIntf;
+  ParamsForms, mnSynHighlighterNim, mnSynHighlighterPy, LazarusPackageIntf;
 
 implementation
 

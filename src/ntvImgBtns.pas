@@ -1,4 +1,15 @@
 unit ntvImgBtns;
+{**
+ *  This file is part of the "Mini Library"
+ *
+ * @url       http://www.sourceforge.net/projects/minilib
+ * @license   modifiedLGPL (modified of http://www.gnu.org/licenses/lgpl.html)
+ *            See the file COPYING.MLGPL, included in this distribution,
+ * @author    Zaher Dirkey
+  *}
+
+{$mode objfpc}{$H+}
+{$define USE_NTV_THEME}
 
 interface
 
