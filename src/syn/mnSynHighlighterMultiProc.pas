@@ -939,7 +939,8 @@ end;
 
 destructor TSynProcessor.Destroy;
 begin
-  FKeywords.Free;
+  if not ExternalKeywords then
+    FreeAndNil(FKeywords);
   inherited;
 end;
 
