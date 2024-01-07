@@ -36,6 +36,9 @@ type
 
   TSynKeywords = class(TFPObjectHashTable)
   public
+    constructor Create(AOwnsObjects: Boolean =True);
+    procedure Created; virtual;
+    procedure AddKeyword(AKeyword: string; AKind: integer);
     procedure Update(AKeyword: string; AKind: TtkTokenKind);
     procedure Append(AKeyword: string; AKind: TtkTokenKind);
   end;
@@ -53,7 +56,7 @@ type
 
   TSynProcessor = class(TObject)
   private
-    FKeywords: TSynKeywords;
+    FKeywords: TSynKeywords; //deprecated;
     FName: string;
     FIndex: integer;
     FParent: TSynMultiProcSyn;
@@ -1132,6 +1135,21 @@ end;
 procedure TSynKeywords.Append(AKeyword: string; AKind: TtkTokenKind);
 begin
   Add(AKeyword, TTokenObject.Create(AKeyword, AKind));
+end;
+
+constructor TSynKeywords.Create(AOwnsObjects: Boolean);
+begin
+  inherited;
+  Created;
+end;
+
+procedure TSynKeywords.Created;
+begin
+end;
+
+procedure TSynKeywords.AddKeyword(AKeyword: string; AKind: integer);
+begin
+  Append(AKeyword, TtkTokenKind(AKind));
 end;
 
 end.

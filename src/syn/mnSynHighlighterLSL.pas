@@ -24,6 +24,13 @@ uses
 
 type
 
+  { TLSlSynKeywords }
+
+  TLSlSynKeywords = class(TSynKeywords)
+  public
+    procedure Created; override;
+  end;
+
   { TLSLProcessor }
 
   TLSLProcessor = class(TCommonSynProcessor)
@@ -63,7 +70,7 @@ type
   end;
 
 var
-  LSLKeywords: TSynKeywords;
+  LSLKeywords: TLSlSynKeywords;
 
 const
 
@@ -1638,6 +1645,19 @@ implementation
 uses
   mnUtils;
 
+{ TLSlSynKeywords }
+
+procedure TLSlSynKeywords.Created;
+begin
+  inherited;
+  EnumerateKeywords(Ord(tkKeyword), sLSLKeywords, TSynValidStringChars, @AddKeyword);
+  EnumerateKeywords(Ord(tkType), sLSLTypes, TSynValidStringChars, @AddKeyword);
+
+  EnumerateKeywords(Ord(tkValue), sLSLValues, TSynValidStringChars, @AddKeyword);
+  EnumerateKeywords(Ord(tkFunction), sLSLFunctions, TSynValidStringChars, @AddKeyword);
+  EnumerateKeywords(Ord(tkFunction), sOpenSIMFunctions, TSynValidStringChars, @AddKeyword);
+end;
+
 procedure TLSLProcessor.GreaterProc;
 begin
   Parent.FTokenID := tkSymbol;
@@ -1777,12 +1797,6 @@ end;
 procedure TLSLProcessor.Prepare;
 begin
   inherited;
-  EnumerateKeywords(Ord(tkKeyword), sLSLKeywords, TSynValidStringChars, @DoAddKeyword);
-  EnumerateKeywords(Ord(tkType), sLSLTypes, TSynValidStringChars, @DoAddKeyword);
-
-  EnumerateKeywords(Ord(tkValue), sLSLValues, TSynValidStringChars, @DoAddKeyword);
-  EnumerateKeywords(Ord(tkFunction), sLSLFunctions, TSynValidStringChars, @DoAddKeyword);
-  EnumerateKeywords(Ord(tkFunction), sOpenSIMFunctions, TSynValidStringChars, @DoAddKeyword);
   SetRange(rscUnknown);
 end;
 
@@ -1797,7 +1811,7 @@ end;
 function TLSLProcessor.CreateKeywords: TSynKeywords;
 begin
   if LSLKeywords = nil then
-    LSLKeywords := TSynKeywords.Create;
+    LSLKeywords := TLSlSynKeywords.Create;
   Result := LSLKeywords;
   FExternalKeywords := True;
 end;
