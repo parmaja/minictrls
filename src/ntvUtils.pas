@@ -10,11 +10,12 @@ unit ntvUtils;
  *}
 
 {$mode objfpc}{$H+}
+
 interface
 
 uses
   Dialogs, Classes, Messages, Controls, ExtCtrls, SysUtils, Math, Contnrs, Graphics,
-  LCLType, Forms, LCLIntf;
+  LCLType, LCLIntf;
 
 procedure ExcludeClipRect(Canvas: TCanvas; Rect: TRect);
 function WidthOf(R: TRect): Integer;

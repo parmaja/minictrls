@@ -286,7 +286,7 @@ type
 
   { TntvColumn }
 
-  TntvColumn = class(TmnCustomField, IField, IMaster)
+  TntvColumn = class(TmnCustomField, IField, IMaster, INamedObject)
   private
     FGrid: TntvCustomGrid;
     FMasterActionLock: Boolean;
@@ -302,6 +302,7 @@ type
     FCurrencyFormat: String;
     FEnabled: Boolean;
 
+    function GetName: String;
     procedure SetTotal(const Value: Currency);
     function GetTotal: Currency;
     procedure SetData(const Value: Integer);
@@ -424,7 +425,7 @@ type
 
     procedure CurrentRowChanged; virtual;
 
-    property Name: String read FName;
+    property Name: String read GetName;
 
     property ActiveIndex: Integer read GetActiveIndex;
     property EditData: Integer read GetEditData write SetEditData;
@@ -473,7 +474,7 @@ type
 
   { TntvColumnList }
 
-  TntvColumnList = class(TmnNamedObjectList<TntvColumn>)
+  TntvColumnList = class(TINamedObjects<TntvColumn>)
   private
   protected
   public
@@ -2186,6 +2187,11 @@ begin
   Complete(False);
 end;
 
+function TntvColumn.GetName: String;
+begin
+  Result := FName;
+end;
+
 procedure TntvColumn.SetData(const Value: Integer);
 begin
   SetCellValue(ActiveIndex, '', Value, [swcData, swcInvalidate]);
@@ -2882,7 +2888,7 @@ begin
     tmpRect.Top := 0;
     tmpRect.Bottom := vrtRect.Top;
     DrawRow(Canvas, -1, tmpRect, pntRect, garHeader);
-    ExcludeClipRect(Canvas.Handle, TmpRect.Left, tmpRect.Top, tmpRect.Right, tmpRect.Bottom);
+    ExcludeClipRect(Canvas, TmpRect);
     pntRect.Top := vrtRect.Top;
   end;
 
@@ -2892,7 +2898,7 @@ begin
     tmpRect.Top := vrtRect.Bottom;
     tmpRect.Bottom := ClientRect.Bottom;
     DrawRow(Canvas, -1, tmpRect, pntRect, garFooter);
-    ExcludeClipRect(Canvas.Handle, TmpRect.Left, tmpRect.Top, tmpRect.Right, tmpRect.Bottom);
+    ExcludeClipRect(Canvas, TmpRect);
     pntRect.Bottom := vrtRect.Bottom;
   end;
 
@@ -3010,7 +3016,7 @@ begin
         aDrawState := aDrawState + [csdFooter];
       Canvas.FillRect(tmpRect);
       DrawFixed(Canvas, tmpRect, '', aDrawState);
-      ExcludeClipRect(Canvas.Handle, TmpRect.Left, tmpRect.Top, tmpRect.Right, tmpRect.Bottom);
+      ExcludeClipRect(Canvas, TmpRect);
     end;
   end;
 

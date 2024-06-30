@@ -28,6 +28,7 @@ type
   TdrawSides = set of TdrawSide;
 
   TntvThemeEngine = class;
+  TThemeAttribute = class;
 
   TntvTheme = class;
 
@@ -56,7 +57,7 @@ type
 
   { TntvTheme }
 
-  TntvTheme = class (specialize TmnObjectList<TThemeAttribute>)
+  TntvTheme = class(specialize TmnObjectList<TThemeAttribute>, INamedObject)
   private
     FActive: TThemeAttribute;
     FButton: TThemeAttribute;
@@ -72,6 +73,7 @@ type
     FSeparator: TThemeAttribute;
     FStub: TThemeAttribute;
     FTitle: TThemeAttribute;
+    function GetName: string;
     procedure SetName(const AValue: string);
   public
     constructor Create(AEngine: TntvThemeEngine; AName: string); virtual;
@@ -87,7 +89,7 @@ type
     procedure DrawButtonEdge(Canvas: TCanvas; Rect: TRect; States: TdrawStates); virtual;
     procedure DrawButton(Canvas: TCanvas; Text: string; ImageWidth: Integer; Rect: TRect; States: TdrawStates; UseRightToLeft: Boolean); virtual;
     procedure DrawImage(Canvas: TCanvas; ImageList:TImageList; ImageIndex: TImageIndex; Rect: TRect; States: TdrawStates); virtual;
-    property Name: string read FName write SetName;
+    property Name: string read GetName write SetName;
   published
     property Default: TThemeAttribute read FDefault; //ListBox, Grid
     property Odd: TThemeAttribute read FOdd; //alternate ListBox, Grid colors
@@ -103,7 +105,7 @@ type
     property Active: TThemeAttribute read FActive;
   end;
 
-  TntvThemes = class(specialize TmnNamedObjectList<TntvTheme>)
+  TntvThemes = class(specialize TINamedObjects<TntvTheme>)
   end;
 
   IThemeNotify = interface(IInterface)
@@ -208,6 +210,11 @@ procedure TntvTheme.SetName(const AValue: string);
 begin
   if FName =AValue then exit;
   FName :=AValue;
+end;
+
+function TntvTheme.GetName: string;
+begin
+  Result := FName;
 end;
 
 constructor TntvTheme.Create(AEngine: TntvThemeEngine; AName: string);

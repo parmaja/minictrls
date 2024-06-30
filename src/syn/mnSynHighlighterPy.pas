@@ -67,9 +67,10 @@ const
   SYNS_FilterPy = 'Py Lang Files (*.Py)|*.Py';
 
   cPySample =
-      '#defines function'#13#10+
+      '## defines function'#13#10+
       'func fact(n: int)'#13#10+
-      '  return @[10]'#13#10+
+      '    #n = n + 1'#13#10+
+      '    return @[10]'#13#10+
       ''#13#10;
 
 {$INCLUDE 'PyKeywords.inc'}
@@ -105,7 +106,15 @@ end;
 procedure TPyProcessor.SharpProc;
 begin
   Inc(Parent.Run);
-  CommentSLProc;
+  case Parent.FLine[Parent.Run] of
+    '#':
+      begin
+        Inc(Parent.Run);
+        DocumentSLProc
+      end;
+  else
+    CommentSLProc;
+  end;
 end;
 
 procedure TPyProcessor.DQProc;
