@@ -17,29 +17,10 @@ uses
   Dialogs, Classes, Messages, Controls, ExtCtrls, SysUtils, Math, Contnrs, Graphics,
   LCLType, LCLIntf;
 
-procedure ExcludeClipRect(Canvas: TCanvas; Rect: TRect);
-function WidthOf(R: TRect): Integer;
-function HeightOf(R: TRect): Integer;
-
 implementation
 
 uses
   Types;
-
-procedure ExcludeClipRect(Canvas: TCanvas; Rect: TRect);
-begin
-  LCLIntf.ExcludeClipRect(Canvas.Handle, Rect.Left, Rect.Top, Rect.Right, Rect.Bottom);
-end;
-
-function WidthOf(R: TRect): Integer;
-begin
-  Result := R.Right - R.Left;
-end;
-
-function HeightOf(R: TRect): Integer;
-begin
-  Result := R.Bottom - R.Top;
-end;
 
 end.
 

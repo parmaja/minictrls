@@ -30,7 +30,14 @@ type
     property Color;
   end;
 
+procedure ExcludeClipRect(Canvas: TCanvas; Rect: TRect);
+
 implementation
+
+procedure ExcludeClipRect(Canvas: TCanvas; Rect: TRect);
+begin
+  LCLIntf.ExcludeClipRect(Canvas.Handle, Rect.Left, Rect.Top, Rect.Right, Rect.Bottom);
+end;
 
 { TntvEdit }
 

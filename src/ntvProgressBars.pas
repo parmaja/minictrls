@@ -16,7 +16,7 @@ interface
 uses
   Classes, Messages, Controls, ExtCtrls, SysUtils, Contnrs, Graphics, Forms,
   LCLType, LCLIntf, LMessages, LCLProc,
-  ntvutils;
+  ntvUtils, ntvCtrls;
 
 type
   TPaintStatus = (psMain, psSub, psAll);
