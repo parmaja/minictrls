@@ -67,6 +67,7 @@ sHTMLKeywords =
   'h6,'+
   'head,'+
   'headers,'+
+  'header,'+
   'height,'+
   'hr,'+
   'href,'+
@@ -85,6 +86,7 @@ sHTMLKeywords =
   'li,'+
   'link,'+
   'map,'+
+  'main,'+
   'menu,'+
   'meta,'+
   'method,'+
@@ -110,6 +112,7 @@ sHTMLKeywords =
   'samp,'+
   'scope,'+
   'script,'+
+  'section,'+
   'select,'+
   'small,'+
   'span,'+

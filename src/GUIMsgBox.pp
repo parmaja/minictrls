@@ -56,8 +56,8 @@ type
     FStatusForms: TObjectList;
   protected
     function ShowMessage(const vText: string; Choices: array of TMsgSelect; DefaultChoice: Integer; CancelChoice: Integer; Kind: TMsgKind): Integer; override;
-    function ShowInput(var Answer: string; const vText: string; Choices: array of TMsgSelect; DefaultChoice: Integer; CancelChoice: Integer; Kind: TMsgKind): Integer; override;
-    function ShowList(var Answer: Integer; const vText: string; vStrings:TStrings; Choices: array of TmsgSelect; DefaultChoice: Integer; CancelChoice: Integer; Kind: TmsgKind): Integer; override;
+    function ShowInput(out Answer: string; const vText: string; Choices: array of TMsgSelect; DefaultChoice: Integer; CancelChoice: Integer; Kind: TMsgKind): Integer; override;
+    function ShowList(out Answer: Integer; const vText: string; vStrings:TStrings; Choices: array of TmsgSelect; DefaultChoice: Integer; CancelChoice: Integer; Kind: TmsgKind): Integer; override;
     procedure ShowStatus(vText: string; Sender: TObject = nil); override;
     procedure UpdateStatus(vText: string; Sender: TObject = nil); override;
     procedure HideStatus(Sender: TObject); override;
@@ -473,7 +473,9 @@ begin
   end;
 end;
 
-function TGUIMsgBox.ShowInput(var Answer: string; const vText: string; Choices: array of TMsgSelect; DefaultChoice: Integer; CancelChoice: Integer; Kind: TMsgKind): Integer;
+function TGUIMsgBox.ShowInput(out Answer: string; const vText: string;
+  Choices: array of TMsgSelect; DefaultChoice: Integer; CancelChoice: Integer;
+  Kind: TMsgKind): Integer;
 var
   aMsgForm: TMsgForm;
 begin
@@ -491,7 +493,9 @@ begin
   end;
 end;
 
-function TGUIMsgBox.ShowList(var Answer: Integer; const vText: string; vStrings: TStrings; Choices: array of TmsgSelect; DefaultChoice: Integer; CancelChoice: Integer; Kind: TmsgKind): Integer;
+function TGUIMsgBox.ShowList(out Answer: Integer; const vText: string;
+  vStrings: TStrings; Choices: array of TmsgSelect; DefaultChoice: Integer;
+  CancelChoice: Integer; Kind: TmsgKind): Integer;
 var
   aMsgForm: TMsgForm;
 begin
