@@ -30,7 +30,7 @@
     'for,'+
     'from,'+
     'global,'+
-    'nonlocal'+
+    'nonlocal,'+
     'if,'+
     'import,'+
     'in,'+
