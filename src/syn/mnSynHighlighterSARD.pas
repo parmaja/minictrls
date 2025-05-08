@@ -244,6 +244,7 @@ procedure TSardProcessor.Created;
 begin
   inherited Created;
   CloseSpecialComment := '*}';
+  CaseSensitive := False;
 end;
 
 function TSardProcessor.GetIdentChars: TSynIdentChars;

@@ -29,6 +29,7 @@ type
     procedure ResetRange; override;
     function GetRange: Byte; override;
     procedure SetRange(Value: Byte); override;
+    procedure Created; override;
   public
     procedure BraceOpenProc;
     procedure IdentProc; override;
@@ -526,6 +527,12 @@ end;
 procedure THTMLProcessor.SetRange(Value: Byte);
 begin
   FRange := THTMLRangeState(Value);
+end;
+
+procedure THTMLProcessor.Created;
+begin
+  inherited;
+  CaseSensitive := False;
 end;
 
 procedure THTMLProcessor.SpaceProc;
