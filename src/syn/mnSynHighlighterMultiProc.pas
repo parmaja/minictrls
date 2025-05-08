@@ -46,6 +46,7 @@ type
   { TTokenObject }
 
   TTokenObject = class(TObject)
+  protected
     Keyword: string;
     Kind: TtkTokenKind;
   public
@@ -63,6 +64,7 @@ type
     procedure SetKeywords(AValue: TSynKeywords);
   protected
     FExternalKeywords: Boolean;
+    CaseSensitive: Boolean;
     StringCEscaped: TCommonRangeStates;
     function GetIdentChars: TSynIdentChars; virtual;
     procedure ResetRange; virtual;
@@ -318,7 +320,10 @@ begin
     Inc(i);
   AKeyword := Copy(Identifier, 1, i - 1);
   inc(Parent.Run, i - 1);
-  Entry := FKeywords.Items[AKeyword] as TTokenObject;
+  if CaseSensitive then
+    Entry := FKeywords.Items[AKeyword] as TTokenObject
+  else
+    Entry := FKeywords.Items[LowerCase(AKeyword)] as TTokenObject;
   if Entry <> nil then
     Result := Entry.Kind
   else
@@ -937,6 +942,7 @@ begin
   FParent := AParent;
   FKeywords := CreateKeywords;
   StringCEscaped := [rscStringSQ, rscStringDQ, rscStringBQ];
+  CaseSensitive := True;
   Created;
 end;
 

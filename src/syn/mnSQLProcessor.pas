@@ -21,7 +21,7 @@ uses
 type
   { TSardProcessor }
 
-  TSardProcessor = class(TCommonSynProcessor)
+  TSQLProcessor = class(TCommonSynProcessor)
   private
   protected
    function GetIdentChars: TSynIdentChars; override;
@@ -77,7 +77,7 @@ uses
 
 { TStdSQLSyn }
 
-procedure TSardProcessor.GreaterProc;
+procedure TSQLProcessor.GreaterProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
@@ -85,7 +85,7 @@ begin
     Inc(Parent.Run);
 end;
 
-procedure TSardProcessor.LowerProc;
+procedure TSQLProcessor.LowerProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
@@ -100,7 +100,7 @@ begin
   end;
 end;
 
-procedure TSardProcessor.DeclareProc;
+procedure TSQLProcessor.DeclareProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
@@ -115,7 +115,7 @@ begin
   end;
 end;
 
-procedure TSardProcessor.SlashProc;
+procedure TSQLProcessor.SlashProc;
 begin
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
@@ -136,7 +136,7 @@ begin
   end;
 end;
 
-procedure TSardProcessor.MinusProc;
+procedure TSQLProcessor.MinusProc;
 begin
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
@@ -149,7 +149,7 @@ begin
   end;
 end;
 
-procedure TSardProcessor.VariableProc;
+procedure TSQLProcessor.VariableProc;
 var
   i: integer;
 begin
@@ -161,7 +161,7 @@ begin
   Parent.Run := i;
 end;
 
-procedure TSardProcessor.MakeProcTable;
+procedure TSQLProcessor.MakeProcTable;
 var
   I: Char;
 begin
@@ -186,7 +186,7 @@ begin
     end;
 end;
 
-procedure TSardProcessor.QuestionProc;
+procedure TSQLProcessor.QuestionProc;
 begin
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
@@ -201,7 +201,7 @@ begin
   end;
 end;
 
-procedure TSardProcessor.Next;
+procedure TSQLProcessor.Next;
 begin
   Parent.FTokenPos := Parent.Run;
   if (Parent.FLine[Parent.Run] in [#0, #10, #13]) then
@@ -225,7 +225,7 @@ begin
   end;
 end;
 
-procedure TSardProcessor.Prepare;
+procedure TSQLProcessor.Prepare;
 begin
   inherited;
   EnumerateKeywords(Ord(tkKeyword), StdSQLKeywords, TSynValidStringChars, @DoAddKeyword);
@@ -234,7 +234,7 @@ begin
   SetRange(rscUnknown);
 end;
 
-function TSardProcessor.GetEndOfLineAttribute: TSynHighlighterAttributes;
+function TSQLProcessor.GetEndOfLineAttribute: TSynHighlighterAttributes;
 begin
   if (Range = rscDocument) or (LastRange = rscDocument) then
     Result := Parent.DocumentAttri
@@ -242,12 +242,13 @@ begin
     Result := inherited GetEndOfLineAttribute;
 end;
 
-procedure TSardProcessor.Created;
+procedure TSQLProcessor.Created;
 begin
-  inherited Created;
+  inherited;
+  CaseSensitive := False;
 end;
 
-function TSardProcessor.GetIdentChars: TSynIdentChars;
+function TSQLProcessor.GetIdentChars: TSynIdentChars;
 begin
   Result := TSynValidStringChars;
 end;

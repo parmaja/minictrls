@@ -65,10 +65,10 @@ end;
 procedure TmnSynStdSQLSyn.InitProcessors;
 begin
   inherited;
-  Processors.Add(TSardProcessor.Create(Self, 'Sard'));
+  Processors.Add(TSQLProcessor.Create(Self, 'SQL'));
 
-  Processors.MainProcessor := 'Sard';
-  Processors.DefaultProcessor := 'Sard';
+  Processors.MainProcessor := 'SQL';
+  Processors.DefaultProcessor := 'SQL';
 end;
 
 class function TmnSynStdSQLSyn.GetLanguageName: string;
