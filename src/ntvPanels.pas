@@ -15,7 +15,7 @@ unit ntvPanels;
 interface
 
 uses
-  SysUtils, Classes, Graphics, Controls, Variants,
+  SysUtils, Classes, Graphics, Controls, Variants, Types,
   {$ifdef USE_NTV_THEME}
   ntvThemes,
   {$endif USE_NTV_THEME}

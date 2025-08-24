@@ -1956,7 +1956,7 @@ begin
         end;
     end else begin
       for i := 0 to Pred(ItemsCount) do
-        if 0 = UTF8CompareLatinTextFast(fCurrentString,
+        if 0 = CompareText(fCurrentString,
                                     Copy(InsertList[i], 1, Length(fCurrentString)))
         then begin
           Position := i;
