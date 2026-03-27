@@ -266,8 +266,7 @@ begin
   inherited;
   Processors.Add(TPyProcessor.Create(Self, 'Py'));
 
-  Processors.MainProcessor := 'Py';
-  Processors.DefaultProcessor := 'Py';
+  Processors.MainProcessor := Processors.Find('Py');
 end;
 
 class function TmnSynPySyn.GetLanguageName: string;

@@ -262,8 +262,7 @@ begin
   inherited;
   Processors.Add(TDProcessor.Create(Self, 'D'));
 
-  Processors.MainProcessor := 'D';
-  Processors.DefaultProcessor := 'D';
+  Processors.MainProcessor := Processors.Find('D');
 end;
 
 class function TSynDSyn.GetLanguageName: string;

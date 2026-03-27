@@ -67,8 +67,7 @@ begin
   inherited;
   Processors.Add(TSQLProcessor.Create(Self, 'SQL'));
 
-  Processors.MainProcessor := 'SQL';
-  Processors.DefaultProcessor := 'SQL';
+  Processors.MainProcessor := Processors.Find('SQL');
 end;
 
 class function TmnSynStdSQLSyn.GetLanguageName: string;

@@ -1741,7 +1741,6 @@ begin
       '?': ProcTable[I] := @QuestionProc;
       '''': ProcTable[I] := @StringSQProc;
       '"': ProcTable[I] := @StringDQProc;
-      '`': ProcTable[I] := @StringBQProc;
       '/': ProcTable[I] := @SlashProc;
       '{': ProcTable[I] := @BlockProc;
       '>': ProcTable[I] := @GreaterProc;
@@ -1838,8 +1837,7 @@ begin
   inherited;
   Processors.Add(TLSLProcessor.Create(Self, 'LSL'));
 
-  Processors.MainProcessor := 'LSL';
-  Processors.DefaultProcessor := 'LSL';
+  Processors.MainProcessor := Processors.Find('LSL');
 end;
 
 class function TSynLSLSyn.GetLanguageName: string;

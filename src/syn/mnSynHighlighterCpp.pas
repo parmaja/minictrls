@@ -141,7 +141,6 @@ begin
       '?': ProcTable[I] := @QuestionProc;
       '''': ProcTable[I] := @StringSQProc;
       '"': ProcTable[I] := @StringDQProc;
-      '`': ProcTable[I] := @StringBQProc;
       '#': ProcTable[I] := @DirectiveProc;
       '/': ProcTable[I] := @SlashProc;
       '>': ProcTable[I] := @GreaterProc;
@@ -234,8 +233,7 @@ begin
   inherited;
   Processors.Add(TCppProcessor.Create(Self, 'Cpp'));
 
-  Processors.MainProcessor := 'Cpp';
-  Processors.DefaultProcessor := 'Cpp';
+  Processors.MainProcessor := Processors.Find('Cpp');
 end;
 
 class function TmnSynCppSyn.GetLanguageName: string;

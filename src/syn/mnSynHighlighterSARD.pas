@@ -217,7 +217,15 @@ begin
     rscStringSQ, rscStringDQ, rscStringBQ:
       StringProc;
   else
-    CallProcTable;
+    if ScanMatch(ProcessorChar) then
+    begin
+
+      Parent.Processors.Switch(Parent.Processors.MainProcessor);
+      Inc(Parent.Run);
+      Parent.FTokenID := tkProcessor;
+    end
+    else
+      CallProcTable;
   end;
 end;
 
@@ -261,9 +269,7 @@ procedure TSynSardSyn.InitProcessors;
 begin
   inherited;
   Processors.Add(TSardProcessor.Create(Self, 'Sard'));
-
-  Processors.MainProcessor := 'Sard';
-  Processors.DefaultProcessor := 'Sard';
+  Processors.MainProcessor := Processors.Find('Sard');
 end;
 
 class function TSynSardSyn.GetLanguageName: string;

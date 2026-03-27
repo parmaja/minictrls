@@ -203,7 +203,7 @@ begin
     if ScanMatch(ProcessorChar) then
     begin
       Parent.Processors.Switch(Parent.Processors.MainProcessor);
-      Inc(Parent.Run);
+      //Inc(Parent.Run);
       Parent.FTokenID := tkProcessor;
     end
     else
@@ -251,8 +251,7 @@ begin
   inherited;
   Processors.Add(TLuaProcessor.Create(Self, 'Lua'));
 
-  Processors.MainProcessor := 'Lua';
-  Processors.DefaultProcessor := 'Lua';
+  Processors.MainProcessor := Processors.Find('Lua');
 end;
 
 class function TmnSynLuaSyn.GetLanguageName: string;

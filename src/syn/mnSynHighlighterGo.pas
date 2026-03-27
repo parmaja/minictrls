@@ -215,8 +215,7 @@ begin
   inherited;
   Processors.Add(TGoProcessor.Create(Self, 'Go'));
 
-  Processors.MainProcessor := 'Go';
-  Processors.DefaultProcessor := 'Go';
+  Processors.MainProcessor := Processors.Find('Go');
 end;
 
 class function TSynGoSyn.GetLanguageName: string;

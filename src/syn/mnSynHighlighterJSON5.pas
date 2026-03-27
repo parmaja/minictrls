@@ -1,4 +1,4 @@
-unit mnSynHighlighterBVH;
+unit mnSynHighlighterJSON5;
 {$mode objfpc}{$H+}
 {**
  * NOT COMPLETED
@@ -10,8 +10,6 @@ unit mnSynHighlighterBVH;
  *            See the file COPYING.MLGPL, included in this distribution,
  * @author    Zaher Dirkey
  *
- * https://research.cs.wisc.edu/graphics/Courses/cs-838-1999/Jeff/BVH.html
- *
  *}
 
 interface
@@ -19,22 +17,24 @@ interface
 uses
   Classes, SysUtils,
   SynEdit, SynEditTypes,
-  SynHighlighterHashEntries, SynEditHighlighter, mnSynHighlighterMultiProc;
+  SynEditHighlighter, mnSynHighlighterMultiProc,
+  mnSQLProcessor, mnSynHighlighterLua, HTMLProcessor;
 
 type
 
-  { TBVHProcessor }
+  { TJSON5Processor }
 
-  TBVHProcessor = class(TCommonSynProcessor)
+  TJSON5Processor = class(TCommonSynProcessor)
   private
   protected
     function GetIdentChars: TSynIdentChars; override;
     function GetEndOfLineAttribute: TSynHighlighterAttributes; override;
   public
     procedure Created; override;
-    procedure QuestionProc;
+
     procedure SlashProc;
     procedure BlockProc;
+    procedure StringBQOpenProc;
 
     procedure GreaterProc;
     procedure LowerProc;
@@ -46,9 +46,9 @@ type
     procedure MakeProcTable; override;
   end;
 
-  { TSynDSyn }
+  { TSynJSON5Syn }
 
-  TSynBVHSyn = class(TSynMultiProcSyn)
+  TSynJSON5Syn = class(TSynMultiProcSyn)
   private
   protected
     function GetSampleSource: string; override;
@@ -62,48 +62,30 @@ type
 
 const
 
-  SYNS_LangBVH = 'BVH';
-  SYNS_FilterBVH = 'BVH Files (*.BVH)|*.BVH';
+  SYNS_LangJSON5 = 'JSON5';
+  SYNS_FilterJSON5 = 'JSON5 Files (*.json)|*.json;(*.json5)|*.json5';
 
-  cBVHSample =  'HIERARCHY'
-                +'ROOT Hips'#13
-                +'{'#13
-                +''#13
-                +'}'#13;
-
-const
-  sBVHTypes =
-    'Xposition,'+
-    'Yposition,'+
-    'Zposition,'+
-    'Zrotation,'+
-    'Yrotation,'+
-    'Xrotation,'+
-    //not types
-    'Hips,'+
-    'Neck,'+
-    'Chest,'+
-    'Head';
-
-  sBVHKeywords =
-    'hierarchy,'+
-    'root,'+
-    'offset,'+
-    'channels,'+
-    'end,' +
-    'site,' +
-    'motion,' +
-    'frames,' +
-    'frame,' +
-    'time,' +
-    'joint';
+  cJSON5Sample =  `
+{
+  // comments
+  unquoted: 'and you can quote me on that',
+  singleQuotes: 'I can use "double quotes" here',
+  lineBreaks: "Look, Mom! \
+No \\n's!",
+  hexadecimal: 0xdecaf,
+  leadingDecimalPoint: .8675309, andTrailing: 8675309.,
+  positiveSign: +1,
+  trailingComma: 'in objects', andIn: ['arrays',],
+  "backwardsCompatible": "with JSON5",
+}
+`;
 
 implementation
 
 uses
   mnUtils;
 
-procedure TBVHProcessor.GreaterProc;
+procedure TJSON5Processor.GreaterProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
@@ -111,7 +93,7 @@ begin
     Inc(Parent.Run);
 end;
 
-procedure TBVHProcessor.LowerProc;
+procedure TJSON5Processor.LowerProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
@@ -126,7 +108,7 @@ begin
   end;
 end;
 
-procedure TBVHProcessor.DeclareProc;
+procedure TJSON5Processor.DeclareProc;
 begin
   Parent.FTokenID := tkSymbol;
   Inc(Parent.Run);
@@ -141,7 +123,7 @@ begin
   end;
 end;
 
-procedure TBVHProcessor.SlashProc;
+procedure TJSON5Processor.SlashProc;
 begin
   Inc(Parent.Run);
   case Parent.FLine[Parent.Run] of
@@ -162,24 +144,35 @@ begin
   end;
 end;
 
-procedure TBVHProcessor.BlockProc;
+procedure TJSON5Processor.BlockProc;
 begin
   Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
-    '*': SpecialCommentMLProc;
-  else
-    Parent.FTokenID := tkSymbol;
-  end;
+  Parent.FTokenID := tkSymbol;
 end;
 
-procedure TBVHProcessor.MakeProcTable;
+procedure TJSON5Processor.StringBQOpenProc;
+var
+  aProcessor: string;
+begin
+  aProcessor := '';
+  while Parent.FLine[Parent.Run] in ['a'..'z', 'A'..'Z', '0'..'9', '_', '-', '.'] do
+  begin
+    aProcessor := aProcessor + Parent.FLine[Parent.Run];
+    Inc(Parent.Run);
+  end;
+  if Parent.Processors.Switch(aProcessor, True) then
+    Parent.fTokenID := tkProcessor
+  else
+    StringBQProc;
+end;
+
+procedure TJSON5Processor.MakeProcTable;
 var
   I: Char;
 begin
   inherited;
   for I := #0 to #255 do
     case I of
-      '?': ProcTable[I] := @QuestionProc;
       '''': ProcTable[I] := @StringSQProc;
       '"': ProcTable[I] := @StringDQProc;
       '/': ProcTable[I] := @SlashProc;
@@ -195,54 +188,46 @@ begin
     end;
 end;
 
-procedure TBVHProcessor.QuestionProc;
-begin
-  Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
-    '>':
-      begin
-        Parent.Processors.Switch(Parent.Processors.MainProcessor);
-        Inc(Parent.Run);
-        Parent.FTokenID := tkProcessor;
-      end
-  else
-    Parent.FTokenID := tkSymbol;
-  end;
-end;
-
-procedure TBVHProcessor.Next;
+procedure TJSON5Processor.Next;
 begin
   Parent.FTokenPos := Parent.Run;
   if (Parent.FLine[Parent.Run] in [#0, #10, #13]) then
     ProcTable[Parent.FLine[Parent.Run]]
   else case Range of
     rscComment:
-    begin
       CommentMLProc;
-    end;
     rscDocument:
-    begin
       DocumentMLProc;
-    end;
-    rscStringSQ, rscStringDQ, rscStringBQ:
+    rscStringBQ:
+      StringProc;
+    rscStringSQ, rscStringDQ:
       StringProc;
   else
-    if ProcTable[Parent.FLine[Parent.Run]] = nil then
-      UnknownProc
+    if ScanMatch(ProcessorChar) then
+    begin
+      if Parent.Processors.MainProcessor = Self then
+        StringBQOpenProc
+      else
+      begin
+        Parent.Processors.Switch(Parent.Processors.MainProcessor);
+        //Inc(Parent.Run);
+        Parent.FTokenID := tkProcessor;
+      end;
+    end
     else
-      ProcTable[Parent.FLine[Parent.Run]];
+      CallProcTable;
   end;
 end;
 
-procedure TBVHProcessor.Prepare;
+procedure TJSON5Processor.Prepare;
 begin
   inherited;
-  EnumerateKeywords(Ord(tkKeyword), sBVHKeywords, TSynValidStringChars, @DoAddKeyword);
-  EnumerateKeywords(Ord(tkType), sBVHTypes, TSynValidStringChars, @DoAddKeyword);
+//  EnumerateKeywords(Ord(tkKeyword), sJSON5Keywords, TSynValidStringChars, @DoAddKeyword);
+//  EnumerateKeywords(Ord(tkFunction), sJSON5Functions, TSynValidStringChars, @DoAddKeyword);
   SetRange(rscUnknown);
 end;
 
-function TBVHProcessor.GetEndOfLineAttribute: TSynHighlighterAttributes;
+function TJSON5Processor.GetEndOfLineAttribute: TSynHighlighterAttributes;
 begin
   if (Range = rscDocument) or (LastRange = rscDocument) then
     Result := Parent.DocumentAttri
@@ -250,42 +235,49 @@ begin
     Result := inherited GetEndOfLineAttribute;
 end;
 
-procedure TBVHProcessor.Created;
+procedure TJSON5Processor.Created;
 begin
   inherited Created;
-  CloseSpecialComment := '*}';
+  CloseSpecialComment := '';
+  CaseSensitive := False;
 end;
 
-function TBVHProcessor.GetIdentChars: TSynIdentChars;
+function TJSON5Processor.GetIdentChars: TSynIdentChars;
 begin
   Result := TSynValidStringChars;
 end;
 
-constructor TSynBVHSyn.Create(AOwner: TComponent);
+{ TSynJSON5Syn }
+
+constructor TSynJSON5Syn.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FDefaultFilter := SYNS_FilterBVH;
+  FDefaultFilter := SYNS_FilterJSON5;
 end;
 
-procedure TSynBVHSyn.InitProcessors;
+procedure TSynJSON5Syn.InitProcessors;
 begin
   inherited;
-  Processors.Add(TBVHProcessor.Create(Self, 'BVH'));
+  Processors.Add(TJSON5Processor.Create(Self, 'JSON5', '`'));
+  Processors.Add(TSQLProcessor.Create(Self, 'SQL', '`'));
+  Processors.Add(THTMLProcessor.Create(Self, 'HTML', '`'));
+  Processors.Add(TLUAProcessor.Create(Self, 'LUA', '`'));
 
-  Processors.MainProcessor := Processors.Find('BVH');
+  Processors.MainProcessor := Processors.Find(TJSON5Processor);
 end;
 
-class function TSynBVHSyn.GetLanguageName: string;
+class function TSynJSON5Syn.GetLanguageName: string;
 begin
-  Result := SYNS_LangBVH;
+  Result := SYNS_LangJSON5;
 end;
 
-function TSynBVHSyn.GetSampleSource: string;
+function TSynJSON5Syn.GetSampleSource: string;
 begin
-  Result := cBVHSample;
+  Result := cJSON5Sample;
 end;
 
 initialization
-  RegisterPlaceableHighlighter(TSynBVHSyn);
+  RegisterPlaceableHighlighter(TSynJSON5Syn);
 finalization
 end.
+

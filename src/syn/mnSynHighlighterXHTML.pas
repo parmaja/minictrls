@@ -55,8 +55,7 @@ begin
   Processors.Add(TPHPProcessor.Create(Self, 'hh')); //<-- same php temporary ^.^
   Processors.Add(TPlainProcessor.Create(Self, ''));
 
-  Processors.MainProcessor := 'html';
-  Processors.DefaultProcessor := 'php';
+  Processors.MainProcessor := Processors.Find('html');
 end;
 
 class function TSynXHTMLSyn.GetLanguageName: string;

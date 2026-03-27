@@ -308,6 +308,10 @@ const
 
 implementation
 
+procedure Nothing;
+begin
+end;
+
 { THTMLProcessor }
 
 procedure THTMLProcessor.MakeProcTable;
@@ -337,7 +341,15 @@ begin
   Parent.fTokenPos := Parent.Run;
   case fRange of
     rshtmlText:
-      TextProc;
+    begin
+      if ScanMatch(ProcessorChar) then
+      begin
+        Parent.Processors.Switch(Parent.Processors.MainProcessor);
+        Parent.FTokenID := tkProcessor;
+      end
+      else
+        TextProc;
+    end;
     rshtmlComment:
       CommentProc;
     rshtmlStringSQ, rshtmlStringDQ:
@@ -348,9 +360,8 @@ begin
   else
     if ScanMatch(ProcessorChar) then
     begin
-      //* Open? or Close?          now close
       Parent.Processors.Switch(Parent.Processors.MainProcessor);
-      Inc(Parent.Run);
+      //Inc(Parent.Run);
       Parent.FTokenID := tkProcessor;
     end
     else
@@ -430,7 +441,7 @@ begin
       Inc(Parent.Run);
     end;
     Parent.fTokenID := tkProcessor;
-    Parent.Processors.Switch(aProcessor);
+    Parent.Processors.Switch(aProcessor, True);
   end
   else if (Parent.FLine[Parent.Run] = '!') and (Parent.FLine[Parent.Run + 1] = '-') and (Parent.FLine[Parent.Run + 2] = '-') then
   begin
@@ -644,7 +655,7 @@ begin
             Parent.Run := i;
             fRange := rshtmlAmpersand;
           end;
-          BREAK;
+          break;
         end
         else
         begin
@@ -658,13 +669,10 @@ begin
             end;
           end;
         end;
-
         Inc(Parent.Run);
       end
       else
-      begin
-        Break;
-      end;
+        break;
     end;
   end;
 end;

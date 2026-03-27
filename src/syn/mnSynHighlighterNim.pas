@@ -252,8 +252,7 @@ begin
   inherited;
   Processors.Add(TNimProcessor.Create(Self, 'Nim'));
 
-  Processors.MainProcessor := 'Nim';
-  Processors.DefaultProcessor := 'Nim';
+  Processors.MainProcessor := Processors.Find('Nim');
 end;
 
 class function TmnSynNimSyn.GetLanguageName: string;

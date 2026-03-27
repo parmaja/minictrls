@@ -13,7 +13,7 @@ unit mnSynHighlighterMultiProc;
 interface
 
 uses
-  Classes, Contnrs, SysUtils, Controls, Graphics,
+  Classes, Contnrs, SysUtils, Controls, Graphics, Generics.Collections,
   SynEdit, SynEditTypes, SynEditHighlighter;
 
 type
@@ -104,6 +104,8 @@ type
     property Index: integer read FIndex;
   end;
 
+  TSynProcessorClass = class of TSynProcessor;
+
   { TCommonSynProcessor }
 
   TCommonSynProcessor = class(TSynProcessor)
@@ -159,25 +161,30 @@ type
     procedure MakeProcTable; override;
   end;
 
+  //TSynProcessorsStack = specialize TStack<TSynProcessor>;
+
+  { TSynProcessors }
+
   TSynProcessors = class(TObjectList)
   private
+    //Stack: TSynProcessorsStack;
     FCurrent: TSynProcessor;
-    FMainProcessor: string;
-    FDefaultProcessor: string;
+    FMainProcessor: TSynProcessor;
     function GetItem(Index: integer): TSynProcessor;
     procedure SetItem(Index: integer; const Value: TSynProcessor);
     function GetMain: TSynProcessor;
-    procedure SetCurrent(Value: TSynProcessor);
+    procedure SetCurrent(Value: TSynProcessor; Safe: Boolean = False);
   public
     function Add(AProcessor: TSynProcessor): integer;
     function Find(const Name: string): TSynProcessor;
+    function Find(const ProcessorClass: TSynProcessorClass): TSynProcessor;
     function IndexOf(const Name: string): integer;
-    procedure Switch(const Name: string); overload;
+    procedure Switch(const Processor: TSynProcessor); overload;
+    function Switch(const Name: string; Safe: Boolean = False): Boolean; overload;
     procedure Switch(Index: integer); overload;
     property Current: TSynProcessor read FCurrent;
     property Main: TSynProcessor read GetMain;
-    property MainProcessor: string read FMainProcessor write FMainProcessor;
-    property DefaultProcessor: string read FDefaultProcessor write FDefaultProcessor;
+    property MainProcessor: TSynProcessor read FMainProcessor write FMainProcessor;
     property Items[Index: integer]: TSynProcessor read GetItem write SetItem; default;
   end;
 
@@ -1080,6 +1087,21 @@ begin
   end;
 end;
 
+function TSynProcessors.Find(const ProcessorClass: TSynProcessorClass): TSynProcessor;
+var
+  i: integer;
+begin
+  Result := nil;
+  for i := 0 to Count - 1 do
+  begin
+    if Items[i] is ProcessorClass then
+    begin
+      Result := Items[i];
+      break;
+    end;
+  end;
+end;
+
 function TSynProcessors.GetItem(Index: integer): TSynProcessor;
 begin
   Result := inherited Items[Index] as TSynProcessor;
@@ -1105,12 +1127,20 @@ begin
   end;
 end;
 
-procedure TSynProcessors.SetCurrent(Value: TSynProcessor);
+procedure TSynProcessors.Switch(const Processor: TSynProcessor);
 begin
-  if FCurrent <> Value then
-  begin
+  if Processor = nil then
+    SetCurrent(MainProcessor)
+  else
+    SetCurrent(Processor);
+end;
+
+procedure TSynProcessors.SetCurrent(Value: TSynProcessor; Safe: Boolean);
+begin
+  if not Safe and (Value = nil) then
+    raise Exception.Create('Processor is nil');
+  if (FCurrent <> Value) and (Value <> nil) then
     FCurrent := Value;
-  end;
 end;
 
 procedure TSynProcessors.SetItem(Index: integer; const Value: TSynProcessor);
@@ -1118,16 +1148,15 @@ begin
   inherited Items[Index] := Value;
 end;
 
-procedure TSynProcessors.Switch(const Name: string);
+function TSynProcessors.Switch(const Name: string; Safe: Boolean): Boolean;
 var
   aProcessor: TSynProcessor;
 begin
   aProcessor := Find(Name);
   if aProcessor = nil then
     aProcessor := Find(''); //unkown, the last processor //We need it when write strange name <?bla
-  if aProcessor = nil then
-    raise Exception.Create('Fail to switch to processor');
-  SetCurrent(aProcessor);
+  Result := aProcessor <> nil;
+  SetCurrent(aProcessor, Safe);
 end;
 
 procedure TSynProcessors.Switch(Index: integer);

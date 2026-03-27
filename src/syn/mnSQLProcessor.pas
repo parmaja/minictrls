@@ -204,9 +204,9 @@ begin
   else
     if ScanMatch(ProcessorChar) then
     begin
-      //* Open? or Close?          now close
+      //SQL have no open, only close
       Parent.Processors.Switch(Parent.Processors.MainProcessor);
-      Inc(Parent.Run);
+      //Inc(Parent.Run);
       Parent.FTokenID := tkProcessor;
     end
     else
