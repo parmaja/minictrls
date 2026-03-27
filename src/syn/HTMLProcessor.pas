@@ -346,7 +346,15 @@ begin
       else
         StringProc;
   else
-    ProcTable[Parent.FLine[Parent.Run]];
+    if ScanMatch(ProcessorChar) then
+    begin
+      //* Open? or Close?          now close
+      Parent.Processors.Switch(Parent.Processors.MainProcessor);
+      Inc(Parent.Run);
+      Parent.FTokenID := tkProcessor;
+    end
+    else
+      CallProcTable;
   end;
 end;
 

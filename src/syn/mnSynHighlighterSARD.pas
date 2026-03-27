@@ -217,10 +217,7 @@ begin
     rscStringSQ, rscStringDQ, rscStringBQ:
       StringProc;
   else
-    if ProcTable[Parent.FLine[Parent.Run]] = nil then
-      UnknownProc
-    else
-      ProcTable[Parent.FLine[Parent.Run]];
+    CallProcTable;
   end;
 end;
 

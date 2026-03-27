@@ -30,6 +30,7 @@ type
   protected
     function GetIdentChars: TSynIdentChars; override;
     function GetEndOfLineAttribute: TSynHighlighterAttributes; override;
+    procedure Created; override;
   public
     procedure QuestionProc;
     procedure SlashProc;
@@ -236,6 +237,13 @@ begin
     Result := Parent.DocumentAttri
   else
     Result := inherited GetEndOfLineAttribute;
+end;
+
+procedure TDProcessor.Created;
+begin
+  inherited;
+  CloseSpecialComment := '+/';
+  CaseSensitive := True;
 end;
 
 function TDProcessor.GetIdentChars: TSynIdentChars;

@@ -14,9 +14,9 @@ object CSVOptionsForm: TCSVOptionsForm
   Font.Name = 'Tahoma'
   Font.Pitch = fpVariable
   Font.Quality = fqDraft
-  OnCreate = FormCreate
   Position = poMainFormCenter
-  LCLVersion = '2.1.0.0'
+  LCLVersion = '4.99.0.0'
+  OnCreate = FormCreate
   object QuoteCharLbl1: TLabel
     Left = 9
     Height = 13
@@ -68,8 +68,8 @@ object CSVOptionsForm: TCSVOptionsForm
     Caption = '&OK'
     Default = True
     ModalResult = 1
-    OnClick = OkBtnClick
     TabOrder = 3
+    OnClick = OkBtnClick
   end
   object DelimiterList: TComboBox
     Left = 79

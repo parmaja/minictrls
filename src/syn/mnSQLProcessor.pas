@@ -28,7 +28,6 @@ type
    function GetEndOfLineAttribute: TSynHighlighterAttributes; override;
   public
    procedure Created; override;
-   procedure QuestionProc;
    procedure SlashProc;
    procedure MinusProc;
 
@@ -186,21 +185,6 @@ begin
     end;
 end;
 
-procedure TSQLProcessor.QuestionProc;
-begin
-  Inc(Parent.Run);
-  case Parent.FLine[Parent.Run] of
-    '>':
-      begin
-        Parent.Processors.Switch(Parent.Processors.MainProcessor);
-        Inc(Parent.Run);
-        Parent.FTokenID := tkProcessor;
-      end
-  else
-    Parent.FTokenID := tkSymbol;
-  end;
-end;
-
 procedure TSQLProcessor.Next;
 begin
   Parent.FTokenPos := Parent.Run;
@@ -218,10 +202,15 @@ begin
     rscStringSQ, rscStringDQ, rscStringBQ:
       StringProc;
   else
-    if ProcTable[Parent.FLine[Parent.Run]] = nil then
-      UnknownProc
+    if ScanMatch(ProcessorChar) then
+    begin
+      //* Open? or Close?          now close
+      Parent.Processors.Switch(Parent.Processors.MainProcessor);
+      Inc(Parent.Run);
+      Parent.FTokenID := tkProcessor;
+    end
     else
-      ProcTable[Parent.FLine[Parent.Run]];
+      CallProcTable;
   end;
 end;
 

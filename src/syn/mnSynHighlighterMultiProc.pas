@@ -81,14 +81,16 @@ type
 
     procedure Created; virtual;
 
-    procedure UnknownProc;
+    procedure UnknownProc; virtual;
     function CreateKeywords: TSynKeywords; virtual;
     property ExternalKeywords: Boolean read FExternalKeywords;
   public
     IdentTable: TIdentifierTable;
     ProcTable: TProcTable;
-    constructor Create(AParent: TSynMultiProcSyn; AName: string); virtual;
+    ProcessorChar: string;
+    constructor Create(AParent: TSynMultiProcSyn; AName: string; AProcessorChar: string = ''); virtual;
     destructor Destroy; override;
+    function CallProcTable: Boolean;
     procedure Next; virtual;
     procedure SetLine(const NewValue: string; LineNumber: integer); virtual;
     procedure Prepare; virtual;
@@ -116,7 +118,6 @@ type
     CloseSpecialDocument: string;
     procedure Created; override;
   public
-    constructor Create(AParent: TSynMultiProcSyn; AName: string); override;
     procedure ResetRange; override;
     function GetRange: Byte; override;
     procedure SetRange(Value: Byte); override;
@@ -181,7 +182,12 @@ type
   end;
 
   //Unkown Processor
+
+  { TPlainProcessor }
+
   TPlainProcessor = class(TSynProcessor)
+  protected
+    procedure Created; override;
   public
     procedure NullProc;
     procedure LFProc;
@@ -335,6 +341,8 @@ var
   i, c: integer;
 begin
   Result := False;
+  if MatchWith.Length = 0 then
+    exit;
   i := Parent.Run;
   c := 1;
   repeat
@@ -385,7 +393,7 @@ begin
   Result := nil;
 end;
 
-procedure TSynProcessor.DoAddKeyword(AKeyword: string; AKind: Integer);
+procedure TSynProcessor.DoAddKeyword(AKeyword: string; AKind: integer);
 begin
   Keywords.Append(AKeyword, TtkTokenKind(AKind));
 end;
@@ -406,14 +414,8 @@ procedure TCommonSynProcessor.Created;
 begin
   inherited;
   CloseComment := '*/';
-  CloseSpecialComment := '+/';//for D but you can change it
+  CloseSpecialComment := '';
   CloseSpecialString := '"""';
-//  CloseSpecialDocument
-end;
-
-constructor TCommonSynProcessor.Create(AParent: TSynMultiProcSyn; AName: string);
-begin
-  inherited;
   if CloseSpecialDocument = '' then
     CloseSpecialDocument := CloseSpecialComment;
 end;
@@ -935,12 +937,13 @@ procedure TSynProcessor.SetLine(const NewValue: string; LineNumber: integer);
 begin
 end;
 
-constructor TSynProcessor.Create(AParent: TSynMultiProcSyn; AName: string);
+constructor TSynProcessor.Create(AParent: TSynMultiProcSyn; AName: string; AProcessorChar: string);
 begin
   inherited Create;
   FName := AName;
   FParent := AParent;
   FKeywords := CreateKeywords;
+  ProcessorChar := AProcessorChar;
   StringCEscaped := [rscStringSQ, rscStringDQ, rscStringBQ];
   CaseSensitive := True;
   Created;
@@ -951,6 +954,18 @@ begin
   if not ExternalKeywords then
     FreeAndNil(FKeywords);
   inherited;
+end;
+
+function TSynProcessor.CallProcTable: Boolean;
+var
+  aProc: TProcTableProc;
+begin
+  aProc := ProcTable[Parent.FLine[Parent.Run]];
+  Result := Assigned(aProc);
+  if Result then
+    aProc()
+  else
+    UnknownProc;
 end;
 
 procedure TSynProcessor.ResetRange;
@@ -1020,7 +1035,7 @@ begin
     begin
       Parent.FTokenID := tkUnknown;
       repeat
-        if ScanMatch('?>') then
+        if ScanMatch(ProcessorChar) then
         begin
           Parent.Processors.Switch(Parent.Processors.MainProcessor);
           break;
@@ -1029,6 +1044,12 @@ begin
       until Parent.FLine[Parent.Run] in [#0, #10, #13];
     end;
   end;
+end;
+
+procedure TPlainProcessor.Created;
+begin
+  inherited;
+  ProcessorChar := '?>';
 end;
 
 procedure TPlainProcessor.NullProc;

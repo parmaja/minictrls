@@ -1956,9 +1956,8 @@ begin
         end;
     end else begin
       for i := 0 to Pred(ItemsCount) do
-        if 0 = CompareText(fCurrentString,
-                                    Copy(InsertList[i], 1, Length(fCurrentString)))
-        then begin
+        if CompareText(fCurrentString, Copy(InsertList[i], 1, Length(fCurrentString))) = 0 then
+        begin
           Position := i;
           break;
         end;

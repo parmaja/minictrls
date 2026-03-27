@@ -19,7 +19,7 @@
     </CompilerOptions>
     <Description Value="MiniCtrls Lazarus library"/>
     <Version Major="1"/>
-    <Files Count="46">
+    <Files Count="47">
       <Item1>
         <Filename Value="PHPUtils.pas"/>
         <UnitName Value="PHPUtils"/>
@@ -205,6 +205,10 @@
         <Filename Value="syn/mnSynHighlighterPy.pas"/>
         <UnitName Value="mnSynHighlighterPy"/>
       </Item46>
+      <Item47>
+        <Filename Value="syn/mnSynHighlighterJSON5.pas"/>
+        <UnitName Value="mnSynHighlighterJSON5"/>
+      </Item47>
     </Files>
     <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="4">

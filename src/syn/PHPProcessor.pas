@@ -319,6 +319,7 @@ var
   I: Char;
 begin
   for I := #0 to #255 do
+  begin
     case I of
       #0: ProcTable[I] := @NullProc;
       #10: ProcTable[I] := @LFProc;
@@ -349,6 +350,7 @@ begin
     else
       ProcTable[I] := @UnknownProc;
     end;
+  end;
 end;
 
 procedure TPHPProcessor.QuestionProc;
@@ -392,7 +394,7 @@ begin
     rsphpVarExpansion:
       VarExpansionProc;
   else
-    ProcTable[Parent.FLine[Parent.Run]];
+    CallProcTable;
   end;
 end;
 

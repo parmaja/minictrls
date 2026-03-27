@@ -200,10 +200,14 @@ begin
     rscSpecialString:
       SpecialStringProc;
   else
-    if ProcTable[Parent.FLine[Parent.Run]] = nil then
-      UnknownProc
+    if ScanMatch(ProcessorChar) then
+    begin
+      Parent.Processors.Switch(Parent.Processors.MainProcessor);
+      Inc(Parent.Run);
+      Parent.FTokenID := tkProcessor;
+    end
     else
-      ProcTable[Parent.FLine[Parent.Run]];
+      CallProcTable;
   end;
 end;
 
