@@ -155,7 +155,7 @@ var
   aProcessor: string;
 begin
   aProcessor := '';
-  while Parent.FLine[Parent.Run] in ['a'..'z', 'A'..'Z', '0'..'9', '_', '-', '.'] do
+  while Parent.FLine[Parent.Run] in ['a'..'z', 'A'..'Z', '0'..'9', '_', '-', '.', '/', '\'] do
   begin
     aProcessor := aProcessor + Parent.FLine[Parent.Run];
     Inc(Parent.Run);
